@@ -8,7 +8,7 @@ interpretation of HTTP leave enough room for circumventing these security
 systems.
 
 This module contains predefined tests to generate dubious HTTP responses.
-The distribution contains also a script C<dubious_http.pl> which can be used
+The distribution contains also a script dubious_http.pl which can be used
 as an HTTP server to serve these dubious HTTP responses. It can alternativly be
 used to generate pcap-Files containg the dubious HTTP traffic, which instead of
 life traffic can be fed for analysis into IDS systems.

@@ -22,8 +22,8 @@ systems.
 This module contains predefined tests to generate dubious HTTP responses.
 The distribution contains also a script C<dubious_http.pl> which can be used
 as an HTTP server to serve these dubious HTTP responses. It can alternativly be
-used to generate pcap-Files containg the dubious HTTP traffic, which instead of
-life traffic can be fed for analysis into IDS systems.
+used to generate pcap-Files containing the dubious HTTP traffic, which instead
+of life traffic can be fed for analysis into IDS systems.
 
 Right now the following major tests are defined:
 

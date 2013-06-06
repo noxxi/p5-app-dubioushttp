@@ -1,0 +1,15 @@
+While HTTP is defined in RFC2616 (HTTP/1.1) the specification does not address
+every tiny detail. This makes browsers behave similar for the usual HTTP
+traffic, but they differ in behavior regarding unusual or invalid traffic.
+
+The same interpretation problems can be seen in security systems, e.g.
+Intrusion Detection Systems (IDS), proxies or firewalls. Thus differences in the
+interpretation of HTTP leave enough room for circumventing these security
+systems.
+
+This module contains predefined tests to generate dubious HTTP responses.
+The distribution contains also a script C<dubious_http.pl> which can be used
+as an HTTP server to serve these dubious HTTP responses. It can alternativly be
+used to generate pcap-Files containg the dubious HTTP traffic, which instead of
+life traffic can be fed for analysis into IDS systems.
+

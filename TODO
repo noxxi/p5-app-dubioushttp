@@ -1,0 +1,20 @@
+- chunking
+  - looks like suricata interprets any Transfer-Encoding as chunked, even
+    Transfer-Encoding: foobar. Try with Transfer-Encoding: identity :)
+- content-encoding:
+  - LWP/HTTP::Message seems to interprete Content-Encodings of base64, x-bzip2,
+    quoted-printable ...
+  - looks like suricata only implements gzip/x-gzip, e.g no deflate
+  - looks like bro only accepts gzip|deflate, no x-gzip|x-deflate,
+    but browsers (at least FF) do (FF just strips x- before checking encoding)
+- other transfer-encodings:
+  - RFC2616 defines gzip, deflate etc as valid transfer-encodings (e.g. not only
+    content-encodigs). Looks like opera and rekonq implement these, while others
+    browsers and IDS don't
+- dumb IDS/IPS
+  - some "security" systems simply change Accept-Encoding: gzip etc to
+    "Accept-Xncoding" or similar in the hope, that server will not send
+    compressed conntent then. Check what they do if we insist sending content
+    compressed (lots of accelerating proxies seems to work this way, e.g. they
+    know that FF can do gzip and ignore Accept-Encoding)
+  

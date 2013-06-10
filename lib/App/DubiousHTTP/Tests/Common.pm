@@ -3,7 +3,7 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = 'content';
+our @EXPORT = qw(content html_escape);
 
 my $basedir = 'static/';
 sub basedir { $basedir = pop }
@@ -64,6 +64,14 @@ sub content {
 	return ($hdr,$data);
     }
     return;
+}
+
+sub html_escape {
+    local $_ = shift;
+    s{\&}{&amp;}g;
+    s{<}{&lt;}g;
+    s{>}{&gt;}g;
+    return $_
 }
 
 1;

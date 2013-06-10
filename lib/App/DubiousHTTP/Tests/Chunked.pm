@@ -4,7 +4,18 @@ package App::DubiousHTTP::Tests::Chunked;
 use App::DubiousHTTP::Tests::Common;
 
 sub ID { 'chunked' }
-sub DESCRIPTION { "Variations of server side chunked encoding" }
+sub SHORT_DESC { "Variations of server side chunked encoding" }
+sub LONG_DESC { return <<'DESC'; }
+Various tests with invalid or uncommon forms of setting or not setting the
+Transfer-Encoding: chunked header:
+- chunked is not defined for HTTP/1.0, but some systems still interprete the
+  header for HTTP/1.0 responses
+- some systems do not support breaking HTTP header over multiple lines
+- some systems are happy if 'chunked' is matched somewhere in the header,
+- some even interprete the existence of a Transfer-Encoding header as enough
+  to expect chunked data
+Details see http://noxxi.de/research/dubious-http.html
+DESC
 my @tests; # set below
 sub TESTS { @tests }
 
@@ -87,6 +98,7 @@ sub make_response {
 
 sub make_index_page {
     my $body = "<!doctype html><html lang=en><body>";
+    $body .= "<pre>".html_escape(LONG_DESC())."</pre>";
     $body .= "<table>";
     my $line = sub {
 	my ($test,$gif) = @_;

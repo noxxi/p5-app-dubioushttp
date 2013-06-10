@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 package App::DubiousHTTP::Tests;
+use App::DubiousHTTP::Tests::Common;
 
 my @cat;
 for my $cat ( qw( Chunked Mime ) ) {
@@ -11,14 +12,17 @@ for my $cat ( qw( Chunked Mime ) ) {
 
 sub categories { @cat }
 sub make_response {
-    my $page = join("\n",
-	"<!doctype html><html><body>",
-	( map { "<a href=/".$_->ID.">".$_->DESCRIPTION."</a><br />" } grep { $_->TESTS } @cat ),
-	"</body></html>");
+    my $page = "<!doctype html><html><body>";
+    for( grep { $_->TESTS } @cat ) {
+	$page .= "<a href=/".$_->ID.">".html_escape($_->SHORT_DESC)."</a>\n";
+	$page .= "<pre>".html_escape( $_->LONG_DESC )."</pre>";
+    }
+    $page .= "</body></html>";
     return "HTTP/1.0 200 ok\r\n".
 	"Content-type: text/html\r\n".
 	"Content-length: ".length($page)."\r\n".
 	"\r\n".
 	$page;
 }
+
 1;

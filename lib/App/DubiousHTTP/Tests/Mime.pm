@@ -4,8 +4,15 @@ package App::DubiousHTTP::Tests::Mime;
 use App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'encode_base64';
 
-sub DESCRIPTION { "no all MIME makes sense for HTTP" }
 sub ID { 'mime' }
+sub SHORT_DESC { "no all MIME makes sense for HTTP" }
+sub LONG_DESC { return <<'DESC'; }
+Various tests with multipart contents.
+- most systems do not handle multipart in a special way
+- but Firefox often just uses the last part and ignores the rest
+- while Opera additionally interprets Content-Transfer-Encoding header
+Details see http://noxxi.de/research/dubious-http.html
+DESC
 my @tests;
 sub TESTS { @tests }
 
@@ -72,6 +79,7 @@ sub make_response {
 
 sub make_index_page {
     my $body = "<!doctype html><html lang=en><body>";
+    $body .= "<pre>".html_escape(LONG_DESC())."</pre>";
     $body .= "<table>";
     my $line = sub {
 	my ($test,$base,$prefix,$postfix) = @_;

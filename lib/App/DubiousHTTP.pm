@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 package App::DubiousHTTP;
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 1;
 __END__
@@ -43,6 +43,10 @@ While some don't interprete multipart messages at all, others simply take the
 last part and some even interprete Content-Transfer-Encoding information.
 
 =back
+
+=head1 SEE ALSO
+
+http://noxxi.de/research/dubious-http.html
 
 =head1 AUTHOR
 

@@ -13,3 +13,5 @@ as an HTTP server to serve these dubious HTTP responses. It can alternativly be
 used to generate pcap-Files containing the dubious HTTP traffic, which instead
 of life traffic can be fed for analysis into IDS systems.
 
+See http://noxxi.de/research/dubious-http.html for an overview, how
+different browsers and security systems react to dubious http responses.

@@ -56,7 +56,8 @@ sub new_client {
 		%fo = ();
 		return;
 	    };
-	    if ( ! eval { $fo{write}{buf} .= $response->($1,$addr,$hdr) } ) {
+	    ( my $page = $1 ) =~s{%([\da-fA-F]{2})}{ chr(hex($1)) }sg; # urldecode
+	    if ( ! eval { $fo{write}{buf} .= $response->($page,$addr,$hdr) } ) {
 		warn "creating response failed: $@\n";
 		%fo = ();
 		return;

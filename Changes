@@ -1,0 +1,6 @@
+2013/06/24 0.0004
+- work with "normalized" urls, where "," got URL-encoded
+2013/06/24 0.0003
+- added test for range header
+2013/06/10 0.0002
+- first workable version: tests for chunking and multipart messages

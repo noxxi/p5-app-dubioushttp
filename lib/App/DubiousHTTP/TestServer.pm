@@ -56,7 +56,7 @@ sub new_client {
 		%fo = ();
 		return;
 	    };
-	    if ( ! eval { $fo{write}{buf} .= $response->($1,$addr) } ) {
+	    if ( ! eval { $fo{write}{buf} .= $response->($1,$addr,$hdr) } ) {
 		warn "creating response failed: $@\n";
 		%fo = ();
 		return;

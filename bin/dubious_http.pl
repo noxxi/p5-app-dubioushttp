@@ -48,7 +48,7 @@ sub make_doc {
     my $dok = '';
     for my $cat ( App::DubiousHTTP::Tests->categories ) {
 	$cat->TESTS or next;
-	$dok .= "[".$cat->ID."] ".$cat->DESCRIPTION."\n";
+	$dok .= "[".$cat->ID."] ".$cat->SHORT_DESC."\n";
 	for my $tst ( $cat->TESTS ) {
 	    $dok .= " - [".$tst->ID."] ".$tst->DESCRIPTION."\n"
 	}
@@ -77,7 +77,7 @@ sub make_pcaps {
 sub serve {
     my $addr = shift;
     App::DubiousHTTP::TestServer->run($addr, sub {
-	my ($path,$listen) = @_;
+	my ($path,$listen,$rqhdr) = @_;
 	local $BASE_URL = "http://$listen";
 	my ($cat,$page,$spec) = $path =~m{\A / 
 	    ([^/]+)
@@ -89,7 +89,7 @@ sub serve {
 	    for ( App::DubiousHTTP::Tests->categories ) {
 		$_->ID eq $cat or next;
 		for ( $_->TESTS ) {
-		    return $_->make_response($page)
+		    return $_->make_response($page,undef,$rqhdr)
 			if $_->ID eq $spec;
 		}
 	    }
@@ -102,12 +102,12 @@ sub serve {
 
 	if ( $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
-		return $_->make_response($page,$spec)
+		return $_->make_response($page,$spec,$rqhdr)
 		    if $_->ID eq $cat;
 	    }
 	}
 
-	return App::DubiousHTTP::Tests->make_response($cat,$page,$spec);
+	return App::DubiousHTTP::Tests->make_response($cat,$page,$spec,$rqhdr);
     });
 }
 

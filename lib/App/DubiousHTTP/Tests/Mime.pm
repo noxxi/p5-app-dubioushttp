@@ -19,14 +19,16 @@ sub TESTS { @tests }
 # these should be fine
 my @good = (
     [ 'single' => 'single part'],
+    [ 'single,ct64',"single part with Content-Transfer-Encoding base64 header but unencoded data" ],
 );
 
 # and the bad ones
 my @bad = (
     [ 'mixed',"multipart/mixed" ],
-    [ 'mixed,base64',"multipart/mixed with Content-Transfer-Encoding base64" ],
+    [ 'mixed,ct64,base64',"multipart/mixed with Content-Transfer-Encoding base64" ],
     [ 'related',"multipart/related" ],
-    [ 'related,base64',"multipart/related with Content-Transfer-Encoding base64" ],
+    [ 'related,ct64,base64',"multipart/related with Content-Transfer-Encoding base64" ],
+    [ 'single,ct64,base64',"single part with Content-Transfer-Encoding base64" ],
 );
 
 my @mhtml = (
@@ -59,19 +61,17 @@ sub make_response {
     if ( $multi ) {
 	$resp .= "Content-type: $multi; boundary=foobar\r\n";
 	my $part = $hdr;
-	if ( delete $spec{base64} ) {
-	    $part .= "Content-transfer-Encoding: base64\r\n\r\n".
-		encode_base64($data)."\r\n"
-	} else {
-	    $part .= "Content-length: ".length($data)."\r\n\r\n".
-		"$data\r\n";
-	}
+	$part .= "Content-transfer-Encoding: base64\r\n" if delete $spec{ct64};
+	$data = encode_base64($data) if delete $spec{base64};
+	$part .= "Content-length: ".length($data)."\r\n\r\n$data\r\n";
 	my $body = "\r\n".
 	    "--foobar\r\nContent-Location: p1\r\n$part".
 	    "--foobar\r\nContent-Location: p2\r\n$part".
 	    "--foobar--\r\n";
 	$resp .= "Content-length: ".length($body)."\r\n\r\n$body";
     } else {
+	$resp .= "Content-transfer-Encoding: base64\r\n" if delete $spec{ct64};
+	$data = encode_base64($data) if delete $spec{base64};
 	$resp .= "Content-length: ".length($data)."\r\n\r\n$data";
     }
     return $resp;

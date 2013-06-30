@@ -1,3 +1,5 @@
+2013/06/30 0.005
+- single part response with content-transfer-encoding base64
 2013/06/24 0.004
 - work with "normalized" urls, where "," got URL-encoded
 2013/06/24 0.003

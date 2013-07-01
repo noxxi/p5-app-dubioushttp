@@ -1,3 +1,6 @@
+2013/07/01 0.006
+- added tests with content-encoding and transfer-encoding with various
+  compressions
 2013/06/30 0.005
 - single part response with content-transfer-encoding base64
 2013/06/24 0.004

@@ -47,12 +47,16 @@ sub new_client {
 
 	if ( $$rbuf =~m{(\r?\n)\1}g ) {
 	    my $hdr = substr($$rbuf,0,pos($$rbuf),'');
+	    my ($line) = $hdr =~m{^(.*)};
+	    my ($ua) = $hdr =~m{^User-Agent:\s*([^\r\n]*)}mi;
+	    $ua ||= 'Unknown-UA';
+	    warn $ua ." | ". $cl->peerhost." | $line\n";
 	    $hdr =~m{ \A 
 		GET [\040]+ 
 		(/\S*) [\040]+ 
 		HTTP/1\.[01] \r?\n
 	    }x or do {
-		warn "wrong request ($hdr)";
+		print $cl "HTTP/1.0 204 ok\r\n\r\n";
 		%fo = ();
 		return;
 	    };

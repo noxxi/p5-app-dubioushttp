@@ -1,3 +1,5 @@
+2013/07/02 0.010
+- add script to ping back within iframe to see, if iframe was loaded unchanged
 2013/07/02 0.009
 - simplify code, remove redundant code
 - log access with timestamp 

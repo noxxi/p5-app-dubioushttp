@@ -40,19 +40,50 @@ IMAGE
 R0lGODlhFAAUAKEBAAAAAP///////////yH5BAEKAAIALAAAAAAUABQAAAIhjI+py+0PFwAxzYou
 Nnp3/FVhNELlczppM7Wt6b7bTGMFADs=
 IMAGE
-    'ok.html' =>  [ "Content-type: text/html\r\n", "<body>ok</body>" ],
-    'bad.html' => [ "Content-type: text/html\r\n", "<body><strong>BAD!</strong></body>" ],
+    'ok.html' =>  sub {
+	my $spec = shift;
+	return [ "Content-type: text/html\r\n", 
+	    "<body>ok<script src=/ping.js></script><script>ping_back('/ping?OK:$spec')</script></body>" ]
+    },
+    'bad.html' =>  sub {
+	my $spec = shift;
+	return [ "Content-type: text/html\r\n", 
+	    "<body>BAD!<script src=/ping.js></script><script>ping_back('/ping?BAD:$spec')</script></body>" ]
+    },
+
+    # we hide javascript behind image/gif...GIF87a to work around content filters :)
     'ok.js' => sub {
 	my $spec = shift;
-	return [ "Content-type: application/javascript\r\n",
-	    "ping_back('/ping?OK:$spec');" ]
+	return [ "Content-type: image/gif\r\n",
+	    "GIF87a=1;ping_back('/ping?OK:$spec');" ]
     },
     'bad.js' => sub {
 	my $spec = shift;
-	return [ "Content-type: application/javascript\r\n",
-	    "ping_back('/ping?BAD:$spec');" ]
+	return [ "Content-type: image/gif\r\n",
+	    "GIF87a=1;ping_back('/ping?BAD:$spec');" ]
     },
-    'ping' =>  [ "Content-type: text/plain\r\n", "pong" ],
+    '/ping' =>  [ "Content-type: text/plain\r\n", "pong" ],
+    '/ping.js' => [ 
+	"Content-type: image/gif\r\n".
+	"Expires: Tue, 30 Jul 2033 20:04:02 GMT\r\n",
+	<<'PING_JS' ],
+GIF87a=1;
+function ping_back(url) {
+    var xmlHttp = null;
+    try { xmlHttp = new XMLHttpRequest(); } 
+    catch(e) {
+	try { xmlHttp  = new ActiveXObject("Microsoft.XMLHTTP"); } 
+	catch(e) {
+	    try { xmlHttp  = new ActiveXObject("Msxml2.XMLHTTP"); } 
+	    catch(e) { xmlHttp  = null; }
+	}
+    }
+    if (xmlHttp) {
+	xmlHttp.open('GET', url, true);
+	xmlHttp.send(null);
+    }
+}
+PING_JS
 );
 
 
@@ -119,23 +150,7 @@ sub make_index_page {
     my $class = shift;
     my $body = <<'BODY';
 <!doctype html><html lang=en><body>
-<script>
-function ping_back(url) {
-    var xmlHttp = null;
-    try { xmlHttp = new XMLHttpRequest(); } 
-    catch(e) {
-	try { xmlHttp  = new ActiveXObject("Microsoft.XMLHTTP"); } 
-	catch(e) {
-	    try { xmlHttp  = new ActiveXObject("Msxml2.XMLHTTP"); } 
-	    catch(e) { xmlHttp  = null; }
-	}
-    }
-    if (xmlHttp) {
-	xmlHttp.open('GET', url, true);
-	xmlHttp.send(null);
-    }
-}
-</script>
+<script src=/ping.js></script>
 BODY
     $body .= "<pre>".html_escape($class->LONG_DESC())."</pre><hr>";
     $body .= "<table>";

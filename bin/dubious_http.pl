@@ -79,12 +79,13 @@ sub serve {
     App::DubiousHTTP::TestServer->run($addr, sub {
 	my ($path,$listen,$rqhdr) = @_;
 	local $BASE_URL = "http://$listen";
-	my ($cat,$page,$spec) = $path =~m{\A / 
+	my ($cat,$page,$spec,$qstring) = $path =~m{\A / 
 	    ([^/]+)
-	    (?: / ([^/]*))?
-	    (?: / (.*))?
+	    (?: / ([^/\?]*))?
+	    (?: / ([^\?]*))?
+	    (?: \? (.*))?
 	}x;
-	$_ //= '' for ($cat,$page,$spec);
+	$_ //= '' for ($cat,$page,$spec,$qstring);
 	if ( $page && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
 		$_->ID eq $cat or next;
@@ -96,7 +97,8 @@ sub serve {
 	}
 
 	if ( my ($hdr,$data) = content($path)) {
-	    # static pages
+	    return "HTTP/1.0 200 ok\r\n$hdr\r\n$data";
+	} elsif ( $path =~m{^([^?]+)\?(.*)} and ($hdr,$data) = content($1,$2) ) {
 	    return "HTTP/1.0 200 ok\r\n$hdr\r\n$data";
 	}
 

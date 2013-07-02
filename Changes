@@ -1,3 +1,5 @@
+2013/07/02 0.008
+- added tests with unknown content-encodings
 2013/07/01 0.007
 - added tests with multiple content-encodings
 2013/07/01 0.006

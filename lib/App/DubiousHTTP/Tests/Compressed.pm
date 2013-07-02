@@ -59,6 +59,8 @@ my @bad = (
     [ 'ce:gzip,ce:deflate,deflate' => 'gzip+deflate content-encoding header but only deflated'],
     [ 'ce:deflate,ce:gzip,deflate' => 'deflate+gzip content-encoding header but only deflated'],
     [ 'ce:deflate,ce:gzip' => 'deflate+gzip content-encoding header but no encoding'],
+    [ 'ce:foo', '"content-encoding:foo" and no encoding' ],
+    [ 'ce:identity', '"content-encoding:identity" and no encoding' ],
 );
 
 
@@ -74,7 +76,7 @@ sub make_response {
     my ($hdr,$data) = content($page) or die "unknown page $page";
     my $version = '1.1';
     for (split(',',$spec)) {
-	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx)(_x)?$} ) {
+	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?$} ) {
 	    $hdr .= $1 eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "\r\n " if $2;
 	    $hdr .= "x " if $3;

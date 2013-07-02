@@ -1,3 +1,7 @@
+2013/07/02 0.009
+- simplify code, remove redundant code
+- log access with timestamp 
+- add ping back via xmlhttrequest to check if script can get loaded
 2013/07/02 0.008
 - added tests with unknown content-encodings
 2013/07/01 0.007

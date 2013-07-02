@@ -3,7 +3,7 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(content html_escape);
+our @EXPORT = qw(SETUP content html_escape);
 
 my $basedir = 'static/';
 sub basedir { $basedir = pop }
@@ -42,15 +42,25 @@ Nnp3/FVhNELlczppM7Wt6b7bTGMFADs=
 IMAGE
     'ok.html' =>  [ "Content-type: text/html\r\n", "<body>ok</body>" ],
     'bad.html' => [ "Content-type: text/html\r\n", "<body><strong>BAD!</strong></body>" ],
-    'ok.js' =>  [ "Content-type: application/javascript\r\n", "alert('ok')" ],
-    'bad.js' => [ "Content-type: application/javascript\r\n", "alert('bad')" ],
+    'ok.js' => sub {
+	my $spec = shift;
+	return [ "Content-type: application/javascript\r\n",
+	    "ping_back('/ping?OK:$spec');" ]
+    },
+    'bad.js' => sub {
+	my $spec = shift;
+	return [ "Content-type: application/javascript\r\n",
+	    "ping_back('/ping?BAD:$spec');" ]
+    },
+    'ping' =>  [ "Content-type: text/plain\r\n", "pong" ],
 );
 
 
 sub content {
-    my $page = shift;
+    my ($page,$spec) = @_;
     my ($hdr,$data);
     if ( my $builtin = $builtin{$page} ) {
+	$builtin = $builtin->($spec) if ref($builtin) eq 'CODE';
 	return @$builtin;
     } 
     if ( $basedir && open( my $fh,'<',"$basedir/$page" )) {
@@ -73,5 +83,83 @@ sub html_escape {
     s{>}{&gt;}g;
     return $_
 }
+
+sub SETUP {
+    my ($id,$desc,$ldesc,@tests) = @_;
+    my $pkg = caller();
+    my @tests_only;
+    for my $t (@tests) {
+	# good,title,@tests
+	my ($good,$title,@tests) = @$t;
+	@tests = map { bless [ @$_ ], $pkg.'::Test' } @tests;
+	push @tests_only, @tests;
+	@$t = ( $good,$title,@tests );
+    }
+
+    no strict 'refs';
+    *{$pkg.'::ID'} = sub { $id };
+    *{$pkg.'::SHORT_DESC'} = sub { $desc };
+    *{$pkg.'::LONG_DESC'} = sub { $ldesc };
+    *{$pkg.'::TESTS'} = sub { @tests_only };
+    *{$pkg.'::make_index_page'} = sub { make_index_page($pkg,@tests) };
+
+    *{$pkg.'::Test::ID'} = sub { shift->[0] };
+    *{$pkg.'::Test::DESCRIPTION'} = sub { shift->[1] };
+    *{$pkg.'::Test::url'} = sub { 
+	my ($self,$page) = @_;
+	return "/$id/$page/$self->[0]"
+    };
+    *{$pkg.'::Test::make_response'} = sub { 
+	my ($self,$page,$spec,$rqhdr) = @_;
+	return $pkg->make_response($page,$self->[0],$rqhdr);
+    };
+}
+
+sub make_index_page {
+    my $class = shift;
+    my $body = <<'BODY';
+<!doctype html><html lang=en><body>
+<script>
+function ping_back(url) {
+    var xmlHttp = null;
+    try { xmlHttp = new XMLHttpRequest(); } 
+    catch(e) {
+	try { xmlHttp  = new ActiveXObject("Microsoft.XMLHTTP"); } 
+	catch(e) {
+	    try { xmlHttp  = new ActiveXObject("Msxml2.XMLHTTP"); } 
+	    catch(e) { xmlHttp  = null; }
+	}
+    }
+    if (xmlHttp) {
+	xmlHttp.open('GET', url, true);
+	xmlHttp.send(null);
+    }
+}
+</script>
+BODY
+    $body .= "<pre>".html_escape($class->LONG_DESC())."</pre><hr>";
+    $body .= "<table>";
+    for(@_) {
+	my ($good,$title,@tests) = @$_;
+	$body .= "<tr><td colspan=4><hr>$title<hr></td></tr>";
+	for my $test (@tests) {
+	    my $base = $good ? 'ok':'bad';
+	    $body .= "<tr>";
+	    $body .= "<td style='border-style:solid; border-width:1px'><img src=". $test->url("$base.gif"). "></td>";
+	    $body .= "<td style='border-style:solid; border-width:1px'><iframe style='width: 10em; height: 3em;' src=". $test->url("$base.html"). "></iframe></td>";
+	    $body .= "<td>". html_escape($test->DESCRIPTION) ."</td>";
+	    $body .= "<td><a href=". $test->url('eicar.txt').">load EICAR</a></td>";
+	    $body .= "</tr>";
+	    $body .= "<script src=".$test->url("$base.js")."></script>";
+	}
+    }
+    $body .= "</table>";
+    $body .= "</body></html>";
+    return "HTTP/1.0 200 Ok\r\n".
+        "Content-type: text/html\r\n".
+        "Content-length: ".length($body)."\r\n\r\n".
+        $body;
+}
+
 
 1;

@@ -47,10 +47,11 @@ sub new_client {
 
 	if ( $$rbuf =~m{(\r?\n)\1}g ) {
 	    my $hdr = substr($$rbuf,0,pos($$rbuf),'');
-	    my ($line) = $hdr =~m{^(.*)};
+	    my ($line) = $hdr =~m{^([^\r\n]*)};
 	    my ($ua) = $hdr =~m{^User-Agent:\s*([^\r\n]*)}mi;
 	    $ua ||= 'Unknown-UA';
-	    warn $ua ." | ". $cl->peerhost." | $line\n";
+	    my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
+	    warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
 	    $hdr =~m{ \A 
 		GET [\040]+ 
 		(/\S*) [\040]+ 

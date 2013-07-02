@@ -3,9 +3,10 @@ use warnings;
 package App::DubiousHTTP::Tests::Chunked;
 use App::DubiousHTTP::Tests::Common;
 
-sub ID { 'chunked' }
-sub SHORT_DESC { "Variations of server side chunked encoding" }
-sub LONG_DESC { return <<'DESC'; }
+SETUP(
+    'chunked',
+    "Variations of server side chunked encoding",
+    <<'DESC',
 Various tests with invalid or uncommon forms of setting or not setting the
 Transfer-Encoding: chunked header:
 - chunked is not defined for HTTP/1.0, but some systems still interprete the
@@ -16,46 +17,38 @@ Transfer-Encoding: chunked header:
   to expect chunked data
 Details see http://noxxi.de/research/dubious-http.html
 DESC
-my @tests; # set below
-sub TESTS { @tests }
 
-# these should be fine
-my @good_chunked = (
-    [ 'chunked' => 'valid chunking'],
-    [ 'chUnked' => 'valid chunking mixed case'],
-    # according to RFC2616 TE chunked has preference to clen
-    [ 'chunked,clen' => 'chunking and content-length'],
-    # continuations lines are ok
-    [ 'nl-chunked' => "chunked header with continuation line"],
-    #[ 'chunked-semicolon' => "Transfer-Encoding: chunked;" ],
+    # ------------------------ Tests -----------------------------------
+    [ 1,'simple chunked encoding', 
+	[ 'chunked' => 'valid chunking'],
+	[ 'chUnked' => 'valid chunking mixed case'],
+	# according to RFC2616 TE chunked has preference to clen
+	[ 'chunked,clen' => 'chunking and content-length'],
+	# continuations lines are ok
+	[ 'nl-chunked' => "chunked header with continuation line"],
+	#[ 'chunked-semicolon' => "Transfer-Encoding: chunked;" ],
+    ],
+    [ 1,'chunked encoding gets prefered over content-length',
+	[ 'clen' => 'valid content-length'],
+    ],
+    [ 0, 'chunking is only allowed with HTTP/1.1', 
+	[ 'chunked,http10' => 'chunking with HTTP/1.0'],
+	[ 'chunked,clen,http10' => 'chunking and content-length with HTTP/1.0'],
+    ],
+    [ 0, 'invalid variations on "chunked" value',
+	[ 'chu' => '"chu" not "chunked"'],
+	[ 'xchunked' => '"xchunked" not "chunked"'],
+	[ 'chunkedx' => '"chunkedx" not "chunked"'],
+	[ 'chunked-x' => '"chunked x" not "chunked"'],
+	[ 'x-chunked' => '"x chunked" not "chunked"'],
+    ]
 );
-
-my @good_clen = (
-    [ 'clen' => 'valid content-length'],
-);
-
-# and the bad ones
-my @bad = (
-    # chunking is only allowed with HTTP/1.1
-    [ 'chunked,http10' => 'chunking with HTTP/1.0'],
-    [ 'chunked,clen,http10' => 'chunking and content-length with HTTP/1.0'],
-    [ 'chu' => '"chu" not "chunked"'],
-    [ 'xchunked' => '"xchunked" not "chunked"'],
-    [ 'chunkedx' => '"chunkedx" not "chunked"'],
-    [ 'chunked-x' => '"chunked x" not "chunked"'],
-    [ 'x-chunked' => '"x chunked" not "chunked"'],
-);
-
-for (@good_chunked,@good_clen,@bad) {
-    my $tst = bless [ @$_ ],'App::DubiousHTTP::Tests::Chunked::Test';
-    push @tests, $tst;
-}
 
 
 sub make_response {
     my ($self,$page,$spec) = @_;
     return make_index_page() if $page eq '';
-    my ($hdr,$data) = content($page) or die "unknown page $page";
+    my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
     my $te;
     for (split(',',$spec)) {
@@ -91,55 +84,10 @@ sub make_response {
     }
     $hdr = "HTTP/$version 200 ok\r\n$hdr";
     $te ||= $hdr =~m{^Transfer-Encoding:}im ? 'chunked':'clen';
-    $data = sprintf("%x\r\n%s\r\n0\r\n\r\n",length($data),$data) 
-	if $te eq 'chunked';
+    if ( $te eq 'chunked' ) {
+	$data = join("", map { sprintf("%x\r\n%s\r\n",length($_),$_) } ( $data =~m{(..)}smg,''))
+    }
     return "$hdr\r\n$data";
-}
-
-sub make_index_page {
-    my $body = "<!doctype html><html lang=en><body>";
-    $body .= "<pre>".html_escape(LONG_DESC())."</pre>";
-    $body .= "<table>";
-    my $line = sub {
-	my ($test,$gif) = @_;
-	bless $test, 'App::DubiousHTTP::Tests::Chunked::Test';
-	$body .= "<tr>";
-	$body .= "<td>". $test->ID ."</td>";
-	$body .= "<td><img src=". $_->url($gif). " /></td>";
-	$body .= "<td>". $test->DESCRIPTION ."</td>";
-	$body .= "<td><a href=". $test->url('eicar.txt').">load EICAR</a></td>";
-	$body .= "</tr>";
-    };
-
-    $body .= "<tr><td colspan=4><hr>correct unchunked requests, should all succeed<hr></td></tr>";
-    $line->($_,'ok.gif') for(@good_clen);
-    $body .= "<tr><td colspan=4><hr>correct chunked requests, should all succeed<hr></td></tr>";
-    $line->($_,'ok.gif') for(@good_chunked);
-    $body .= "<tr><td colspan=4><hr>incorrect chunked response, should not succeed (broken image is fine)<hr></td></tr>";
-    $line->($_,'bad.gif') for(@bad);
-
-    $body .= "</table>";
-    $body .= "</body></html>";
-    return "HTTP/1.0 200 Ok\r\n".
-	"Content-type: text/html\r\n".
-	"Content-length: ".length($body)."\r\n\r\n".
-	$body;
-
-}
-
-
-{
-    package App::DubiousHTTP::Tests::Chunked::Test;
-    sub ID { shift->[0] }
-    sub DESCRIPTION { shift->[1] }
-    sub url { 
-	my ($self,$page) = @_;
-	return "/chunked/$page/$self->[0]"
-    }
-    sub make_response {
-	my ($self,$page) = @_;
-	App::DubiousHTTP::Tests::Chunked->make_response( $page,$self->[0] );
-    }
 }
 
 

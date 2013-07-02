@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 package App::DubiousHTTP;
-our $VERSION = '0.008';
+our $VERSION = '0.009';
 
 1;
 __END__
@@ -29,24 +29,36 @@ Right now the following major tests are defined:
 
 =over 4
 
-=item tests with Transfer-Encoding chunked
+=item Tests with Transfer-Encoding chunked
 
 These tests have shown a variety of differences among browsers and IDS regarding
 the use of chunked encoding. For example they differ, if Transfer-Encoding
 chunked is specified within an HTTP/1.0 response (chunked is defined for
 HTTP/1.1 only) or if not specified as "chunked", but as "chunked xx" or similar.
 
-=item tests with MIME
+=item Tests with Compression Using Content-Encoding and Transfer-Encoding
+
+Various compression schemas, invalid schemas, combining schemas etc get tested.
+These tests also show a variety of behavior among browsers and IDS.
+
+=item Tests with MIME
 
 The interpretation of multipart MIME-Messages differs a lot between browsers.
 While some don't interprete multipart messages at all, others simply take the
 last part and some even interprete Content-Transfer-Encoding information.
+
+=item Tests with Range Header
+
+These tests check the behavior, if the server sends only partial responses
+back, even if the client did not ask for partial response.
+With luck the client tries to resume starting with the given position.
 
 =back
 
 =head1 SEE ALSO
 
 http://noxxi.de/research/dubious-http.html
+http://noxxi.de/research/unusual-http-content-encoding.html
 
 =head1 AUTHOR
 

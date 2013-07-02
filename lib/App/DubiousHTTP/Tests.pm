@@ -4,7 +4,7 @@ package App::DubiousHTTP::Tests;
 use App::DubiousHTTP::Tests::Common;
 
 my @cat;
-for my $cat ( qw( Chunked Mime Range Compressed ) ) {
+for my $cat ( qw( Chunked Compressed Mime Range ) ) {
     my $mod = 'App::DubiousHTTP::Tests::'.$cat;
     eval "require $mod" or die "cannot load $mod: $@";
     push @cat, $mod;

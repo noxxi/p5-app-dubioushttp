@@ -1,3 +1,5 @@
+2013/07/09 0.011
+- added tests with dubious content-length
 2013/07/02 0.010
 - add script to ping back within iframe to see, if iframe was loaded unchanged
 2013/07/02 0.009

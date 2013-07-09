@@ -3,10 +3,11 @@ Changes
 lib/App/DubiousHTTP.pm
 lib/App/DubiousHTTP/Tests.pm
 lib/App/DubiousHTTP/Tests/Chunked.pm
+lib/App/DubiousHTTP/Tests/Clen.pm
 lib/App/DubiousHTTP/Tests/Common.pm
+lib/App/DubiousHTTP/Tests/Compressed.pm
 lib/App/DubiousHTTP/Tests/Mime.pm
 lib/App/DubiousHTTP/Tests/Range.pm
-lib/App/DubiousHTTP/Tests/Compressed.pm
 lib/App/DubiousHTTP/TestServer.pm
 Makefile.PL
 MANIFEST			This list of files

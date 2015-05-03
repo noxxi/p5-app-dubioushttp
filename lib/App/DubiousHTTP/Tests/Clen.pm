@@ -30,6 +30,12 @@ DESC
 	[ 'close,clen200,clen,content,junk' => 'content-length double and full' ],
 	[ 'close,clen,clen200,content,junk' => 'content-length full and double' ],
     ],
+    [ 0, 'content-length header containing two numbers',
+	[ 'close,clen50-folding100,content' => 'content-length half but full after line folding, eof after real content' ],
+	[ 'close,clen50-100,content' => 'content-length half and full on same line, eof after real content' ],
+	[ 'close,clen100-folding50,content' => 'content-length full but half after line folding, eof after real content' ],
+	[ 'close,clen100-50,content' => 'content-length full and half on same line, eof after real content' ],
+    ],
 );
 
 
@@ -43,8 +49,14 @@ sub make_response {
     for (split(',',$spec)) {
 	if ( ! $_ || $_ eq 'close' ) {
 	    $hdr .= "Connection: close\r\n";
-	} elsif ( m{^clen(50|200)?$} ) {
-	    $hdr .= "Content-length: ".(($1||100)/100)*length($data)."\r\n";
+	} elsif ( s{^clen(\d+)?}{} ) {
+	    $hdr .= "Content-length: ";
+	    $hdr .= int((($1||100)/100)*length($data));
+	    while (s{^-(folding)?(\d+)}{}) {
+		$hdr .= "\r\n" if $1;
+		$hdr .= " ".int(($2/100)*length($data));
+	    }
+	    $hdr .= "\r\n";
 	} elsif ( $_ eq 'content' ) {
 	    $body = $data;
 	} elsif ( $_ eq 'junk' ) {

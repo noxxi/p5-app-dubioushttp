@@ -27,6 +27,9 @@ DESC
 	# continuations lines are ok
 	[ 'nl-chunked' => "chunked header with continuation line"],
 	#[ 'chunked-semicolon' => "Transfer-Encoding: chunked;" ],
+	[ 'chunked-ext-junk' => "some junk chunk extension" ],
+	[ 'chunked-ext-chunk' => "some junk chunk extension looking like a chunk" ],
+	[ 'chunked-lf' => "chunk with LF as delimited instead of CRLF" ],
     ],
     [ 1,'chunked encoding gets prefered over content-length',
 	[ 'clen' => 'valid content-length'],
@@ -78,6 +81,9 @@ sub make_response {
 	    $te = 'chunked'
 	} elsif ( $_ eq 'chunked-semicolon' ) {
 	    $hdr .= "Transfer-Encoding: chunked;\r\n"
+	} elsif ( $_ =~m{^chunked-ext|^chunked-lf}) {
+	    $hdr .= "Transfer-Encoding: chunked\r\n";
+	    $te = $_
 	} else {
 	    die $_
 	}
@@ -85,8 +91,32 @@ sub make_response {
     $hdr = "HTTP/$version 200 ok\r\n$hdr";
     $te ||= $hdr =~m{^Transfer-Encoding:}im ? 'chunked':'clen';
     if ( $te eq 'chunked' ) {
-	$data = join("", map { sprintf("%x\r\n%s\r\n",length($_),$_) } ( $data =~m{(..)}smg,''))
+	$data = join("", 
+	    map { sprintf("%x\r\n%s\r\n",length($_),$_) } 
+	    ( $data =~m{(..)}smg,'')
+	)
+    } elsif ($te eq 'chunked-ext-junk') {
+	$data = join("", 
+	    map { sprintf("%x; foobar\r\n%s\r\n",length($_),$_) } 
+	    ( $data =~m{(..)}smg,'')
+	)
+    } elsif ($te eq 'chunked-ext-chunk') {
+	$data = join("", 
+	    map { sprintf(
+		"%x; %s  %x\r\n%s\r\n",
+		length($_),                    # chunk length
+		"x" x length($_), length($_),  # chunk extensions looking like chunk if any two bytes are skipped instead of \r\n
+		$_                             # chunk
+	    )} 
+	    ( $data =~m{(..)}smg,'')
+	)
+    } elsif ($te eq 'chunked-lf') {
+	$data = join("", 
+	    map { sprintf("%x\n%s\n",length($_),$_) } 
+	    ( $data =~m{(..)}smg,'')
+	)
     }
+
     return "$hdr\r\n$data";
 }
 

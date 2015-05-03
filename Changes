@@ -1,3 +1,5 @@
+2015/05/03 0.012
+- add more tests with chunking and more dubious content-length
 2013/07/09 0.011
 - added tests with dubious content-length
 2013/07/02 0.010

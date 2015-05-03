@@ -8,6 +8,7 @@ lib/App/DubiousHTTP/Tests/Common.pm
 lib/App/DubiousHTTP/Tests/Compressed.pm
 lib/App/DubiousHTTP/Tests/Mime.pm
 lib/App/DubiousHTTP/Tests/Range.pm
+lib/App/DubiousHTTP/Tests/MessageRfc822.pm
 lib/App/DubiousHTTP/TestServer.pm
 Makefile.PL
 MANIFEST			This list of files

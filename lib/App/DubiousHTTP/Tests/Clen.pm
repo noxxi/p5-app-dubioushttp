@@ -29,13 +29,17 @@ DESC
 	[ 'close,clen,clen50,content' => 'content-length full and half' ],
 	[ 'close,clen200,clen,content,junk' => 'content-length double and full' ],
 	[ 'close,clen,clen200,content,junk' => 'content-length full and double' ],
+	[ 'close,clen-folding100,clen200,content,junk' => 'content-length full (folded) and double' ],
     ],
     [ 0, 'content-length header containing two numbers',
 	[ 'close,clen50-folding100,content' => 'content-length half but full after line folding, eof after real content' ],
 	[ 'close,clen50-100,content' => 'content-length half and full on same line, eof after real content' ],
 	[ 'close,clen100-folding50,content' => 'content-length full but half after line folding, eof after real content' ],
 	[ 'close,clen100-50,content' => 'content-length full and half on same line, eof after real content' ],
+	[ 'close,clen100-folding200,content,junk' => 'content-length full but double after line folding, eof after real content+junk' ],
+	[ 'close,clen200-folding100,content,junk' => 'content-length double but full after line folding, eof after real content+junk' ],
     ],
+
 );
 
 
@@ -51,7 +55,7 @@ sub make_response {
 	    $hdr .= "Connection: close\r\n";
 	} elsif ( s{^clen(\d+)?}{} ) {
 	    $hdr .= "Content-length: ";
-	    $hdr .= int((($1||100)/100)*length($data));
+	    $hdr .= int((($1||100)/100)*length($data)) if $1 || $_ eq '';
 	    while (s{^-(folding)?(\d+)}{}) {
 		$hdr .= "\r\n" if $1;
 		$hdr .= " ".int(($2/100)*length($data));

@@ -34,10 +34,14 @@ DESC
     [ 0, 'content-length header containing two numbers',
 	[ 'close,clen50-folding100,content' => 'content-length half but full after line folding, eof after real content' ],
 	[ 'close,clen50-100,content' => 'content-length half and full on same line, eof after real content' ],
+	[ 'close,clen50-(100),content' => 'content-length half and full on same line, but full as MIME comment, eof after real content' ],
 	[ 'close,clen100-folding50,content' => 'content-length full but half after line folding, eof after real content' ],
 	[ 'close,clen100-50,content' => 'content-length full and half on same line, eof after real content' ],
+	[ 'close,clen(100)-50,content' => 'content-length full and half on same line, but full as MIME comment, eof after real content' ],
 	[ 'close,clen100-folding200,content,junk' => 'content-length full but double after line folding, eof after real content+junk' ],
+	[ 'close,clen100-(200),content,junk' => 'content-length full and double on same line, but double as MIME comment, eof after real content+junk' ],
 	[ 'close,clen200-folding100,content,junk' => 'content-length double but full after line folding, eof after real content+junk' ],
+	[ 'close,clen(200)-100,content,junk' => 'content-length double and full on same line, but double as MIME comment, eof after real content+junk' ],
     ],
 
 );
@@ -53,12 +57,16 @@ sub make_response {
     for (split(',',$spec)) {
 	if ( ! $_ || $_ eq 'close' ) {
 	    $hdr .= "Connection: close\r\n";
-	} elsif ( s{^clen(\d+)?}{} ) {
+	} elsif ( s{^clen(\(?)(\d*)(\)?)}{} ) {
 	    $hdr .= "Content-length: ";
-	    $hdr .= int((($1||100)/100)*length($data)) if $1 || $_ eq '';
-	    while (s{^-(folding)?(\d+)}{}) {
+	    $hdr .= $1;
+	    $hdr .= int((($2||100)/100)*length($data)) if $2 || $_ eq '';
+	    $hdr .= $3;
+	    while (s{^-(folding)?(\(?)(\d+)(\)?)}{}) {
 		$hdr .= "\r\n" if $1;
-		$hdr .= " ".int(($2/100)*length($data));
+		$hdr .= $2;
+		$hdr .= " ".int(($3/100)*length($data));
+		$hdr .= $4;
 	    }
 	    $hdr .= "\r\n";
 	} elsif ( $_ eq 'content' ) {

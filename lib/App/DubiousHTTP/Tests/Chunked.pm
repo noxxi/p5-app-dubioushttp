@@ -44,6 +44,9 @@ DESC
 	[ 'chunkedx' => '"chunkedx" not "chunked"'],
 	[ 'chunked-x' => '"chunked x" not "chunked"'],
 	[ 'x-chunked' => '"x chunked" not "chunked"'],
+	[ 'rfc2047,do_chunked' => "rfc2047 encoded with base64, serve chunked" ],
+	[ 'rfc2047,do_clen' => "rfc2047 encoded with base64, not served chunked" ],
+	[ 'rfc2047,clen,do_clen' => "rfc2047 encoded with base64, serve with content-length" ],
     ]
 );
 
@@ -81,9 +84,11 @@ sub make_response {
 	    $te = 'chunked'
 	} elsif ( $_ eq 'chunked-semicolon' ) {
 	    $hdr .= "Transfer-Encoding: chunked;\r\n"
-	} elsif ( $_ =~m{^chunked-ext|^chunked-lf}) {
+	} elsif ( m{^chunked-ext|^chunked-lf}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    $te = $_
+	} elsif ( $_ eq 'rfc2047' ) {
+	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\n";
 	} else {
 	    die $_
 	}

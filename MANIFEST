@@ -2,6 +2,7 @@ bin/dubious_http.pl
 Changes
 lib/App/DubiousHTTP.pm
 lib/App/DubiousHTTP/Tests.pm
+lib/App/DubiousHTTP/Tests/Broken.pm
 lib/App/DubiousHTTP/Tests/Chunked.pm
 lib/App/DubiousHTTP/Tests/Clen.pm
 lib/App/DubiousHTTP/Tests/Common.pm

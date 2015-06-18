@@ -44,10 +44,15 @@ DESC
 	[ 'chunkedx' => '"chunkedx" not "chunked"'],
 	[ 'chunked-x' => '"chunked x" not "chunked"'],
 	[ 'x-chunked' => '"x chunked" not "chunked"'],
+	[ 'x-nl-chunked' => '"x-folding-chunked" not "chunked"'],
 	[ 'rfc2047,do_chunked' => "rfc2047 encoded with base64, serve chunked" ],
 	[ 'rfc2047,do_clen' => "rfc2047 encoded with base64, not served chunked" ],
 	[ 'rfc2047,clen,do_clen' => "rfc2047 encoded with base64, serve with content-length" ],
-    ]
+	[ 'xte,chunked,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Served chunked." ],
+	[ 'chunked,xte,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Served chunked." ],
+	[ 'chunked,xte,clen,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Served chunked but include content-length header." ],
+	[ 'xte,chunked,clen,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Served chunked but include content-length header." ],
+    ],
 );
 
 
@@ -60,10 +65,14 @@ sub make_response {
     for (split(',',$spec)) {
 	if ( ! $_ || $_ eq 'chunked' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n"
+	} elsif ( $_ eq '1chunk' ) {
+	    $hdr .= "Transfer-Encoding: chunked\r\n";
+	    $te = $_
 	} elsif ( $_ eq 'chUnked' ) {
 	    $hdr .= "Transfer-Encoding: chUnked\r\n"
-	} elsif ( $_ eq 'nl-chunked' ) {
-	    $hdr .= "Transfer-Encoding:\r\n chunked\r\n"
+	} elsif ( m{^(.*-)?nl-chunked$} ) {
+	    my $prefix = $1 //'';
+	    $hdr .= "Transfer-Encoding: $prefix\r\n chunked\r\n"
 	} elsif ( $_ eq 'chu' ) {
 	    $hdr .= "Transfer-Encoding: chu\r\n"
 	} elsif ( $_ eq 'xchunked' ) {
@@ -89,6 +98,8 @@ sub make_response {
 	    $te = $_
 	} elsif ( $_ eq 'rfc2047' ) {
 	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\n";
+	} elsif ( $_ eq 'xte' ) {
+	    $hdr .= "Transfer-Encoding: lalala\r\n";
 	} else {
 	    die $_
 	}
@@ -100,6 +111,8 @@ sub make_response {
 	    map { sprintf("%x\r\n%s\r\n",length($_),$_) } 
 	    ( $data =~m{(..)}smg,'')
 	)
+    } elsif ( $te eq '1chunk' ) {
+	$data = sprintf("%0x\r\n%s\r\n0\r\n\r\n",length($data),$data);
     } elsif ($te eq 'chunked-ext-junk') {
 	$data = join("", 
 	    map { sprintf("%x; foobar\r\n%s\r\n",length($_),$_) } 

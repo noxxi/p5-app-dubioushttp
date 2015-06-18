@@ -46,6 +46,7 @@ DESC
 	[ 'te:gzip;gzip' => 'transfer-encoding gzip'],
 	[ 'te:deflate;deflate' => 'transfer-encoding deflate'],
 	[ 'te:gzip;ce:gzip;gzip;gzip' => 'transfer-encoding and content-encoding gzip'],
+	[ 'te:gzip' => 'transfer-encoding gzip but not compressed'],
     ],
 
     # and the bad ones
@@ -56,6 +57,9 @@ DESC
 	[ 'ce:xgzip;gzip' => 'content-encoding xgzip != gzip' ],
 	[ 'ce:gzip_x;gzip' => 'content-encoding "gzip x" != gzip' ],
 	[ 'ce:x_gzip;gzip' => 'content-encoding "x gzip" != gzip' ],
+	[ 'ce:gzip_x' => 'content-encoding "gzip x", but not encoded' ],
+	[ 'ce:deflate;ce:gzip_x;deflate' => 'content-encoding deflate + "gzip x", but only deflate' ],
+	[ 'ce:gzip_x;ce:deflate;deflate' => 'content-encoding  "gzip x" + deflate, but only deflate' ],
 	[ 'ce:deflate;gzip' => 'content-encoding deflate with gzipped encoding'],
 	[ 'ce:gzip;deflate' => 'content-encoding gzip with deflate encoding'],
 	[ 'ce:deflate;ce:gzip;gzip;deflate' => 'gzip+deflate, both content-encoding header but wrong order'],

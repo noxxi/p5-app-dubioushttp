@@ -30,6 +30,11 @@ DESC
 	[ 'close,clen200,clen,content,junk' => 'content-length double and full' ],
 	[ 'close,clen,clen200,content,junk' => 'content-length full and double' ],
 	[ 'close,clen-folding100,clen200,content,junk' => 'content-length full (folded) and double' ],
+	[ 'close,xte,clen50,clen,content' => 'content-length half and full, invalid Transfer-Encoding' ],
+	[ 'close,xte,clen,clen50,content' => 'content-length full and half, invalid Transfer-Encoding' ],
+	[ 'close,xte,clen200,clen,content,junk' => 'content-length double and full, invalid Transfer-Encoding' ],
+	[ 'close,xte,clen,clen200,content,junk' => 'content-length full and double, invalid Transfer-Encoding' ],
+	[ 'close,xte,clen-folding100,clen200,content,junk' => 'content-length full (folded) and double, invalid Transfer-Encoding' ],
     ],
     [ 0, 'content-length header containing two numbers',
 	[ 'close,clen50-folding100,content' => 'content-length half but full after line folding, eof after real content' ],
@@ -73,6 +78,8 @@ sub make_response {
 	    $body = $data;
 	} elsif ( $_ eq 'junk' ) {
 	    $body .= 'X' x length($data);
+	} elsif ( $_ eq 'xte' ) {
+	    $hdr .= "Transfer-Encoding: lalala\r\n";
 	} else {
 	    die $_
 	}

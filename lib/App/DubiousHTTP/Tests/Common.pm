@@ -14,6 +14,12 @@ my %builtin = (
 	"Content-disposition: attachment; filename=\"eicar.txt\"\r\n",
 	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
     ],
+    # zipped eicar, zip prefixed with dummy gzip
+    'eicar-gz-zip.zip' => [ 
+	"Content-type: application/octet-stream\r\n".
+	"Content-disposition: attachment; filename=\"eicar.zip\"\r\n",
+	pack("H*",'1f8b08006d718255000373492c56c82c2e5148cdcc5308492d2e01008b9f3a4b10000000504b03040a0000000000a84ad2463ccf5168440000004400000009001c0065696361722e636f6d55540900036b7182556b71825575780b000104e903000004e903000058354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a504b01021e030a0000000000a84ad2463ccf51684400000044000000090018000000000001000000b4810000000065696361722e636f6d55540500036b71825575780b000104e903000004e9030000504b050600000000010001004f000000870000000000'),
+    ],
     'ok.gif' => [ "Content-type: image/gif\r\n", decode_base64( <<'IMAGE' ) ],
 R0lGODdhFAAUAOMMAAC7ABXBFUfOR1fSV2zYbIHdgajoqOH34ev66/H78fL88v7//v//////////
 /////ywAAAAAFAAUAAAEPpDJSau9WIKcweaW94GUSJbeOYkjyaqaiWKEjKY3XomFciCsgOHCAiw8
@@ -164,6 +170,7 @@ BODY
 	    $body .= "<td style='border-style:solid; border-width:1px'><iframe style='width: 10em; height: 3em;' src=". $test->url("$base.html"). "></iframe></td>";
 	    $body .= "<td>". html_escape($test->DESCRIPTION) ."</td>";
 	    $body .= "<td><a href=". $test->url('eicar.txt').">load EICAR</a></td>";
+	    $body .= "<td><a href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a></td>";
 	    $body .= "</tr>";
 	    $body .= "<script src=".$test->url("$base.js")."></script>";
 	}

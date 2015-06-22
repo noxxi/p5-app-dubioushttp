@@ -8,9 +8,9 @@ use MIME::Base64;
 
 SETUP( 
     'messagerfc822',
-    "...",
+    "RFC822 message transfered with HTTP",
     <<'DESC',
-...
+This tries to transfer RFC822 encoded messages with Attachment
 DESC
 
     # ------------------------- Tests ----------------------------------------

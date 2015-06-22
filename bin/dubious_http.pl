@@ -78,8 +78,11 @@ sub serve {
     my $addr = shift;
     App::DubiousHTTP::TestServer->run($addr, sub {
 	my ($path,$listen,$rqhdr) = @_;
+	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
+
 	local $BASE_URL = "http://$listen";
-	my ($cat,$page,$spec,$qstring) = $path =~m{\A / 
+	my ($auto,$cat,$page,$spec,$qstring) = $path =~m{\A / 
+	    (auto/)?
 	    ([^/]+)
 	    (?: / ([^/\?]*))?
 	    (?: / ([^\?]*))?
@@ -98,13 +101,16 @@ sub serve {
 
 	if ( my ($hdr,$data) = content($path)) {
 	    return "HTTP/1.0 200 ok\r\n$hdr\r\n$data";
-	} elsif ( $path =~m{^([^?]+)\?(.*)} and ($hdr,$data) = content($1,$2) ) {
+	} elsif ( $path =~m{^([^?]+)(?:\?(.*))?} and ($hdr,$data) = content($1,$2) ) {
 	    return "HTTP/1.0 200 ok\r\n$hdr\r\n$data";
 	}
 
+	return App::DubiousHTTP::Tests->auto($cat,$page,$spec,$rqhdr)
+	    if $auto;
+
 	if ( $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
-		return $_->make_response($page,$spec,$rqhdr)
+		return $_->make_index_page($page,$spec,$rqhdr)
 		    if $_->ID eq $cat;
 	    }
 	}

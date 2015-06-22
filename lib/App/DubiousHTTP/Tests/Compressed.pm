@@ -31,6 +31,11 @@ DESC
 	[ 'ce:gzip;gzip' => 'content-encoding gzip'],
 	[ 'ce:x-gzip;gzip' => 'content-encoding x-gzip == gzip'],
 	[ 'ce:deflate;deflate' => 'content-encoding deflate'],
+	[ 'ce:identity', '"content-encoding:identity" and no encoding' ],
+    ],
+
+    # these might be strange/unsupported
+    [ -1,'less common but valid requests',
 	[ 'ce:deflate;deflate-raw' => 'content-encoding deflate with RFC1950 style deflate'],
 	[ 'ce:nl-gzip;gzip' => 'content-encoding header with continuation line'],
 	[ 'ce:gzip;ce:gzip;gzip;gzip' => 'double gzip, double content-encoding header'],
@@ -42,11 +47,10 @@ DESC
     ],
 
     # these should be fine according to RTC, but it is not supported in all browsers
-    [ 1, 'correct compressed requests, but not supported everywhere',
+    [ 0, 'transfer-encoding with compression should not be supported',
 	[ 'te:gzip;gzip' => 'transfer-encoding gzip'],
 	[ 'te:deflate;deflate' => 'transfer-encoding deflate'],
 	[ 'te:gzip;ce:gzip;gzip;gzip' => 'transfer-encoding and content-encoding gzip'],
-	[ 'te:gzip' => 'transfer-encoding gzip but not compressed'],
     ],
 
     # and the bad ones
@@ -57,9 +61,6 @@ DESC
 	[ 'ce:xgzip;gzip' => 'content-encoding xgzip != gzip' ],
 	[ 'ce:gzip_x;gzip' => 'content-encoding "gzip x" != gzip' ],
 	[ 'ce:x_gzip;gzip' => 'content-encoding "x gzip" != gzip' ],
-	[ 'ce:gzip_x' => 'content-encoding "gzip x", but not encoded' ],
-	[ 'ce:deflate;ce:gzip_x;deflate' => 'content-encoding deflate + "gzip x", but only deflate' ],
-	[ 'ce:gzip_x;ce:deflate;deflate' => 'content-encoding  "gzip x" + deflate, but only deflate' ],
 	[ 'ce:deflate;gzip' => 'content-encoding deflate with gzipped encoding'],
 	[ 'ce:gzip;deflate' => 'content-encoding gzip with deflate encoding'],
 	[ 'ce:deflate;ce:gzip;gzip;deflate' => 'gzip+deflate, both content-encoding header but wrong order'],
@@ -75,9 +76,15 @@ DESC
 	[ 'ce:gzip,deflate;gzip' => '"gzip,deflate" content-encoding header, gzip encoded'],
 	[ 'ce:gzip,deflate;deflate' => '"gzip,deflate" content-encoding header, deflate encoded'],
 	[ 'ce:gzip,deflate' => '"gzip,deflate" content-encoding header, not encoded'],
-	[ 'ce:foo', '"content-encoding:foo" and no encoding' ],
-	[ 'ce:identity', '"content-encoding:identity" and no encoding' ],
     ],
+    [1, 'legal with junk header which some might understand wrong',
+	[ 'ce:gzip_x' => 'content-encoding "gzip x", but not encoded' ],
+	[ 'ce:deflate;ce:gzip_x;deflate' => 'content-encoding deflate + "gzip x", but only deflate' ],
+	[ 'ce:gzip_x;ce:deflate;deflate' => 'content-encoding  "gzip x" + deflate, but only deflate' ],
+	[ 'ce:foo', '"content-encoding:foo" and no encoding' ],
+	[ 'te:gzip' => 'transfer-encoding gzip but not compressed'],
+    ],
+
 );
 
 sub make_response {

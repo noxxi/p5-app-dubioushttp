@@ -7,7 +7,7 @@ SETUP(
     'broken',
     "Various broken requests",
     <<'DESC',
-...
+This tries various kinds of broken HTTP responses.
 DESC
 
     # ------------------------- Tests ----------------------------------------

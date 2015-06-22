@@ -13,26 +13,26 @@ my %builtin = (
 	"Content-type: application/octet-stream\r\n".
 	"Content-disposition: attachment; filename=\"eicar.txt\"\r\n",
 	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
+	'EICAR test virus',
     ],
     # zipped eicar, zip prefixed with dummy gzip
     'eicar-gz-zip.zip' => [ 
 	"Content-type: application/octet-stream\r\n".
 	"Content-disposition: attachment; filename=\"eicar.zip\"\r\n",
 	pack("H*",'1f8b08006d718255000373492c56c82c2e5148cdcc5308492d2e01008b9f3a4b10000000504b03040a0000000000a84ad2463ccf5168440000004400000009001c0065696361722e636f6d55540900036b7182556b71825575780b000104e903000004e903000058354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a504b01021e030a0000000000a84ad2463ccf51684400000044000000090018000000000001000000b4810000000065696361722e636f6d55540500036b71825575780b000104e903000004e9030000504b050600000000010001004f000000870000000000'),
+	'EICAR test virus in zip file, prefixed with gzip junk',
     ],
-    'ok.gif' => [ "Content-type: image/gif\r\n", decode_base64( <<'IMAGE' ) ],
-R0lGODdhFAAUAOMMAAC7ABXBFUfOR1fSV2zYbIHdgajoqOH34ev66/H78fL88v7//v//////////
-/////ywAAAAAFAAUAAAEPpDJSau9WIKcweaW94GUSJbeOYkjyaqaiWKEjKY3XomFciCsgOHCAiw8
-As8gQSyyBCAngOCSnpywF4yh24IiADs=
+    'warn.png' => [ "Content-type: image/png\r\n", decode_base64( <<'IMAGE' ) ],
+iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAIAAABLixI0AAAAI0lEQVQ4y2N8fkObgUqAiYF6YNSs
+UbNGzRo1a9SsUbOGi1kA82oCHFP7+koAAAAASUVORK5CYII=
 IMAGE
-    'bad.gif' => [ "Content-type: image/gif\r\n", decode_base64( <<'IMAGE' ) ],
-R0lGODdhFAAUAKU/ANUAANUBAdUCAtYCAtYDA9YEBNYGBtYHB9YICNcKCtcMDNcODtgQENgSEtkY
-GNocHNogINskJNwsLN44ON88POBAQOBBQeBEROFGRuFISOJMTONUVONYWOVgYOVhYeVkZOZra+l8
-fOqAgOuEhOyMjO2QkO2UlO6YmO+cnO+goPCkpPGoqPGsrPKurvKwsPO0tPO4uPXAwPXExPbIyPfM
-zPfQ0PnY2Pnc3Prg4Pvk5Pzs7P3w8P309P74+P/8/P///ywAAAAAFAAUAAAGp0DAAaD5GY9IFGAJ
-mDELNyTSR2EGRkzAR3pcMQUJnITJ2HFnjmUAoPq5siRpqrAUACLHDvNQwhlldFkmRzsRWXctVVkb
-PkgxBIeRIY1SMAiRTCJcRzQPmAs8m0c9GJgcfps2GphLCCeoRzEKrIcKcT4ll1kFIBasPHpZCiM6
-RioDkYpMGVFINBNZDVkGLKI/LxCRCDXWRjoVSx5LId2EnjkTF2blRl5BADs=
+    'ok.png' => [ "Content-type: image/png\r\n", decode_base64( <<'IMAGE' ) ],
+iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAIAAABLixI0AAAAIklEQVQ4y2Nk+MZALcDEwDBq1qhZ
+o2aNmjVq1qhZo2ahAQDhPQEogMYUlwAAAABJRU5ErkJggg==
+IMAGE
+    'bad.png' => [ "Content-type: image/png\r\n", decode_base64( <<'IMAGE' ) ],
+iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAIAAABLixI0AAAAI0lEQVQ4y2N8zKfDQCXAxEA9MGrW
+qFmjZo2aNWrWqFnDxSwAAzgBT9lsF30AAAAASUVORK5CYII=
 IMAGE
     'chunked.gif' => [ "Content-type: image/gif\r\n", decode_base64( <<'IMAGE' ) ],
 R0lGODlhFAAUAKUrAAAAAAQEBAUFBQsLCxMTExYWFhcXFxwcHB0dHSAgICEhISwsLDExMTMzMzY2
@@ -68,6 +68,11 @@ IMAGE
 	return [ "Content-type: image/gif\r\n",
 	    "GIF87a=1;ping_back('/ping?BAD:$spec');" ]
     },
+    'warn.js' => sub {
+	my $spec = shift;
+	return [ "Content-type: image/gif\r\n",
+	    "GIF87a=1;ping_back('/ping?WARN:$spec');" ]
+    },
     '/ping' =>  [ "Content-type: text/plain\r\n", "pong" ],
     '/ping.js' => [ 
 	"Content-type: image/gif\r\n".
@@ -95,6 +100,7 @@ PING_JS
 
 sub content {
     my ($page,$spec) = @_;
+    $page =~s{^/+}{};
     my ($hdr,$data);
     if ( my $builtin = $builtin{$page} ) {
 	$builtin = $builtin->($spec) if ref($builtin) eq 'CODE';
@@ -128,7 +134,7 @@ sub SETUP {
     for my $t (@tests) {
 	# good,title,@tests
 	my ($good,$title,@tests) = @$t;
-	@tests = map { bless [ @$_ ], $pkg.'::Test' } @tests;
+	@tests = map { bless [ @{$_}[0,1], $good ], $pkg.'::Test' } @tests;
 	push @tests_only, @tests;
 	@$t = ( $good,$title,@tests );
     }
@@ -142,6 +148,7 @@ sub SETUP {
 
     *{$pkg.'::Test::ID'} = sub { shift->[0] };
     *{$pkg.'::Test::DESCRIPTION'} = sub { shift->[1] };
+    *{$pkg.'::Test::VALID'} = sub { shift->[2] };
     *{$pkg.'::Test::url'} = sub { 
 	my ($self,$page) = @_;
 	return "/$id/$page/$self->[0]"
@@ -156,6 +163,18 @@ sub make_index_page {
     my $class = shift;
     my $body = <<'BODY';
 <!doctype html><html lang=en><body>
+<style>
+.button {
+  text-decoration: none;
+  background-color: #EEEEEE;
+  color: #333333;
+  padding: 2px 6px 2px 6px;
+  border-top: 1px solid #CCCCCC;
+  border-right: 1px solid #333333;
+  border-bottom: 1px solid #333333;
+  border-left: 1px solid #CCCCCC;
+}
+</style>
 <script src=/ping.js></script>
 BODY
     $body .= "<pre>".html_escape($class->LONG_DESC())."</pre><hr>";
@@ -164,13 +183,14 @@ BODY
 	my ($good,$title,@tests) = @$_;
 	$body .= "<tr><td colspan=4><hr>$title<hr></td></tr>";
 	for my $test (@tests) {
-	    my $base = $good ? 'ok':'bad';
+	    my $base = $good>0 ? 'ok' : $good<0 ? 'ok' : 'bad';
+	    my $bg   = $good>0 ? '#e30e2c' : $good<0 ? '#e7d82b' : '#00e800';
 	    $body .= "<tr>";
-	    $body .= "<td style='border-style:solid; border-width:1px'><img src=". $test->url("$base.gif"). "></td>";
-	    $body .= "<td style='border-style:solid; border-width:1px'><iframe style='width: 10em; height: 3em;' src=". $test->url("$base.html"). "></iframe></td>";
-	    $body .= "<td>". html_escape($test->DESCRIPTION) ."</td>";
-	    $body .= "<td><a href=". $test->url('eicar.txt').">load EICAR</a></td>";
-	    $body .= "<td><a href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a></td>";
+	    $body .= "<td>". html_escape($test->DESCRIPTION) ."&nbsp;&nbsp;</td>";
+	    $body .= "<td style='border-style:none; background: $bg url(\"".$test->url("$base.png"). "\");'>&nbsp;&nbsp;&nbsp;</td>";
+	    $body .= "<td style='border-style:none;'><iframe seamless=seamless scrolling=no style='width: 8em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
+	    $body .= "<td>&nbsp;<a class=button href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
+	    # $body .= "<td>&nbsp;<a class=button href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
 	    $body .= "</tr>";
 	    $body .= "<script src=".$test->url("$base.js")."></script>";
 	}

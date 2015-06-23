@@ -77,8 +77,15 @@ sub make_pcaps {
 sub serve {
     my $addr = shift;
     App::DubiousHTTP::TestServer->run($addr, sub {
-	my ($path,$listen,$rqhdr) = @_;
+	my ($path,$listen,$rqhdr,$payload) = @_;
 	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
+
+	if ($path =~m{\A/submit_results} && $payload) {
+	    $rqhdr .= $payload;
+	    $rqhdr =~s{^}{ }mg;
+	    warn $rqhdr;
+	    return "HTTP/1.0 204 ok\r\n\r\n";
+	}
 
 	local $BASE_URL = "http://$listen";
 	my ($auto,$cat,$page,$spec,$qstring) = $path =~m{\A / 

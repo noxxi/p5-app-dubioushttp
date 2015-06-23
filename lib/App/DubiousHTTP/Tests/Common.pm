@@ -57,25 +57,25 @@ IMAGE
 	    "<body>BAD!<script src=/ping.js></script><script>ping_back('/ping?BAD:$spec')</script></body>" ]
     },
 
-    # we hide javascript behind image/gif...GIF87a to work around content filters :)
+    # we hide javascript behind GIF87a to work around content filters :)
     'ok.js' => sub {
 	my $spec = shift;
-	return [ "Content-type: image/gif\r\n",
+	return [ "Content-type: application/javascript\n",
 	    "GIF87a=1;ping_back('/ping?OK:$spec');" ]
     },
     'bad.js' => sub {
 	my $spec = shift;
-	return [ "Content-type: image/gif\r\n",
+	return [ "Content-type: application/javascript\r\n",
 	    "GIF87a=1;ping_back('/ping?BAD:$spec');" ]
     },
     'warn.js' => sub {
 	my $spec = shift;
-	return [ "Content-type: image/gif\r\n",
+	return [ "Content-type: application/javascript\r\n",
 	    "GIF87a=1;ping_back('/ping?WARN:$spec');" ]
     },
-    '/ping' =>  [ "Content-type: text/plain\r\n", "pong" ],
-    '/ping.js' => [ 
-	"Content-type: image/gif\r\n".
+    'ping' =>  [ "Content-type: text/plain\r\n", "pong" ],
+    'ping.js' => [ 
+	"Content-type: application/javascript\r\n".
 	"Expires: Tue, 30 Jul 2033 20:04:02 GMT\r\n",
 	<<'PING_JS' ],
 GIF87a=1;

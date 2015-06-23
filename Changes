@@ -1,3 +1,5 @@
+2015/06/23 0.016
+- improved Ajax based bulk detection: timeouts, progress indicator...
 2015/06/22 0.015
 - Ajax based bulk detection of browser quirks and evasion possibilities
 - better color coding of responses for non-ajax tests

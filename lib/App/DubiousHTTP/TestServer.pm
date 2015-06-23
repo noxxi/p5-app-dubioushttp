@@ -37,6 +37,7 @@ sub new_client {
 	time  => time(),
     );
 
+    my ($clen,$hdr,$page,$payload);
     $fo{read}{sub} = sub {
 	my $rbuf = \$fo{read}{buf};
 	my $n = sysread($cl,$$rbuf,8192,length($$rbuf));
@@ -45,24 +46,20 @@ sub new_client {
 	    return;
 	}
 
-	if ( $$rbuf =~m{(\r?\n)\1}g ) {
-	    my $hdr = substr($$rbuf,0,pos($$rbuf),'');
-	    my ($line) = $hdr =~m{^([^\r\n]*)};
-	    my ($ua) = $hdr =~m{^User-Agent:\s*([^\r\n]*)}mi;
-	    $ua ||= 'Unknown-UA';
-	    my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
-	    warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
-	    $hdr =~m{ \A 
-		GET [\040]+ 
-		(/\S*) [\040]+ 
-		HTTP/1\.[01] \r?\n
-	    }x or do {
-		print $cl "HTTP/1.0 204 ok\r\n\r\n";
-		%fo = ();
-		return;
-	    };
-	    ( my $page = $1 ) =~s{%([\da-fA-F]{2})}{ chr(hex($1)) }esg; # urldecode
-	    if ( ! eval { $fo{write}{buf} .= $response->($page,$addr,$hdr) } ) {
+	handle_data:
+	if (defined $clen) {
+	    # has header, extract payload
+	    if (length($$rbuf) > $clen) {
+		$payload .= substr($$rbuf,0,$clen,'');
+		$clen = 0;
+	    } else {
+		$payload .= $$rbuf;
+		$clen -= length($$rbuf);
+		$$rbuf = '';
+	    }
+	    return if $clen>0; # need more
+
+	    if ( ! eval { $fo{write}{buf} .= $response->($page,$addr,$hdr,$payload) } ) {
 		warn "creating response failed: $@\n";
 		%fo = ();
 		return;
@@ -70,9 +67,34 @@ sub new_client {
 		
 	    $fo{write}{sub}->();
 	    return;
-	}
 
-	if ( length($$rbuf)>4096 ) {
+	} elsif ( $$rbuf =~m{(\r?\n)\1}g ) {
+	    # read header
+	    $hdr = substr($$rbuf,0,pos($$rbuf),'');
+	    my ($line) = $hdr =~m{^([^\r\n]*)};
+	    my ($ua) = $hdr =~m{^User-Agent:\s*([^\r\n]*)}mi;
+	    $ua ||= 'Unknown-UA';
+	    my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
+	    warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
+	    (my $method,$page) = $hdr =~m{ \A 
+		(GET|POST) [\040]+ 
+		(/\S*) [\040]+ 
+		HTTP/1\.[01] \r?\n
+	    }x or do {
+		print $cl "HTTP/1.0 204 ok\r\n\r\n";
+		%fo = ();
+		return;
+	    };
+	    $clen = $method eq 'POST' && $hdr =~m{^Content-length:[ \t]*(\d+)}mi && $1 || 0;
+	    if ($clen > 2**16) {
+		warn "request body too large ($clen)";
+		%fo = ();
+		return;
+	    }
+	    $page =~s{%([\da-fA-F]{2})}{ chr(hex($1)) }esg; # urldecode
+	    goto handle_data;
+
+	} elsif ( length($$rbuf)>4096 ) {
 	    warn "request header too large";
 	    %fo = ();
 	    return;

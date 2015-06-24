@@ -132,6 +132,11 @@ function add_debug(m) {
     div_debug.innerHTML = div_debug.innerHTML + m + "<br>";
 }
 
+function _log(m) {
+    try { console.log(m) }
+    catch(e) {}
+}
+
 function xhr(method,page,payload,callback) {
     var req = null;
     try { req = new XMLHttpRequest(); } 
@@ -147,7 +152,7 @@ function xhr(method,page,payload,callback) {
     }
     try { 
 	try { req.overrideMimeType('text/plain; charset=x-user-defined'); } 
-	catch(e) { console.log("no support for overrideMimeType"); }
+	catch(e) { _log("no support for overrideMimeType"); }
 	if (callback) {
 	    var done = 0;
 	    req.ontimeout = function() {
@@ -165,10 +170,10 @@ function xhr(method,page,payload,callback) {
 	}
 	req.open(method, page, true);
 	try { req.timeout = 2000; } 
-	catch(e) { console.log("no support for xhr timeout") }
+	catch(e) { _log("no support for xhr timeout") }
 	req.send(payload);
     } catch(e) {
-	try { console.log(e); } catch(e) {}
+	_log(e);
 	req = null;
     }
     return req;
@@ -186,18 +191,16 @@ function check_page(req,test,status) {
 	catch(e) {}
 
 	if (response == null) {
-	    console.log("no data for " + test['page']);
+	    _log("no data for " + test['page']);
 	} else {
 	    var result64 = base64_encode(response);
 	    if (result64 == expect64) {
 		status = 'match';
 	    } else {
 		status = 'change'
-		try {
-		    console.log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
-		    console.log( "response: " + result64 );
-		    console.log( "expect:   " + expect64 );
-		} catch(e) {}
+		_log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
+		_log( "response: " + result64 );
+		_log( "expect:   " + expect64 );
 	    }
 	}
     }

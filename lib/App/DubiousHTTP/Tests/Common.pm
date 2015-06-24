@@ -3,12 +3,25 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(SETUP content html_escape);
+our @EXPORT = qw(SETUP content html_escape VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID);
+use Scalar::Util 'blessed';
+
+use constant {
+    VALID => 1,
+    INVALID => 0,
+    UNCOMMON_VALID => -1,
+    UNCOMMON_INVALID => -2,
+};
 
 my $basedir = 'static/';
 sub basedir { $basedir = pop }
 
 my %builtin = (
+    'novirus.txt' => [ 
+	"Content-type: application/octet-stream\r\n".
+	"Content-disposition: attachment; filename=\"novirus.txt\"\r\n",
+	'5762z	etuf6udezjtd3qi7rvesghwvs79xc 6ceei zieftqwdy d3yf6zex ydf5u',
+    ],
     'eicar.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
 	"Content-disposition: attachment; filename=\"eicar.txt\"\r\n",
@@ -55,6 +68,11 @@ IMAGE
 	my $spec = shift;
 	return [ "Content-type: text/html\r\n", 
 	    "<body>BAD!<script src=/ping.js></script><script>ping_back('/ping?BAD:$spec')</script></body>" ]
+    },
+    'warn.html' =>  sub {
+	my $spec = shift;
+	return [ "Content-type: text/html\r\n", 
+	    "<body>EEEK!<script src=/ping.js></script><script>ping_back('/ping?WARN:$spec')</script></body>" ]
     },
 
     # we hide javascript behind GIF87a to work around content filters :)
@@ -132,11 +150,11 @@ sub SETUP {
     my $pkg = caller();
     my @tests_only;
     for my $t (@tests) {
-	# good,title,@tests
-	my ($good,$title,@tests) = @$t;
-	@tests = map { bless [ @{$_}[0,1], $good ], $pkg.'::Test' } @tests;
-	push @tests_only, @tests;
-	@$t = ( $good,$title,@tests );
+	# title | valid,spec,desc
+	if (@$t>1) {
+	    $t = bless [ @{$t}[1,2,0] ], $pkg.'::Test';
+	    push @tests_only, $t;
+	}
     }
 
     no strict 'refs';
@@ -179,21 +197,22 @@ sub make_index_page {
 BODY
     $body .= "<pre>".html_escape($class->LONG_DESC())."</pre><hr>";
     $body .= "<table>";
-    for(@_) {
-	my ($good,$title,@tests) = @$_;
-	$body .= "<tr><td colspan=4><hr>$title<hr></td></tr>";
-	for my $test (@tests) {
-	    my $base = $good>0 ? 'ok' : $good<0 ? 'ok' : 'bad';
-	    my $bg   = $good>0 ? '#e30e2c' : $good<0 ? '#e7d82b' : '#00e800';
-	    $body .= "<tr>";
-	    $body .= "<td>". html_escape($test->DESCRIPTION) ."&nbsp;&nbsp;</td>";
-	    $body .= "<td style='border-style:none; background: $bg url(\"".$test->url("$base.png"). "\");'>&nbsp;&nbsp;&nbsp;</td>";
-	    $body .= "<td style='border-style:none;'><iframe seamless=seamless scrolling=no style='width: 8em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
-	    $body .= "<td>&nbsp;<a class=button href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
-	    # $body .= "<td>&nbsp;<a class=button href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
-	    $body .= "</tr>";
-	    $body .= "<script src=".$test->url("$base.js")."></script>";
-	}
+    for my $test (@_) {
+	if (!blessed($test)) {
+	    $body .= "<tr><td colspan=3><hr>$test->[0]<hr></td></tr>";
+	    next;
+	} 
+	my $valid = $test->VALID;
+	my $base = $valid>0 ? 'ok' : $valid<0 ? 'warn' : 'bad';
+	my $bg   = $valid>0 ? '#e30e2c' : $valid<0 ? '#d0cfd1' : '#00e800';
+	$body .= "<tr>";
+	$body .= "<td style='border-style:none; background: $bg url(\"".$test->url("$base.png"). "\");'>&nbsp;". 
+	    html_escape($test->DESCRIPTION) ."&nbsp;&nbsp;</td>";
+	$body .= "<td style='border-style:none;'><iframe seamless=seamless scrolling=no style='width: 8em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
+	$body .= "<td>&nbsp;<a class=button href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
+	# $body .= "<td>&nbsp;<a class=button href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
+	$body .= "</tr>";
+	$body .= "<script src=".$test->url("$base.js")."></script>";
     }
     $body .= "</table>";
     $body .= "</body></html>";

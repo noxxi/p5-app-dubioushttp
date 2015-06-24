@@ -27,63 +27,72 @@ DESC
     # ------------------------- Tests ----------------------------------------
 
     # these should be fine
-    [ 1,'correct compressed requests, should all succeed',
-	[ 'ce:gzip;gzip' => 'content-encoding gzip'],
-	[ 'ce:x-gzip;gzip' => 'content-encoding x-gzip == gzip'],
-	[ 'ce:deflate;deflate' => 'content-encoding deflate'],
-	[ 'ce:identity', '"content-encoding:identity" and no encoding' ],
-    ],
+    [ 'correct compressed requests' ],
+    [ VALID, 'ce:gzip;gzip' => 'content-encoding gzip'],
+    [ VALID, 'ce:x-gzip;gzip' => 'content-encoding x-gzip == gzip'],
+    [ VALID, 'ce:deflate;deflate' => 'content-encoding deflate'],
+    [ VALID, 'ce:identity', '"content-encoding:identity" and no encoding' ],
 
     # these might be strange/unsupported
-    [ -1,'less common but valid requests',
-	[ 'ce:deflate;deflate-raw' => 'content-encoding deflate with RFC1950 style deflate'],
-	[ 'ce:nl-gzip;gzip' => 'content-encoding header with continuation line'],
-	[ 'ce:gzip;ce:gzip;gzip;gzip' => 'double gzip, double content-encoding header'],
-	[ 'ce:deflate;ce:deflate;deflate;deflate' => 'double deflate, double content-encoding header'],
-	[ 'ce:gzip;ce:deflate;gzip;deflate' => 'gzip+deflate, both content-encoding header'],
-	[ 'ce:deflate;ce:gzip;deflate;gzip' => 'deflate+gzip, both content-encoding header'],
-	[ 'ce:deflate,gzip;deflate;gzip' => '"deflate,gzip" content-encoding header'],
-	[ 'ce:gzip,deflate;gzip;deflate' => '"gzip,deflate" content-encoding header'],
-    ],
+    [ 'less common but valid requests' ],
+    [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw' => 'content-encoding deflate with RFC1950 style deflate'],
+    [ UNCOMMON_VALID, 'ce:nl-gzip;gzip' => 'content-encoding header with continuation line'],
 
-    # these should be fine according to RTC, but it is not supported in all browsers
-    [ 0, 'transfer-encoding with compression should not be supported',
-	[ 'te:gzip;gzip' => 'transfer-encoding gzip'],
-	[ 'te:deflate;deflate' => 'transfer-encoding deflate'],
-	[ 'te:gzip;ce:gzip;gzip;gzip' => 'transfer-encoding and content-encoding gzip'],
-    ],
+    # These should be fine according to RTC, but are not supported in the browsers
+    # Thus treat is as problem if they get supported.
+    [ 'transfer-encoding with compression should not be supported' ],
+    [ INVALID, 'te:gzip;gzip' => 'transfer-encoding gzip'],
+    [ INVALID, 'te:deflate;deflate' => 'transfer-encoding deflate'],
+    [ INVALID, 'te:gzip;ce:gzip;gzip;gzip' => 'transfer-encoding and content-encoding gzip'],
+
+    # double encodings
+    [ 'double encodings' ],
+    [ UNCOMMON_VALID, 'ce:gzip;ce:gzip;gzip;gzip' => 'double gzip, double content-encoding header'],
+    [ UNCOMMON_VALID, 'ce:gzip,gzip;gzip;gzip' => 'double gzip, single content-encoding header gzip,gzip'],
+    [  INVALID, 'ce:gzip;ce:gzip;gzip' => 'single gzip, double content-encoding header'],
+    [  INVALID, 'ce:gzip;ce:gzip' => 'no gzip, double content-encoding gzip header'],
+    [ UNCOMMON_VALID, 'ce:deflate;ce:deflate;deflate;deflate' => 'double deflate, double content-encoding header'],
+    [ UNCOMMON_VALID, 'ce:deflate,deflate;deflate;deflate' => 'double deflate, single content-encoding header deflate,deflate'],
+    [  INVALID, 'ce:deflate;ce:deflate;deflate' => 'single deflate, double content-encoding header'],
+    [  INVALID, 'ce:deflate;ce:deflate' => 'no deflate, double content-encoding deflate header'],
+    [ UNCOMMON_VALID, 'ce:gzip;ce:deflate;gzip;deflate' => 'gzip+deflate, content-encoding header for gzip and deflate'],
+    [  INVALID, 'ce:gzip;ce:deflate;deflate;gzip' => 'deflate+gzip, content-encoding header for gzip and deflate'],
+    [  INVALID, 'ce:gzip;ce:deflate;deflate' => 'only deflate, but content-encoding header for gzip and deflate'],
+    [  INVALID, 'ce:gzip;ce:deflate;gzip' => 'only gzip, but content-encoding header for gzip and deflate'],
+    [  INVALID, 'ce:gzip;ce:deflate' => 'no encoding, but content-encoding header for gzip and deflate'],
+    [ UNCOMMON_VALID, 'ce:gzip,deflate;gzip;deflate' => 'gzip+deflate, single content-encoding header gzip,deflate'],
+    [  INVALID, 'ce:gzip,deflate;deflate;gzip' => 'deflate+gzip, single content-encoding header gzip,deflate'],
+    [  INVALID, 'ce:gzip,deflate;deflate' => 'only deflate, single content-encoding header gzip,deflate'],
+    [  INVALID, 'ce:gzip,deflate;gzip' => 'only gzip, single content-encoding header gzip,deflate'],
+    [  INVALID, 'ce:gzip,deflate' => 'no encoding, single content-encoding header gzip,deflate'],
+    [ UNCOMMON_VALID, 'ce:deflate;ce:gzip;deflate;gzip' => 'deflate+gzip, content-encoding header for deflate and gzip'],
+    [  INVALID, 'ce:deflate;ce:gzip;gzip;deflate' => 'gzip+deflate, content-encoding header for deflate and gzip'],
+    [  INVALID, 'ce:deflate;ce:gzip;deflate' => 'only deflate, but content-encoding header for deflate and gzip'],
+    [  INVALID, 'ce:deflate;ce:gzip;gzip' => 'only gzip, but content-encoding header for deflate and gzip'],
+    [  INVALID, 'ce:deflate;ce:gzip' => 'no encoding, but content-encoding header for deflate and gzip'],
+    [ UNCOMMON_VALID, 'ce:deflate,gzip;deflate;gzip' => 'deflate+gzip, single content-encoding header deflate,gzip'],
+    [  INVALID, 'ce:deflate,gzip;gzip;deflate' => 'gzip+deflate, single content-encoding header deflate,gzip'],
+    [  INVALID, 'ce:deflate,gzip;deflate' => 'only deflate, single content-encoding header deflate,gzip'],
+    [  INVALID, 'ce:deflate,gzip;gzip' => 'only gzip, single content-encoding header deflate,gzip'],
+    [  INVALID, 'ce:deflate,gzip' => 'no encoding, single content-encoding header deflate,gzip'],
 
     # and the bad ones
-    [ 0 => 'incorrect compressed response, should not succeed (broken image is fine)',
-	[ 'ce:x-deflate;deflate' => 'content-encoding x-deflate'],
-	[ 'ce:x-deflate;deflate-raw' => 'content-encoding x-deflate with RFC1950 style deflate'],
-	[ 'ce:gzipx;gzip' => 'content-encoding gzipx != gzip' ],
-	[ 'ce:xgzip;gzip' => 'content-encoding xgzip != gzip' ],
-	[ 'ce:gzip_x;gzip' => 'content-encoding "gzip x" != gzip' ],
-	[ 'ce:x_gzip;gzip' => 'content-encoding "x gzip" != gzip' ],
-	[ 'ce:deflate;gzip' => 'content-encoding deflate with gzipped encoding'],
-	[ 'ce:gzip;deflate' => 'content-encoding gzip with deflate encoding'],
-	[ 'ce:deflate;ce:gzip;gzip;deflate' => 'gzip+deflate, both content-encoding header but wrong order'],
-	[ 'ce:gzip;ce:deflate;deflate' => 'gzip+deflate content-encoding headers but only deflated'],
-	[ 'ce:gzip;ce:deflate;gzip' => 'gzip+deflate content-encoding headers but only gzipped'],
-	[ 'ce:gzip;ce:deflate' => 'gzip+deflate content-encoding headers but no encoding'],
-	[ 'ce:deflate;ce:gzip;deflate' => 'deflate+gzip content-encoding headers but only deflated'],
-	[ 'ce:deflate;ce:gzip;gzip' => 'deflate+gzip content-encoding headers but only gzipped'],
-	[ 'ce:deflate;ce:gzip' => 'deflate+gzip content-encoding headers but no encoding'],
-	[ 'ce:deflate,gzip;gzip' => '"deflate,gzip" content-encoding header, gzip encoded'],
-	[ 'ce:deflate,gzip;deflate' => '"deflate,gzip" content-encoding header, deflate encoded'],
-	[ 'ce:deflate,gzip' => '"deflate,gzip" content-encoding header, not encoded'],
-	[ 'ce:gzip,deflate;gzip' => '"gzip,deflate" content-encoding header, gzip encoded'],
-	[ 'ce:gzip,deflate;deflate' => '"gzip,deflate" content-encoding header, deflate encoded'],
-	[ 'ce:gzip,deflate' => '"gzip,deflate" content-encoding header, not encoded'],
-    ],
-    [1, 'legal with junk header which some might understand wrong',
-	[ 'ce:gzip_x' => 'content-encoding "gzip x", but not encoded' ],
-	[ 'ce:deflate;ce:gzip_x;deflate' => 'content-encoding deflate + "gzip x", but only deflate' ],
-	[ 'ce:gzip_x;ce:deflate;deflate' => 'content-encoding  "gzip x" + deflate, but only deflate' ],
-	[ 'ce:foo', '"content-encoding:foo" and no encoding' ],
-	[ 'te:gzip' => 'transfer-encoding gzip but not compressed'],
-    ],
+    [ 'incorrect compressed response, should not succeed' ],
+    [ INVALID, 'ce:x-deflate;deflate' => 'content-encoding x-deflate'],
+    [ INVALID, 'ce:x-deflate;deflate-raw' => 'content-encoding x-deflate with RFC1950 style deflate'],
+    [ INVALID, 'ce:gzipx;gzip' => 'content-encoding gzipx != gzip' ],
+    [ INVALID, 'ce:xgzip;gzip' => 'content-encoding xgzip != gzip' ],
+    [ INVALID, 'ce:gzip_x;gzip' => 'content-encoding "gzip x" != gzip' ],
+    [ INVALID, 'ce:x_gzip;gzip' => 'content-encoding "x gzip" != gzip' ],
+    [ INVALID, 'ce:deflate;gzip' => 'content-encoding deflate with gzipped encoding'],
+    [ INVALID, 'ce:gzip;deflate' => 'content-encoding gzip with deflate encoding'],
+
+    [ 'invalid content-encodings should not be ignored' ],
+    [ INVALID, 'ce:gzip_x' => 'content-encoding "gzip x", but not encoded' ],
+    [ INVALID, 'ce:deflate;ce:gzip_x;deflate' => 'content-encoding deflate + "gzip x", but only deflated' ],
+    [ INVALID, 'ce:gzip_x;ce:deflate;deflate' => 'content-encoding  "gzip x" + deflate, but only deflated' ],
+    [ INVALID, 'ce:foo', '"content-encoding:foo" and no encoding' ],
+    [ UNCOMMON_VALID,'te:gzip' => 'transfer-encoding gzip but not compressed'],
 
 );
 
@@ -93,7 +102,7 @@ sub make_response {
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
     for (split(';',$spec)) {
-	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity|deflate,gzip|gzip,deflate)(_x)?$} ) {
+	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity|(?:deflate|gzip),(?:deflate|gzip))(_x)?$} ) {
 	    $hdr .= $1 eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "\r\n " if $2;
 	    $hdr .= "x " if $3;

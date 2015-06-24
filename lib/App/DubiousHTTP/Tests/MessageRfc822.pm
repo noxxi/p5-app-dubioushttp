@@ -16,17 +16,15 @@ DESC
     # ------------------------- Tests ----------------------------------------
 
     # these should be fine
-    [ 1,'plain data',
-	[ '' => 'plain data'],
-	[ 'ce:gzip' => 'data with global content-encoding gzip'],
-    ],
+    [ 'plain data' ],
+    [ VALID, '' => 'plain data'],
+    [ VALID, 'ce:gzip' => 'data with global content-encoding gzip'],
 
     # packed inside message/rfc822
-    [ 0 => 'packed inside message/rfc822', 
-	[ 'rfc822' => 'simply packed in message/rfc822' ],
-	[ 'cte:base64;rfc822' => 'packed in message/rfc822 with content-transfer-encoding base64' ],
-	[ 'ce:gzip;rfc822' => 'packed in message/rfc822 with content-encoding gzip' ],
-    ],
+    [ 'packed inside message/rfc822' ],
+    [ INVALID, 'rfc822' => 'simply packed in message/rfc822' ],
+    [ INVALID, 'cte:base64;rfc822' => 'packed in message/rfc822 with content-transfer-encoding base64' ],
+    [ INVALID, 'ce:gzip;rfc822' => 'packed in message/rfc822 with content-encoding gzip' ],
 );
 
 sub make_response {

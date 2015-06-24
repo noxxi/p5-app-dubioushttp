@@ -12,24 +12,18 @@ DESC
 
     # ------------------------- Tests ----------------------------------------
 
-    # these should be fine
-    [ 1,'correct request, should succeed',
-	[ '' => 'nothing special'],
-    ],
+    [ VALID,  '' => 'simple and valid request'],
+    [ UNCOMMON_VALID, 'http09' => 'HTTP 0.9 response (no header)'],
 
-    [ 0, 'http 0.9',
-	[ 'http09' => 'HTTP 0.9 response (no header)'],
-    ],
-    [ 0, 'invalid data before content-length and content',
-	[ 'emptycont' => 'empty continuation line'],
-	[ '8bitkey' => 'line using 8bit field name'],
-	[ 'colon' => 'line with empty field name'],
-	[ '177' => 'line \177\r\n' ],
-	[ 'chunked;177' => 'chunked, after that line \177\r\n' ],
-	[ '177;only' => 'line \177\r\n and then the body, no other header' ],
-	[ 'junkline' => 'ASCII junk line w/o colon'],
-	[ 'cr' => 'line just containing CR: \r\r\n'],
-    ],
+    [ 'invalid data before content-length and content' ],
+    [ INVALID, 'emptycont' => 'empty continuation line'],
+    [ INVALID, '8bitkey' => 'line using 8bit field name'],
+    [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
+    [ INVALID, '177' => 'line \177\r\n' ],
+    [ INVALID, 'chunked;177' => 'chunked, after that line \177\r\n' ],
+    [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header' ],
+    [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
+    [ INVALID, 'cr' => 'line just containing CR: \r\r\n'],
 );
 
 sub make_response {

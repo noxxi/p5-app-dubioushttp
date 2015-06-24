@@ -1,3 +1,7 @@
+2015/06/24 0.017
+- support for MSIE autodetect starting with MSIE8
+- better distinction between valid and invalid uncommon responses
+- better structured tests
 2015/06/23 0.016
 - improved Ajax based bulk detection: timeouts, progress indicator...
 2015/06/22 0.015

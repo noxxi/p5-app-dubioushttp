@@ -103,6 +103,7 @@ sub serve {
 		    return $_->make_response($page,undef,$rqhdr)
 			if $_->ID eq $spec;
 		}
+		return $_->make_response($page,$spec,$rqhdr);
 	    }
 	}
 

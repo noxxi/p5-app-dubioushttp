@@ -16,27 +16,25 @@ Details see http://noxxi.de/research/dubious-http.html
 DESC
     
     # ---------------------- Tests ------------------------------------
-    [ 1,'single parts', 
-	[ 'single' => 'single part'],
-	[ 'single,ct64',"single part with Content-Transfer-Encoding base64 header but unencoded data" ],
-    ],
-    [ 0,'content packed into multipart messages',
-	[ 'mixed',"multipart/mixed" ],
-	[ 'mixed,ct64,base64',"multipart/mixed with Content-Transfer-Encoding base64" ],
-	[ 'related',"multipart/related" ],
-	[ 'related,ct64,base64',"multipart/related with Content-Transfer-Encoding base64" ],
-	[ 'single,ct64,base64',"single part with Content-Transfer-Encoding base64" ],
-    ],
+    [ 'single parts' ],
+    [ VALID, 'single' => 'single part'],
+    [ VALID, 'single,ct64',"single part with Content-Transfer-Encoding base64 header but unencoded data" ],
+    [ INVALID, 'single,ct64,base64',"single part with Content-Transfer-Encoding base64 and encoded data" ],
+
+    [ 'content packed into multipart messages' ],
+    [ INVALID, 'mixed',"multipart/mixed" ],
+    [ INVALID, 'mixed,ct64,base64',"multipart/mixed with Content-Transfer-Encoding base64" ],
+    [ INVALID, 'related',"multipart/related" ],
+    [ INVALID, 'related,ct64,base64',"multipart/related with Content-Transfer-Encoding base64" ],
 
     # only supported in older IE
-    1?():([ 0,'MHTML', 
-	[ 'related,mhtml',"multipart/related with mhtml schema" ],
-	[ 'mixed,mhtml',"multipart/mixed with mhtml schema" ],
-	[ 'multi-plain,mhtml',"text/plain with mhtml schema" ],
-	[ 'related,mhtml,base64',"multipart/related with mhtml schema base64" ],
-	[ 'mixed,mhtml,base64',"multipart/mixed with mhtml schema base64" ],
-	[ 'multi-plain,mhtml,base64',"text/plain with mhtml schema base64" ],
-    ])
+    [ 'MHTML' ],
+    [ INVALID, 'related,mhtml',"multipart/related with mhtml schema" ],
+    [ INVALID, 'mixed,mhtml',"multipart/mixed with mhtml schema" ],
+    [ INVALID, 'multi-plain,mhtml',"text/plain with mhtml schema" ],
+    [ INVALID, 'related,mhtml,base64',"multipart/related with mhtml schema base64" ],
+    [ INVALID, 'mixed,mhtml,base64',"multipart/mixed with mhtml schema base64" ],
+    [ INVALID, 'multi-plain,mhtml,base64',"text/plain with mhtml schema base64" ],
 );
 
 

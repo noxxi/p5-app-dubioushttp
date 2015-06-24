@@ -14,7 +14,7 @@ for my $cat ( qw( Chunked Compressed Clen Broken Mime MessageRfc822 Range ) ) {
 sub categories { @cat }
 sub make_response {
     my $page = "<!doctype html><html><body>";
-    $page .= "<a href=/auto/all/ok.png>Bulk test browser/proxy behavior</a><br>\n";
+    $page .= "<a href=/auto/all/novirus.txt>Bulk test browser/proxy behavior</a><br>\n";
     $page .= "<a href=/auto/all/eicar.txt>Bulk test firewall evasion with EICAR test virus</a><br>\n";
     $page .= "<hr>\n";
     for( grep { $_->TESTS } @cat ) {
@@ -71,8 +71,8 @@ You need to have JavaScript enabled to run this tests.
 </div>
 <div id=process></div>
 <div id=nobad> </div>
-<div id=warnings><h1>Serious Problems</h1></div>
-<div id=notice><h1>Behavior in Uncommon Cases</h1></div>
+<div id=warnings><h1>Serious Problems</h1><ol id=ol_warnings></ol></div>
+<div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
 <div id=debug><h1>Debug</h1></div>
 <script>
 function base64_encode(input) {
@@ -109,24 +109,22 @@ function base64_encode(input) {
 
 var div_debug = document.getElementById('debug');
 var div_notice = document.getElementById('notice');
+var div_ol_notice = document.getElementById('ol_notice');
 var div_warnings = document.getElementById('warnings');
+var div_ol_warnings = document.getElementById('ol_warnings');
 var div_nobad = document.getElementById('nobad');
 var div_process = document.getElementById('process');
 var expect64;
 var isbad;
 var results = '';
 
-var warnings = 0;
 function add_warning(m,page,desc) {
-    warnings++;
-    div_warnings.innerHTML = div_warnings.innerHTML + warnings + ". " + m + ": <a href=" + page + ">" + desc + "</a><br>";
+    div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <a target=_blank href=" + page + ">" + desc + "</a></li>";
     div_warnings.style.display = 'block';
 }
 
-var notice = 0;
 function add_notice(m,page,desc) {
-    notice++;
-    div_notice.innerHTML = div_notice.innerHTML + notice + ". " + m + ": <a href=" + page + ">" + desc + "</a><br>";
+    div_ol_notice.innerHTML = div_ol_notice.innerHTML + "<li>" + m + ": <a target=_blank href=" + page + ">" + desc + "</a></li>";
     div_notice.style.display = 'block';
 }
 
@@ -136,12 +134,20 @@ function add_debug(m) {
 
 function xhr(method,page,payload,callback) {
     var req = null;
+    try { req = new XMLHttpRequest(); } 
+    catch(e) {
+	try { req  = new ActiveXObject("Microsoft.XMLHTTP"); } 
+	catch(e) {
+	    try { req  = new ActiveXObject("Msxml2.XMLHTTP"); } 
+	    catch(e) { req  = null; }
+	}
+    }
+    if (!req) {
+	return null;
+    }
     try { 
-	req = window.XMLHttpRequest 
-	    ? new XMLHttpRequest() 
-	    : new ActiveXObject("Microsoft.XMLHTTP");
-	req.overrideMimeType('text/plain; charset=x-user-defined');
-	req.timeout = 2000;
+	try { req.overrideMimeType('text/plain; charset=x-user-defined'); } 
+	catch(e) { console.log("no support for overrideMimeType"); }
 	if (callback) {
 	    var done = 0;
 	    req.ontimeout = function() {
@@ -158,9 +164,11 @@ function xhr(method,page,payload,callback) {
 	    };
 	}
 	req.open(method, page, true);
+	try { req.timeout = 2000; } 
+	catch(e) { console.log("no support for xhr timeout") }
 	req.send(payload);
     } catch(e) {
-	console.log(e);
+	try { console.log(e); } catch(e) {}
 	req = null;
     }
     return req;
@@ -173,13 +181,24 @@ function check_page(req,test,status) {
     if (!status) {
 	status = 'invalid';
     } else if (status == 200) {
-	var result64 = base64_encode(req.responseText);
-	if (result64 == expect64) {
-	    status = 'match';
+	var response;
+	try { response = req.responseText }
+	catch(e) {}
+
+	if (response == null) {
+	    console.log("no data for " + test['page']);
 	} else {
-	    // console.log( "response: " + result64 );
-	    // console.log( "expect:   " + expect64 );
-	    status = 'change'
+	    var result64 = base64_encode(response);
+	    if (result64 == expect64) {
+		status = 'match';
+	    } else {
+		status = 'change'
+		try {
+		    console.log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
+		    console.log( "response: " + result64 );
+		    console.log( "expect:   " + expect64 );
+		} catch(e) {}
+	    }
 	}
     }
     add_debug( test['desc'] + ' - ' + status );
@@ -203,26 +222,42 @@ function check_page(req,test,status) {
     }
 
     // check for standard conformance
-    if (test['valid']>0 && status != 'match') {
-	add_warning("failure for valid response",test['page'],test['desc']);
-	results = results + "W | " + status + " | " + test['page'] + " | " + test['desc'] + " | failure for valid response\n";
-    } else if (test['valid']<0 && status == 'match') {
-	add_notice("success for uncommon response",test['page'],test['desc']);
-	results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for uncommon response\n";
-    } else if (test['valid'] == 0 && status == 'match') {
-	add_warning("success for bad response",test['page'],test['desc']);
-	results = results + "W | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for bad response\n";
+    if (status == 'match') {
+	if (test['valid'] == 0) {
+	    add_warning("success for bad response",test['page'],test['desc']);
+	    results = results + "W | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for bad response\n";
+	} else if (test['valid'] == -1) {
+	    add_notice("success for valid uncommon response",test['page'],test['desc']);
+	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for valid uncommon response\n";
+	} else if (test['valid']<0) {
+	    add_notice("success for invalid uncommon response",test['page'],test['desc']);
+	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for invalid uncommon response\n";
+	} else {
+	    results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | ok\n";
+	}
     } else {
-	results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | ok\n";
+	if (test['valid']>0) {
+	    add_warning("failure for valid response",test['page'],test['desc']);
+	    results = results + "W | " + status + " | " + test['page'] + " | " + test['desc'] + " | failure for valid response\n";
+	} else if (test['valid'] == -1) {
+	    add_notice("failure for valid uncommon response",test['page'],test['desc']);
+	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | failure for valid uncommon response\n";
+	} else if (test['valid'] < 0) {
+	    add_notice("failure for invalid uncommon response",test['page'],test['desc']);
+	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | failure for invalid uncommon response\n";
+	} else {
+	    results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | ok\n";
+	}
     }
 }
 
+var rand = Math.random();
 function runtests(todo,done) {
     var test = todo.shift();
     if (test) {
 	var total = todo.length + done;
 	div_process.innerHTML = "Progress: " + done + "/" + total + " - " + test['desc'];
-	xhr('GET',test['page'],null,function(req,status) {
+	xhr('GET',test['page'] + '?rand=' + rand,null,function(req,status) {
 	    check_page(req,test,status);
 	    runtests(todo,done+1);
 	});

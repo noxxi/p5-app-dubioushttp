@@ -75,6 +75,7 @@ sub new_client {
 	    my ($ua) = $hdr =~m{^User-Agent:\s*([^\r\n]*)}mi;
 	    $ua ||= 'Unknown-UA';
 	    my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
+	    $line =~s{\?rand=0\.\d+ }{ };  # remove random for anti-caching
 	    warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
 	    (my $method,$page) = $hdr =~m{ \A 
 		(GET|POST) [\040]+ 

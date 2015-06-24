@@ -14,13 +14,9 @@ resume a broken request with a partial request.
 DESC
 
     # ---------------- Tests ----------------------------------------
-    [ 1,'no range',
-	[ 'full' => 'all data at once' ],
-    ],
-    [ 0,'partial transfers',
-	[ 'range',"send partial response even if full was requested" ],
-	[ 'range,incomplete',"use incomplete response to trigger partial request for rest of data" ],
-    ],
+    [ VALID, 'full' => 'all data at once' ],
+    [ INVALID, 'range',"send partial response even if full was requested" ],
+    [ INVALID, 'range,incomplete',"use incomplete response to trigger partial request for rest of data" ],
 );
 
 

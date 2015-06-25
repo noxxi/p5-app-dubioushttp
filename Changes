@@ -1,3 +1,12 @@
+2015/06/25 0.018
+- works with 5.8.9 now
+- no longer needs AnyEvent and Compress::Zlib (less dependecies),
+  make dependency for Compress::Raw::Zlib explicit in Makefile.PL
+- Net::PcapWriter now optional, i.e. only needed when writing pcaps
+- count evasions and add number during submission
+- use accept header from original request inXHR or use custom accept header
+- increase timeout to 5s
+- compatibility with MSIE8 by adding try{..} around console.log
 2015/06/24 0.017
 - support for MSIE autodetect starting with MSIE8
 - better distinction between valid and invalid uncommon responses

@@ -5,7 +5,6 @@ use Getopt::Long qw(:config posix_default bundling);
 use App::DubiousHTTP::Tests;
 use App::DubiousHTTP::Tests::Common;
 use App::DubiousHTTP::TestServer;
-use Net::PcapWriter;
 
 sub usage {
     print STDERR "ERROR: @_\n" if @_;
@@ -59,6 +58,8 @@ sub make_doc {
 ############################ create pcap files
 sub make_pcaps {
     my $base = shift;
+    eval { require Net::PcapWriter }
+	or die "cannot load Net::PcapWriter\n";
     -d $base or die "$base does not exist";
     for my $cat ( App::DubiousHTTP::Tests->categories ) {
 	$cat->TESTS or next;

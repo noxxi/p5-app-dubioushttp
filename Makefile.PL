@@ -15,9 +15,5 @@ WriteMakefile(
         },
     },
     VERSION_FROM => 'lib/App/DubiousHTTP.pm',
-    PREREQ_PM => {
-        'Net::PcapWriter' => 0,
-        'AnyEvent' => 6.12,
-    },
     EXE_FILES => [ 'bin/dubious_http.pl' ],
 );

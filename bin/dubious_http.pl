@@ -96,6 +96,10 @@ sub serve {
 	    (?: \? (.*))?
 	}x;
 	$_ //= '' for ($cat,$page,$spec,$qstring);
+
+	return App::DubiousHTTP::Tests->auto($cat,$page,$spec,$qstring,$rqhdr)
+	    if $auto;
+
 	if ( $page && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
 		$_->ID eq $cat or next;
@@ -112,9 +116,6 @@ sub serve {
 	} elsif ( $path =~m{^([^?]+)(?:\?(.*))?} and ($hdr,$data) = content($1,$2) ) {
 	    return "HTTP/1.0 200 ok\r\n$hdr\r\n$data";
 	}
-
-	return App::DubiousHTTP::Tests->auto($cat,$page,$spec,$rqhdr)
-	    if $auto;
 
 	if ( $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {

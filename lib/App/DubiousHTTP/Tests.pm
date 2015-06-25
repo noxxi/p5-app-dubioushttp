@@ -30,11 +30,18 @@ sub make_response {
 }
 
 sub auto {
-    my ($self,$cat,$page) = @_;
+    my ($self,$cat,$page,$spec,$qstring,$rqhdr) = @_;
     $page ||= 'eicar.txt';
     my $html = _auto_static_html();
     my ($hdr,$body,$isbad) = content($page);
     $html .= "<script>\n";
+
+    my ($accept) = $rqhdr =~m{^Accept:[ \t]*([^\r\n]+)}mi;
+    if ($qstring =~m{(?:^|\&)accept=([^&]*)}) {
+	($accept = $1) =~s{(?:%([a-f\d]{2})|(\+))}{ $2 ? ' ' : chr(hex($1)) }esg;
+    }
+    $html .= "accept = '".quotemeta($accept)."';\n" if $accept;
+
     $html .= "expect64 = '".encode_base64($body,'')."';\n";
     $isbad //= '';
     $html .= "isbad ='$isbad';\n";
@@ -61,6 +68,7 @@ sub _auto_static_html { return <<'HTML'; }
 <style>
 body      { font-family: Verdana, sans-serif; }
 #nobad    { padding: 1em; margin: 1em; background: red; display: none; }
+#noevade  { padding: 1em; margin: 1em; background: green; display: none; }
 #notice   { padding: 1em; margin: 1em; background: #e9f2e1; display: none; }
 #warnings { padding: 1em; margin: 1em; background: #e3a79f; display: none; }
 #process  { padding: 1em; margin: 1em; background: #f2f299; }
@@ -71,6 +79,7 @@ You need to have JavaScript enabled to run this tests.
 </div>
 <div id=process></div>
 <div id=nobad> </div>
+<div id=noevade> </div>
 <div id=warnings><h1>Serious Problems</h1><ol id=ol_warnings></ol></div>
 <div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
 <div id=debug><h1>Debug</h1></div>
@@ -117,6 +126,7 @@ var div_process = document.getElementById('process');
 var expect64;
 var isbad;
 var results = '';
+var accept = null;
 
 function add_warning(m,page,desc) {
     div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <a target=_blank href=" + page + ">" + desc + "</a></li>";
@@ -137,6 +147,7 @@ function _log(m) {
     catch(e) {}
 }
 
+var evasions = 0;
 function xhr(method,page,payload,callback) {
     var req = null;
     try { req = new XMLHttpRequest(); } 
@@ -169,7 +180,11 @@ function xhr(method,page,payload,callback) {
 	    };
 	}
 	req.open(method, page, true);
-	try { req.timeout = 2000; } 
+	if (accept != null) {
+	    try { req.setRequestHeader('Accept',accept); }
+	    catch(e) { _log("no support for setRequestHeader") }
+	}
+	try { req.timeout = 5000; } 
 	catch(e) { _log("no support for xhr timeout") }
 	req.send(payload);
     } catch(e) {
@@ -219,6 +234,7 @@ function check_page(req,test,status) {
 		// possible evasion of content filter
 		add_warning("Evasion possible",test['page'],test['desc']);
 		results = results + "E | " + status + " | " + test['page'] + " | " + test['desc'] + " | evasion\n";
+		evasions++;
 	    }
 	}
 	return;
@@ -267,7 +283,17 @@ function runtests(todo,done) {
     } else {
 	div_process.style.display = 'none';
 	add_debug("*DONE*");
-	xhr('POST','/submit_results',results, null);
+	if (isbad != '') {
+	    if (evasions == 0) {
+		var div = document.getElementById('noevade');
+		div.style.display = 'block';
+		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>";
+		results = results + "NO EVASIONS\n";
+	    }
+	    xhr('POST','/submit_results/evasions=' + evasions ,results, null);
+	} else {
+	    xhr('POST','/submit_results' ,results, null);
+	}
     }
 }
 

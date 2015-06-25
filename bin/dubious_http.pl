@@ -96,7 +96,9 @@ sub serve {
 	    (?: / ([^\?]*))?
 	    (?: \? (.*))?
 	}x;
-	$_ //= '' for ($cat,$page,$spec,$qstring);
+	for ($cat,$page,$spec,$qstring) {
+	    $_ = '' if ! defined $_;
+	}
 
 	return App::DubiousHTTP::Tests->auto($cat,$page,$spec,$qstring,$rqhdr)
 	    if $auto;

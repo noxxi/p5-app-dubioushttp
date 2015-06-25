@@ -1,6 +1,6 @@
 use strict;
 use ExtUtils::MakeMaker 6.46;
-require 5.12.4;
+require 5.8.9;
 WriteMakefile(
     NAME => 'App::DubiousHTTP',
     ABSTRACT => 'use ambiguous HTTP to circumvent security systems',
@@ -14,6 +14,9 @@ WriteMakefile(
             bugtracker  => 'https://rt.cpan.org/Dist/Display.html?Queue=App-DubiousHTTP',
         },
     },
+    PREREQ_PM => {
+	'Compress::Raw::Zlib' => 2.012,
+    }
     VERSION_FROM => 'lib/App/DubiousHTTP.pm',
     EXE_FILES => [ 'bin/dubious_http.pl' ],
 );

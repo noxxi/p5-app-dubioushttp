@@ -78,7 +78,7 @@ sub make_response {
 	} elsif ( $_ eq 'chUnked' ) {
 	    $hdr .= "Transfer-Encoding: chUnked\r\n"
 	} elsif ( m{^(.*-)?nl-chunked$} ) {
-	    my $prefix = $1 //'';
+	    my $prefix = $1 ||'';
 	    $hdr .= "Transfer-Encoding: $prefix\r\n chunked\r\n"
 	} elsif ( $_ eq 'chu' ) {
 	    $hdr .= "Transfer-Encoding: chu\r\n"

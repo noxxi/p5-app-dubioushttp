@@ -43,7 +43,7 @@ sub auto {
     $html .= "accept = '".quotemeta($accept)."';\n" if $accept;
 
     $html .= "expect64 = '".encode_base64($body,'')."';\n";
-    $isbad //= '';
+    $isbad ||= '';
     $html .= "isbad ='$isbad';\n";
     $html .= "var checks = [];\n";
     $html .= "checks.push({ page:'/$page', desc:'sanity check', valid:1, expect_bad:1 });\n";

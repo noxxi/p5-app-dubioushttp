@@ -3,7 +3,6 @@ use warnings;
 package App::DubiousHTTP::Tests::Compressed;
 use App::DubiousHTTP::Tests::Common;
 use Compress::Raw::Zlib;
-use Compress::Zlib;
 
 SETUP( 
     'compressed',
@@ -109,11 +108,9 @@ sub make_response {
 	    $hdr .= $4;
 	    $hdr .= " x" if $5;
 	    $hdr .= "\r\n";
-	} elsif ( $_ eq 'gzip' ) {
-	    $data = Compress::Zlib::memGzip($data);
-	} elsif ( m{^deflate(-raw)?$} ) {
+	} elsif ( m{^(?:(gzip)|deflate(-raw))?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
-		-WindowBits => $1 ? +MAX_WBITS() : -MAX_WBITS(),
+		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
 		-AppendOutput => 1,
 	    );
 	    my $newdata = '';

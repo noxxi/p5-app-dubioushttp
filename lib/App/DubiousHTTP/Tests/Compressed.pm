@@ -108,7 +108,7 @@ sub make_response {
 	    $hdr .= $4;
 	    $hdr .= " x" if $5;
 	    $hdr .= "\r\n";
-	} elsif ( m{^(?:(gzip)|deflate(-raw))?$} ) {
+	} elsif ( m{^(?:(gzip)|deflate(-raw)?)$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
 		-AppendOutput => 1,

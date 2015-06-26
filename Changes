@@ -1,3 +1,6 @@
+2015/06/26 0.019
+- fix deflate
+- add broken tests with 30x without Location and other strange codes with body
 2015/06/25 0.018
 - works with 5.8.9 now
 - no longer needs AnyEvent and Compress::Zlib (less dependecies),

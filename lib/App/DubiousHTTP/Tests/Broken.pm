@@ -24,6 +24,22 @@ DESC
     [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header' ],
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
     [ INVALID, 'cr' => 'line just containing CR: \r\r\n'],
+
+    [ 'redirect without location' ],
+    [ INVALID, '301' => 'code 301 without location header'],
+    [ INVALID, '302' => 'code 301 without location header'],
+    [ INVALID, '303' => 'code 301 without location header'],
+    [ INVALID, '307' => 'code 301 without location header'],
+    [ INVALID, '308' => 'code 301 without location header'],
+
+    [ 'other status codes' ],
+    [ INVALID, '300' => 'code 300 with body'],
+    [ INVALID, '100' => 'code 100 with body'],
+    [ INVALID, '101' => 'code 101 with body'],
+    [ INVALID, '102' => 'code 102 with body'],
+    [ INVALID, '204' => 'code 204 with body'],
+    [ INVALID, '304' => 'code 304 with body'],
+    [ INVALID, '305' => 'code 305 with body'],
 );
 
 sub make_response {
@@ -33,6 +49,7 @@ sub make_response {
     my $version = '1.1';
     my $te = 'clen';
     my $only = 0;
+    my $code = 200;
     for (split(';',$spec)) {
 	if ( $_ eq 'emptycont' ) {
 	    $hdr .= "Foo: bar\r\n \r\n"
@@ -58,6 +75,9 @@ sub make_response {
 	    $only = 1;
 	} elsif ( $_ eq 'http09' ) {
 	    return $data;
+	} elsif ( m{^(\d+)$} ) {
+	    $code = $1;
+	    $hdr .= "Connection: close\r\n";
 	} else {
 	    die $_
 	}
@@ -66,7 +86,7 @@ sub make_response {
 	$hdr .= "Yet-another-header: foo\r\n";
 	$hdr .= "Content-length :".length($data)."\r\n" if $hdr eq 'clen';
     }
-    return "HTTP/$version 200 ok\r\n$hdr\r\n$data";
+    return "HTTP/$version $code ok\r\n$hdr\r\n$data";
 }
 
 1;

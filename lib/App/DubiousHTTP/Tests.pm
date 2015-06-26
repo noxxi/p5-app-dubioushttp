@@ -200,7 +200,7 @@ function check_page(req,test,status) {
     }
     if (!status) {
 	status = 'invalid';
-    } else if (status == 200) {
+    } else if (status >0) {
 	var response;
 	try { response = req.responseText }
 	catch(e) {}
@@ -212,7 +212,7 @@ function check_page(req,test,status) {
 	    if (result64 == expect64) {
 		status = 'match';
 	    } else {
-		status = 'change'
+		status = 'change(' + status + ')';
 		_log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
 		_log( "response: " + result64 );
 		_log( "expect:   " + expect64 );

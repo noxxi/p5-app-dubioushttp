@@ -12,7 +12,8 @@ my $DEBUG = 0;
 sub run {
     shift;
     my ($addr,$response) = @_;
-    my $srv = IO::Socket::INET->new( LocalAddr => $addr, Listen => 10, Reuse => 1 );
+    my $srv = IO::Socket::INET->new( LocalAddr => $addr, Listen => 10, Reuse => 1 )
+	or die "listen failed: $!";
     $SELECT->handler($srv,0,sub {
 	my $cl = $srv->accept or return;
 	if (keys(%clients)>$MAX_CLIENTS) {

@@ -1,3 +1,7 @@
+2015/06/26 0.020
+- yet more broken HTTP responses
+- fix closing after response in some cases
+- fix load limitation of server
 2015/06/26 0.019
 - fix deflate
 - add broken tests with 30x without Location and other strange codes with body

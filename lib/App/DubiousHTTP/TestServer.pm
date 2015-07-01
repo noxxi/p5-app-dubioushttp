@@ -4,7 +4,7 @@ package App::DubiousHTTP::TestServer;
 use IO::Socket::INET;
 use Scalar::Util 'weaken';
 
-my $MAX_CLIENTS = 10;
+my $MAX_CLIENTS = 100;
 my $SELECT = App::DubiousHTTP::TestServer::Select->new;
 my %clients;
 my $DEBUG = 0;
@@ -17,7 +17,7 @@ sub run {
     $SELECT->handler($srv,0,sub {
 	my $cl = $srv->accept or return;
 	if (keys(%clients)>$MAX_CLIENTS) {
-	    my @cl = sort { $a->{time} <=> $b->{time} } keys %clients;
+	    my @cl = sort { $clients{$a}{time} <=> $clients{$b}{time} } keys %clients;
 	    while (@cl>$MAX_CLIENTS) {
 		my $old = $clients{ shift(@cl) };
 		delete_client($old->{fd});
@@ -78,8 +78,12 @@ sub add_client {
 		return;
 	    }
 		
-	    if (!$close && $wbuf =~m{(\r?\n)\1}g) {
-		$close = _mustclose( substr($wbuf,0,pos($wbuf)) );
+	    if (!$close) {
+		if ($wbuf =~m{(\r?\n)\1}g) {
+		    $close = _mustclose( substr($wbuf,0,pos($wbuf)) );
+		} else {
+		    $close = 1;
+		}
 	    }
 
 	    $write->($cl);
@@ -162,10 +166,11 @@ sub _mustclose {
     my $hdr = shift;
     # keep-alive by header
     while ($hdr =~m{^Connection:[ \t]*(?:(close)|keep-alive)}mig) {
-	return $1 ? 0:1;
+	return $1 ? 1:0;
     }
     # keep-alive by response
-    return $hdr =~m{\A.* HTTP/1\.(?:0|(1))} ? $1 ? 0:1:1;
+    $hdr =~m{\A.* HTTP/1\.(?:0|(1))} or return 1;
+    return $1 ? 0:1;
 }
 
 package App::DubiousHTTP::TestServer::Select;

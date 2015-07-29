@@ -1,3 +1,8 @@
+2015/07/29 0.021
+- make sure we always send some kind of length (Content-length or chunked)
+  because some firewalls don't scan content with unspecified length which
+  would then distort test results
+- some more tests and documentation fixes
 2015/06/26 0.020
 - yet more broken HTTP responses
 - fix closing after response in some cases

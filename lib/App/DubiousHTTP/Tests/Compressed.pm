@@ -37,7 +37,7 @@ DESC
     [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw' => 'content-encoding deflate with RFC1950 style deflate'],
     [ UNCOMMON_VALID, 'ce:nl-gzip;gzip' => 'content-encoding header with continuation line'],
 
-    # These should be fine according to RTC, but are not supported in the browsers
+    # These should be fine according to RFC, but are not supported in the browsers
     # Thus treat is as problem if they get supported.
     [ 'transfer-encoding with compression should not be supported' ],
     [ INVALID, 'te:gzip;gzip' => 'transfer-encoding gzip'],
@@ -85,6 +85,7 @@ DESC
     [ INVALID, 'ce:x_gzip;gzip' => 'content-encoding "x gzip" != gzip' ],
     [ INVALID, 'ce:deflate;gzip' => 'content-encoding deflate with gzipped encoding'],
     [ INVALID, 'ce:gzip;deflate' => 'content-encoding gzip with deflate encoding'],
+    [ INVALID, 'ce:gzip;gzip-split' => 'content-encoding gzip, content split into 2 gzip parts concatenated'],
 
     [ 'invalid content-encodings should not be ignored' ],
     [ INVALID, 'ce:gzip_x' => 'content-encoding "gzip x", but not encoded' ],
@@ -117,10 +118,27 @@ sub make_response {
 	    $zlib->deflate($data, $newdata);
 	    $zlib->flush($newdata,Z_FINISH);
 	    $data = $newdata;
+	} elsif ( $_ =~m{^gzip-split(\d+)?$} ) {
+	    my $count = $1 || 2;
+	    my @parts;
+	    my $size = int(length($data)/$count);
+	    my $newdata = '';
+	    for( my $i=0;$i<$count-1;$i++) {
+		my $zlib = Compress::Raw::Zlib::Deflate->new(
+		    -WindowBits => WANT_GZIP,
+		    -AppendOutput => 1,
+		);
+		my $out = '';
+		$zlib->deflate(substr($data,0,$size,''), $out);
+		$zlib->flush($out,Z_FINISH);
+		$newdata .= $out;
+	    }
+	    $data = $newdata;
 	} else {
 	    die $_
 	}
     }
+    $hdr .= "Content-length: ".length($data)."\r\n";
     return "HTTP/$version 200 ok\r\n$hdr\r\n$data";
 }
 

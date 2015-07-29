@@ -19,12 +19,13 @@ Details see http://noxxi.de/research/dubious-http.html
 DESC
 
     # ------------------------ Tests -----------------------------------
-    [ 'basic tests with chunked encoding' ],
+    [ 'basic tests' ],
     [ VALID, 'chunked' => 'valid chunking'],
-    # continuations lines are ok
+    [ VALID, 'clen' => 'content-length not chunked'],
+
+    [ 'use of extensions in chunked header' ],
     [ VALID, 'chunked-ext-junk' => "some junk chunk extension" ],
     [ VALID, 'chunked-ext-chunk' => "some junk chunk extension looking like a chunk" ],
-    [ VALID, 'clen' => 'chunked encoding but only content-length given'],
 
     [ 'combined with content-length' ],
     # according to RFC2616 TE chunked has preference to clen

@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 package App::DubiousHTTP;
-our $VERSION = '0.020';
+our $VERSION = '0.021';
 
 1;
 __END__
@@ -62,5 +62,5 @@ http://noxxi.de/research/unusual-http-content-encoding.html
 
 =head1 AUTHOR
 
-Steffen Ullrich, 2013
+Steffen Ullrich, 2013..2015
 

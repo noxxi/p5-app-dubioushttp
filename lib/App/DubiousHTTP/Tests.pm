@@ -46,7 +46,7 @@ sub auto {
     $isbad ||= '';
     $html .= "isbad ='$isbad';\n";
     $html .= "var checks = [];\n";
-    $html .= "checks.push({ page:'/$page', desc:'sanity check', valid:1, expect_bad:1 });\n";
+    $html .= "checks.push({ page:'/clen/$page/close,clen,content', desc:'sanity check', valid:1, expect_bad:1 });\n";
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {

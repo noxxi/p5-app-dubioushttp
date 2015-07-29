@@ -36,10 +36,10 @@ DESC
 
     [ 'redirect without location' ],
     [ INVALID, '301' => 'code 301 without location header'],
-    [ INVALID, '302' => 'code 301 without location header'],
-    [ INVALID, '303' => 'code 301 without location header'],
-    [ INVALID, '307' => 'code 301 without location header'],
-    [ INVALID, '308' => 'code 301 without location header'],
+    [ INVALID, '302' => 'code 302 without location header'],
+    [ INVALID, '303' => 'code 303 without location header'],
+    [ INVALID, '307' => 'code 307 without location header'],
+    [ INVALID, '308' => 'code 308 without location header'],
 
     [ 'other status codes' ],
     [ INVALID, '300' => 'code 300 with body'],
@@ -109,7 +109,7 @@ sub make_response {
     }
     if (!$only) {
 	$hdr .= "Yet-another-header: foo\r\n";
-	$hdr .= "Content-length :".length($data)."\r\n" if $hdr eq 'clen';
+	$hdr .= "Content-length :".length($data)."\r\n" if $te eq 'clen';
     }
     $statusline ||= "HTTP/$version $code ok\r\n";
     $hdr = "$statusline$hdr\r\n";

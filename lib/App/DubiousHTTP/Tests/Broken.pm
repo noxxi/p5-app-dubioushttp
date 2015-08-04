@@ -109,7 +109,7 @@ sub make_response {
     }
     if (!$only) {
 	$hdr .= "Yet-another-header: foo\r\n";
-	$hdr .= "Content-length :".length($data)."\r\n" if $te eq 'clen';
+	$hdr .= "Content-length: ".length($data)."\r\n" if $te eq 'clen';
     }
     $statusline ||= "HTTP/$version $code ok\r\n";
     $hdr = "$statusline$hdr\r\n";

@@ -75,6 +75,16 @@ DESC
     [  INVALID, 'ce:deflate,gzip;gzip' => 'only gzip, single content-encoding header deflate,gzip'],
     [  INVALID, 'ce:deflate,gzip' => 'no encoding, single content-encoding header deflate,gzip'],
 
+
+    # triple encodings
+    [ 'triple encodings' ],
+    [ UNCOMMON_VALID, 'ce:gzip;ce:deflate;ce:gzip;gzip;deflate;gzip' => 'gzip + deflate + gzip, separate content-encoding header'],
+    [ UNCOMMON_VALID, 'ce:gzip,deflate,gzip;gzip;deflate;gzip' => 'gzip + deflate + gzip, single content-encoding header'],
+    [ UNCOMMON_VALID, 'ce:gzip,deflate;ce:gzip;gzip;deflate;gzip' => 'gzip + deflate + gzip, two content-encoding headers'],
+    [ UNCOMMON_VALID, 'ce:deflate;ce:gzip;ce:deflate;deflate;gzip;deflate' => 'deflate + gzip + gzip, separate content-encoding header'],
+    [ UNCOMMON_VALID, 'ce:deflate,gzip,deflate;deflate;gzip;deflate' => 'deflate + gzip + deflate, single content-encoding header'],
+    [ UNCOMMON_VALID, 'ce:deflate,gzip;ce:deflate;deflate;gzip;deflate' => 'deflate + gzip + deflate, two content-encoding headers'],
+
     # and the bad ones
     [ 'incorrect compressed response, should not succeed' ],
     [ INVALID, 'ce:x-deflate;deflate' => 'content-encoding x-deflate'],
@@ -102,11 +112,12 @@ sub make_response {
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
     for (split(';',$spec)) {
-	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity|(?:deflate|gzip),(?:deflate|gzip))(_x)?$} ) {
+	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?((?:,(?:deflate|gzip))*)$} ) {
 	    $hdr .= $1 eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "\r\n " if $2;
 	    $hdr .= "x " if $3;
 	    $hdr .= $4;
+	    $hdr .= $6 if $6;
 	    $hdr .= " x" if $5;
 	    $hdr .= "\r\n";
 	} elsif ( m{^(?:(gzip)|deflate(-raw)?)$} ) {

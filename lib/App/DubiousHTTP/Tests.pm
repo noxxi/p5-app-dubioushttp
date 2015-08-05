@@ -73,6 +73,9 @@ body      { font-family: Verdana, sans-serif; }
 #warnings { padding: 1em; margin: 1em; background: #e3a79f; display: none; }
 #process  { padding: 1em; margin: 1em; background: #f2f299; }
 #debug    { padding: 1em; margin: 1em; }
+.desc     { font-size: 110%; }
+.srclink  { font-variant: small-caps; }
+.trylink  { font-variant: small-caps; }
 </style>
 <div id=noscript>
 You need to have JavaScript enabled to run this tests.
@@ -129,12 +132,18 @@ var results = '';
 var accept = null;
 
 function add_warning(m,page,desc) {
-    div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <a target=_blank href=" + page + ">" + desc + "</a></li>";
+    div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <span class=desc>" + desc + "</span>" +
+	"&nbsp;<a class=trylink target=_blank href=" + page + ">try</a>" +
+	"&nbsp;<a class=srclink target=_blank href=/src" + page + ">src</a>" +
+	"</li>";
     div_warnings.style.display = 'block';
 }
 
 function add_notice(m,page,desc) {
-    div_ol_notice.innerHTML = div_ol_notice.innerHTML + "<li>" + m + ": <a target=_blank href=" + page + ">" + desc + "</a></li>";
+    div_ol_notice.innerHTML = div_ol_notice.innerHTML + "<li>" + m + ": <span class=desc>" + desc + "</span>" +
+	"&nbsp;<a class=trylink target=_blank href=" + page + ">try</a>" +
+	"&nbsp;<a class=srclink target=_blank href=/src" + page + ">src</a>" +
+	"</li>";
     div_notice.style.display = 'block';
 }
 

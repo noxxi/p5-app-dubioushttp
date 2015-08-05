@@ -89,8 +89,8 @@ sub serve {
 	}
 
 	local $BASE_URL = "http://$listen";
-	my ($auto,$cat,$page,$spec,$qstring) = $path =~m{\A / 
-	    (auto/)?
+	my ($auto,$src,$cat,$page,$spec,$qstring) = $path =~m{\A / 
+	    (?:(auto/)|(src/))?
 	    ([^/]+)
 	    (?: / ([^/\?]*))?
 	    (?: / ([^\?]*))?
@@ -106,11 +106,16 @@ sub serve {
 	if ( $page && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
 		$_->ID eq $cat or next;
+		my $content = '';
 		for ( $_->TESTS ) {
-		    return $_->make_response($page,undef,$rqhdr)
-			if $_->ID eq $spec;
+		    $_->ID eq $spec or next;
+		    $content = $_->make_response($page,undef,$rqhdr);
+		    last;
 		}
-		return $_->make_response($page,$spec,$rqhdr);
+		$content ||= $_->make_response($page,$spec,$rqhdr);
+		return $content if !$src;
+		return "HTTP/1.0 200 ok\r\nContent-type: text/plain\r\n".
+		    "Content-length: ".length($content)."\r\n\r\n".$content;
 	    }
 	}
 

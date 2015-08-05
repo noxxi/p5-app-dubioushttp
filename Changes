@@ -1,3 +1,7 @@
+2015/08/05 0.022
+- add some more tests
+- offer to show src of response in auto-mode
+- fix content-length header in Broken.pm
 2015/07/29 0.021
 - make sure we always send some kind of length (Content-length or chunked)
   because some firewalls don't scan content with unspecified length which

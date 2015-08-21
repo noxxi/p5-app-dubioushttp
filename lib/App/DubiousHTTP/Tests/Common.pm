@@ -62,17 +62,17 @@ IMAGE
     'ok.html' =>  sub {
 	my $spec = shift;
 	return [ "Content-type: text/html\r\n", 
-	    "<body>ok<script src=/ping.js></script><script>ping_back('/ping?OK:$spec')</script></body>" ]
+	    "<body style='background: #00e800;'>HTML<script src=/ping.js></script><script>ping_back('/ping?OK:$spec')</script></body>" ]
     },
     'bad.html' =>  sub {
 	my $spec = shift;
 	return [ "Content-type: text/html\r\n", 
-	    "<body>BAD!<script src=/ping.js></script><script>ping_back('/ping?BAD:$spec')</script></body>" ]
+	    "<body style='background: #e30e2c;'>HTML<script src=/ping.js></script><script>ping_back('/ping?BAD:$spec')</script></body>" ]
     },
     'warn.html' =>  sub {
 	my $spec = shift;
 	return [ "Content-type: text/html\r\n", 
-	    "<body>EEEK!<script src=/ping.js></script><script>ping_back('/ping?WARN:$spec')</script></body>" ]
+	    "<body style='background: #e7d82b'>HTML<script src=/ping.js></script><script>ping_back('/ping?WARN:$spec')</script></body>" ]
     },
 
     # we hide javascript behind GIF87a to work around content filters :)
@@ -225,23 +225,24 @@ sub make_index_page {
 BODY
     $body .= "<h1>".$class->SHORT_DESC."</h1>";
     $body .= $class->LONG_DESC_HTML()."<hr>";
-    $body .= '<table width="100%">';
+    $body .= '<table style="width: 100%; border-style: none; border-spacing: 0px;">';
     for my $test (@_) {
 	if (!blessed($test)) {
-	    $body .= "<tr><td colspan=3><h2>$test->[0]</h2></td></tr>";
+	    $body .= "<tr><td colspan=4><h2>$test->[0]</h2></td></tr>";
 	    next;
 	} 
 	my $valid = $test->VALID;
 	my $base = $valid>0 ? 'ok' : $valid<0 ? 'warn' : 'bad';
 	my $bg   = $valid>0 ? '#e30e2c' : $valid<0 ? '#d0cfd1' : '#00e800';
 	$body .= "<tr>";
-	$body .= "<td style='border-style:none; background: $bg url(\"".$test->url("$base.png"). "\");'>&nbsp;". 
-	    html_escape($test->DESCRIPTION) ."&nbsp;&nbsp;</td>";
-	$body .= "<td style='border-style:none;'><iframe seamless=seamless scrolling=no style='width: 8em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
+	$body .= "<td>". html_escape($test->DESCRIPTION) ."</td>";
+	$body .= "<td><div style='height: 2em; border-style: solid; border-width: 1px; width: 6em; text-align: center; background: $bg url(\"".$test->url("$base.png"). "\");'><span style='vertical-align: middle;'>&nbsp;IMG&nbsp;</span></div></td>";
+	$body .= "<td><iframe seamless=seamless scrolling=no style='border-style: solid; border-width: 1px; width: 6em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
 	$body .= "<td>&nbsp;<a class=button target=_blank href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
 	# $body .= "<td>&nbsp;<a class=button target=_blank href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
 	$body .= "</tr>";
 	$body .= "<script src=".$test->url("$base.js")."></script>";
+	$body .= "<tr><td colspan=4><hr></td></tr>";
     }
     $body .= "</table>";
     $body .= "</body></html>";

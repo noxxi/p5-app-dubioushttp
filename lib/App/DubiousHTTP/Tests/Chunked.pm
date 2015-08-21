@@ -18,27 +18,32 @@ Transfer-Encoding: chunked header:
 DESC
 
     # ------------------------ Tests -----------------------------------
-    [ 'basic tests' ],
+    [ 'VALID: basic tests' ],
     [ VALID, 'chunked' => 'valid chunking'],
     [ VALID, 'clen' => 'content-length not chunked'],
 
-    [ 'use of extensions in chunked header' ],
+    [ 'VALID: use of extensions in chunked header' ],
     [ VALID, 'chunked-ext-junk' => "some junk chunk extension" ],
     [ VALID, 'chunked-ext-chunk' => "some junk chunk extension looking like a chunk" ],
 
-    [ 'combined with content-length' ],
+    [ 'VALID: combined with content-length' ],
     # according to RFC2616 TE chunked has preference to clen
     [ VALID, 'chunked,clen' => 'chunking and content-length'],
     # but some still expect clen bytes
     [ VALID, 'chunked,clen200' => 'chunking and content-length header with double length'],
     [ VALID, 'chunked,clen50'  => 'chunking and content-length header with half length'],
 
-    [ 'chunking is only allowed with HTTP/1.1' ],
+    [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
     [ INVALID, 'chunked,http10' => 'Chunked Header and HTTP/1.0. Served chunked.'],
     [ INVALID, 'chunked,clen,http10' => 'Chunked Header and Content-length and HTTP/1.0. Served chunked.'],
 
-    [ 'variations on "chunked" value' ],
+    [ 'VALID: valid variations on "chunked" value' ],
     [ VALID, 'chUnked' => 'valid chunking mixed case'],
+    [ VALID, 'rfc2047,do_clen' => "rfc2047 encoded with base64, not served chunked" ],
+    [ VALID, 'rfc2047,clen,do_clen' => "rfc2047 encoded with base64, serve with content-length" ],
+    [ UNCOMMON_VALID,'nl-chunked' => "chunked header with continuation line. Served chunked."],
+
+    [ 'INVALID: invalid variations on "chunked" value' ],
     [ INVALID, 'chu' => '"chu" not "chunked"'],
     [ INVALID, 'chunked-semicolon' => '"Transfer-Encoding: chunked;"' ],
     [ INVALID, 'xchunked' => '"xchunked" not "chunked"'],
@@ -47,16 +52,13 @@ DESC
     [ INVALID, 'x-chunked' => '"x chunked" not "chunked"'],
     [ INVALID, 'x-nl-chunked' => '"x-folding-chunked" not "chunked"'],
     [ INVALID, 'rfc2047,do_chunked' => "rfc2047 encoded with base64, serve chunked" ],
-    [ VALID, 'rfc2047,do_clen' => "rfc2047 encoded with base64, not served chunked" ],
-    [ VALID, 'rfc2047,clen,do_clen' => "rfc2047 encoded with base64, serve with content-length" ],
     [ INVALID, 'xte,chunked,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Served chunked." ],
     [ INVALID, 'chunked,xte,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Served chunked." ],
     [ INVALID, 'chunked,xte,clen,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Also Content-length header. Served chunked." ],
     [ INVALID, 'xte,chunked,clen,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Served chunked." ],
-    [ UNCOMMON_VALID,'nl-chunked' => "chunked header with continuation line. Served chunked."],
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
 
-    [ 'invalid chunks' ],
+    [ 'INVALID: invalid chunks' ],
     [ INVALID, 'chunked-lf' => "chunk with LF as delimiter instead of CRLF" ],
 
 

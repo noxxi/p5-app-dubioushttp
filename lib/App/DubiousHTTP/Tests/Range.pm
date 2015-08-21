@@ -14,7 +14,10 @@ resume a broken request with a partial request.
 DESC
 
     # ---------------- Tests ----------------------------------------
+    [ "VALID: all data at once" ],
     [ VALID, 'full' => 'all data at once' ],
+
+    [ "INVALID: range without requested" ],
     [ INVALID, 'range',"send partial response even if full was requested" ],
     [ INVALID, 'range,incomplete',"use incomplete response to trigger partial request for rest of data" ],
 );

@@ -78,29 +78,25 @@ use the provided link to actually test the evasion.
 
 <p>
 The following tests analyze the behavior of browsers in specific cases, like
-loading an image or loading HTML into an iframe and also offer a download for
-the EICAR test virus. They all follow the same style:
-<ul>
-<li>A background image is used to check loading of images:
-<ul>
-<li>If the response is the expected one (i.e. success for good responses and
-failure for bad responses) the background of the description is green or yellow.
-Yellow is used for success when getting a valid but uncommon responses.</li>
-<li>In case the response is not expected (i.e. success for bad responses or
-failure for good responses) the background gets red.</li>
-</ul>
-</li>
-<li>An iframe is used to check loading of HTML. The text it contains depends on
-what was expected:
-<ul>
-<li>If "ok" is shown it successfully got the expected valid response</li>
-<li>If "EEEK!" is shown it successfully got the expected valid but uncommon response</li>
-<li>If "BAD!" is shown it interpreted an invalid response as valid</li>
-<li>If nothing is or garbage is shown it failed to load the response correctly. This might
-be good or bad, depending on the response.
-</ul>
-</li>
-</ul>
+loading an image, loading a script and loading HTML into an iframe. They offer a
+download for the EICAR test virus. The subtests in these tests all follow the
+same style: If the browser behaves like expected (i.e. fails or succeeds) the
+relevant element (IMAGE, SCRIPT or HTML) will turn green, if it behaves
+differently it will turn red. Yellow is similar successful as green but marks an
+uncommon behavior. If this uncommon behavior is not implemented (i.e. load of
+image or script failed) the element will be grey. 
+When trying to load HTML into an iframe it can happen that the iframe stays
+empty or contains some error message or garbage instead of "HTML". In this case
+it failed to load the content.
+</p>
+<p>
+Which behavior is expected can be seen from the header preceding
+the relevant section of subtests: if it says that the following requests are
+VALID it is expected that loading succeeds, on INVALID requests it is expected
+that they fail. In other words: anything turning red is bad and more so if it is
+for INVALID requests. Because in this case the browser executes the payload even
+if the HTTP response was invalid which might often be used to bypass firewalls
+which behave differently.
 </p>
 
 HTML

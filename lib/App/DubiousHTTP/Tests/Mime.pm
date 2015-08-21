@@ -15,19 +15,21 @@ Content-Transfer-Encoding header.
 DESC
     
     # ---------------------- Tests ------------------------------------
-    [ 'single parts' ],
+    [ 'VALID: single parts' ],
     [ VALID, 'single' => 'single part'],
     [ VALID, 'single,ct64',"single part with Content-Transfer-Encoding base64 header but unencoded data" ],
+
+    [ 'INVALID: single part with base64 content' ],
     [ INVALID, 'single,ct64,base64',"single part with Content-Transfer-Encoding base64 and encoded data" ],
 
-    [ 'content packed into multipart messages' ],
+    [ 'INVALID: content packed into multipart messages' ],
     [ INVALID, 'mixed',"multipart/mixed" ],
     [ INVALID, 'mixed,ct64,base64',"multipart/mixed with Content-Transfer-Encoding base64" ],
     [ INVALID, 'related',"multipart/related" ],
     [ INVALID, 'related,ct64,base64',"multipart/related with Content-Transfer-Encoding base64" ],
 
     # only supported in older IE
-    [ 'MHTML' ],
+    [ 'INVALID: MHTML' ],
     [ INVALID, 'related,mhtml',"multipart/related with mhtml schema" ],
     [ INVALID, 'mixed,mhtml',"multipart/mixed with mhtml schema" ],
     [ INVALID, 'multi-plain,mhtml',"text/plain with mhtml schema" ],

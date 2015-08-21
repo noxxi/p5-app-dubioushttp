@@ -17,10 +17,10 @@ DESC
 
     # ------------------------- Tests ----------------------------------------
 
-    [ VALID,  '' => 'simple and valid request'],
+    [ VALID,  'ok' => 'VALID: simple request'],
     [ UNCOMMON_VALID, 'http09' => 'HTTP 0.9 response (no header)'],
 
-    [ 'invalid data before content-length and content' ],
+    [ 'INVALID: data before content-length and content' ],
     [ INVALID, 'emptycont' => 'empty continuation line'],
     [ INVALID, '8bitkey' => 'line using 8bit field name'],
     [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
@@ -30,7 +30,7 @@ DESC
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
     [ INVALID, 'cr' => 'line just containing CR: \r\r\n'],
 
-    [ 'various broken responses' ],
+    [ 'INVALID: various broken responses' ],
     [ INVALID, 'code-only' => 'status line stops after code, no phrase'],
     [ INVALID, 'http-lower' => 'http/1.1 instead of HTTP/1.1'],
     [ INVALID, 'proto:HTTP/0.9' => 'HTTP/0.9 instead of HTTP/1.1'],
@@ -46,7 +46,7 @@ DESC
     [ INVALID, 'cr-no-lf' => 'use \r instead of \r\n' ],
     [ INVALID, 'no-cr-lf' => 'use \n instead of \r\n' ],
 
-    [ 'redirect without location' ],
+    [ 'INVALID: redirect without location' ],
     [ INVALID, '300' => 'code 300 without location header'],
     [ INVALID, '301' => 'code 301 without location header'],
     [ INVALID, '302' => 'code 302 without location header'],
@@ -55,7 +55,7 @@ DESC
     [ INVALID, '307' => 'code 307 without location header'],
     [ INVALID, '308' => 'code 308 without location header'],
 
-    [ 'other status codes' ],
+    [ 'INVALID: other status codes with invalid behavior' ],
     [ INVALID, '100' => 'code 100 with body'],
     [ INVALID, '101' => 'code 101 with body'],
     [ INVALID, '102' => 'code 102 with body'],
@@ -63,14 +63,18 @@ DESC
     [ INVALID, '205' => 'code 205 with body'],
     [ INVALID, '206' => 'code 206 with body'],
     [ INVALID, '304' => 'code 304 with body'],
-    [ UNCOMMON_VALID, '400' => 'code 400 with body'],
     [ INVALID, '401' => 'code 401 with body and no authorization requested'],
+    [ INVALID, '407' => 'code 407 with body and no authorization requested'],
+
+    [ 'VALID: other status codes with valid behavior' ],
+    [ UNCOMMON_VALID, '400' => 'code 400 with body'],
     [ UNCOMMON_VALID, '403' => 'code 403 with body'],
     [ UNCOMMON_VALID, '404' => 'code 404 with body'],
     [ UNCOMMON_VALID, '406' => 'code 406 with body'],
-    [ INVALID, '407' => 'code 407 with body and no authorization requested'],
     [ UNCOMMON_VALID, '500' => 'code 500 with body'],
     [ UNCOMMON_VALID, '502' => 'code 502 with body'],
+
+    [ 'INVALID: malformed status codes' ],
     [ INVALID, '2xx' => 'invalid status code with non-digits (2xx)'],
     [ INVALID, '2'   => 'invalid status code, only single digit (2)'],
     [ INVALID, '2000' => 'invalid status code, too much digits (2000)'],
@@ -125,6 +129,7 @@ sub make_response {
 	    push @transform, sub { $_[0] =~ s{\r?\n}{\n}g }
 	} elsif ( m{^proto:(.*)} ) {
 	    $statusline = "$1 $code ok\r\n";
+	} elsif ( $_ eq 'ok' ) {
 	} else {
 	    die $_
 	}

@@ -16,12 +16,12 @@ DESC
     # ------------------------- Tests ----------------------------------------
 
     # these should be fine
-    [ 'plain data' ],
-    [ VALID, '' => 'plain data'],
+    [ 'VALID: plain data' ],
+    [ VALID, 'ok' => 'plain data'],
     [ VALID, 'ce:gzip' => 'data with global content-encoding gzip'],
 
     # packed inside message/rfc822
-    [ 'packed inside message/rfc822' ],
+    [ 'INVALID: packed inside message/rfc822' ],
     [ INVALID, 'rfc822' => 'simply packed in message/rfc822' ],
     [ INVALID, 'cte:base64;rfc822' => 'packed in message/rfc822 with content-transfer-encoding base64' ],
     [ INVALID, 'ce:gzip;rfc822' => 'packed in message/rfc822 with content-encoding gzip' ],
@@ -43,6 +43,7 @@ sub make_response {
 	    $hdr .= "Content-length: ".length($data)."\r\n";
 	    $data = "$hdr\r\n$data\r\n";
 	    $hdr = "Content-type: message/rfc822\r\n";
+	} elsif ( $_ eq 'ok') {
 	} else {
 	    die $_
 	}

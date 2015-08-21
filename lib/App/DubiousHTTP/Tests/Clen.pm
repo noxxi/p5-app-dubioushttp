@@ -13,18 +13,18 @@ content-lenth headers are given.
 DESC
 
     # ------------------------ Tests -----------------------------------
-    [ 'single or no content-length' ],
+    [ 'VALID: single or no content-length' ],
     [ VALID, 'close,clen,content' => 'single content-length with connection close'],
     #[ VALID, 'keep-alive,clen,content' => 'single content-length with keep-alive'],
     [ VALID, 'close,content' => 'no content-length with connection close'],
     [ VALID, 'close,clen,content,junk' => 'single content-length with connection close, content followed by junk'],
     [ VALID, 'close,clen,clen,content,junk' => 'correct content-length twice, content followed by junk' ],
 
-    [ 'content-length does not match content' ],
+    [ 'INVALID: content-length does not match content' ],
     [ INVALID, 'close,clen200,content' => 'content-length double real content, eof after real content' ],
     [ INVALID, 'close,clen50,content' => 'content-length half real content, eof after real content' ],
 
-    [ 'double content-length' ],
+    [ 'INVALID: multiple conflicting content-length' ],
     [ INVALID, 'close,clen50,clen,content' => 'content-length half and full' ],
     [ INVALID, 'close,clen,clen50,content' => 'content-length full and half' ],
     [ INVALID, 'close,clen200,clen,content,junk' => 'content-length double and full' ],
@@ -36,7 +36,7 @@ DESC
     [ INVALID, 'close,xte,clen,clen200,content,junk' => 'content-length full and double, invalid Transfer-Encoding' ],
     [ INVALID, 'close,xte,clen-folding100,clen200,content,junk' => 'content-length full (folded) and double, invalid Transfer-Encoding' ],
 
-    [ 'content-length header containing two numbers' ],
+    [ 'INVALID: content-length header containing two numbers' ],
     [ INVALID, 'close,clen50-folding100,content' => 'content-length half but full after line folding, eof after real content' ],
     [ INVALID, 'close,clen50-100,content' => 'content-length half and full on same line, eof after real content' ],
     [ INVALID, 'close,clen50-(100),content' => 'content-length half and full on same line, but full as MIME comment, eof after real content' ],

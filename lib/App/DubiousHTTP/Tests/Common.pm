@@ -113,6 +113,45 @@ function ping_back(url) {
     }
 }
 PING_JS
+    'stylesheet.css' => [
+	"Content-type: text/css\r\n".
+	"Expires: Tue, 30 Jul 2033 20:04:02 GMT\r\n",
+	<<'STYLESHEET' ],
+body { max-width: 55em; line-height: 140%; margin-left: 2em; }
+ul { list-style-type: square; padding-left: 2em; }
+h1 { font-variant: small-caps; font-size: x-large; }
+h2,h3 { font-size: large; }
+.runtest { text-align: right; margin-right: 20%; }
+.runtest a {
+  text-decoration: none;
+  background-color: #a3a9d4;
+  color: #333333;
+  padding: 4px 6px 4px 6px;
+  white-space: nowrap;
+}
+
+h1,h2,h3 { border: 1px; border-style: solid; padding: 5px 10px 5px 10px; }
+h1 { color: #000; background: #eee; padding-top: 10px; padding-bottom: 10px; }
+h2 { color: #444; background: #eee; }
+h3 { color: #444; background: #fff; }
+h2,h3 { margin-top: 2em; }
+
+* { font-size: medium; font-family: Verdana,sans-serif; }
+
+pre { font-family: Monospace,monospace; }
+
+.button {
+  text-decoration: none;
+  background-color: #EEEEEE;
+  color: #333333;
+  padding: 2px 6px 2px 6px;
+  border-top: 1px solid #CCCCCC;
+  border-right: 1px solid #333333;
+  border-bottom: 1px solid #333333;
+  border-left: 1px solid #CCCCCC;
+  white-space: nowrap;
+}
+STYLESHEET
 );
 
 
@@ -160,7 +199,7 @@ sub SETUP {
     no strict 'refs';
     *{$pkg.'::ID'} = sub { $id };
     *{$pkg.'::SHORT_DESC'} = sub { $desc };
-    *{$pkg.'::LONG_DESC'} = sub { $ldesc };
+    *{$pkg.'::LONG_DESC_HTML'} = sub { $ldesc };
     *{$pkg.'::TESTS'} = sub { @tests_only };
     *{$pkg.'::make_index_page'} = sub { make_index_page($pkg,@tests) };
 
@@ -181,25 +220,15 @@ sub make_index_page {
     my $class = shift;
     my $body = <<'BODY';
 <!doctype html><html lang=en><body>
-<style>
-.button {
-  text-decoration: none;
-  background-color: #EEEEEE;
-  color: #333333;
-  padding: 2px 6px 2px 6px;
-  border-top: 1px solid #CCCCCC;
-  border-right: 1px solid #333333;
-  border-bottom: 1px solid #333333;
-  border-left: 1px solid #CCCCCC;
-}
-</style>
 <script src=/ping.js></script>
+<link rel="stylesheet" href="/stylesheet.css">
 BODY
-    $body .= "<pre>".html_escape($class->LONG_DESC())."</pre><hr>";
-    $body .= "<table>";
+    $body .= "<h1>".$class->SHORT_DESC."</h1>";
+    $body .= $class->LONG_DESC_HTML()."<hr>";
+    $body .= '<table width="100%">';
     for my $test (@_) {
 	if (!blessed($test)) {
-	    $body .= "<tr><td colspan=3><hr>$test->[0]<hr></td></tr>";
+	    $body .= "<tr><td colspan=3><h2>$test->[0]</h2></td></tr>";
 	    next;
 	} 
 	my $valid = $test->VALID;
@@ -209,8 +238,8 @@ BODY
 	$body .= "<td style='border-style:none; background: $bg url(\"".$test->url("$base.png"). "\");'>&nbsp;". 
 	    html_escape($test->DESCRIPTION) ."&nbsp;&nbsp;</td>";
 	$body .= "<td style='border-style:none;'><iframe seamless=seamless scrolling=no style='width: 8em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
-	$body .= "<td>&nbsp;<a class=button href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
-	# $body .= "<td>&nbsp;<a class=button href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
+	$body .= "<td>&nbsp;<a class=button target=_blank href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
+	# $body .= "<td>&nbsp;<a class=button target=_blank href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
 	$body .= "</tr>";
 	$body .= "<script src=".$test->url("$base.js")."></script>";
     }

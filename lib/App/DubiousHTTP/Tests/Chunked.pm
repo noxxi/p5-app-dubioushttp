@@ -9,13 +9,12 @@ SETUP(
     <<'DESC',
 Various tests with invalid or uncommon forms of setting or not setting the
 Transfer-Encoding: chunked header:
-- chunked is not defined for HTTP/1.0, but some systems still interprete the
-  header for HTTP/1.0 responses
-- some systems do not support breaking HTTP header over multiple lines
-- some systems are happy if 'chunked' is matched somewhere in the header,
-- some even interprete the existence of a Transfer-Encoding header as enough
-  to expect chunked data
-Details see http://noxxi.de/research/dubious-http.html
+<ul>
+<li> chunked is not defined for HTTP/1.0, but some systems still interpret the header for HTTP/1.0 responses</li>
+<li> some systems do not support breaking HTTP header over multiple lines</li>
+<li> some systems are happy if 'chunked' is matched somewhere in the header</li>
+<li>some even interprete the existence of a Transfer-Encoding header as enough to expect chunked data</li>
+</ul>
 DESC
 
     # ------------------------ Tests -----------------------------------

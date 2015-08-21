@@ -78,6 +78,7 @@ sub add_client {
 		return;
 	    }
 		
+	    $clen = $hdr = undef;
 	    if (!$close) {
 		if ($wbuf =~m{(\r?\n)\1}g) {
 		    $close = _mustclose( substr($wbuf,0,pos($wbuf)) );

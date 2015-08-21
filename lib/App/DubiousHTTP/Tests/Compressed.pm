@@ -19,8 +19,6 @@ And some browsers accept x-gzip and x-deflate specifications, and some even
 specifications like "x gzip" or "gzip x".
 Most browsers accept multiple content-encoding headers, even if it does not
 make much sense to compress content twice with the same encoding.
-
-Details see http://noxxi.de/research/unusual-http-content-encoding.html
 DESC
 
     # ------------------------- Tests ----------------------------------------

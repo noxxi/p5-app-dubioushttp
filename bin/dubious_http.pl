@@ -90,7 +90,7 @@ sub serve {
 
 	local $BASE_URL = "http://$listen";
 	my ($auto,$src,$cat,$page,$spec,$qstring) = $path =~m{\A / 
-	    (?:(auto/)|(src/))?
+	    (?:(auto)/|((?:raw)?src)/)?
 	    ([^/]+)
 	    (?: / ([^/\?]*))?
 	    (?: / ([^\?]*))?
@@ -113,9 +113,33 @@ sub serve {
 		    last;
 		}
 		$content ||= $_->make_response($page,$spec,$rqhdr);
-		return $content if !$src;
-		return "HTTP/1.0 200 ok\r\nContent-type: text/plain\r\n".
-		    "Content-length: ".length($content)."\r\n\r\n".$content;
+		if (!$src) {
+		    return $content;
+		} elsif ($src eq 'rawsrc') {
+		    return "HTTP/1.0 200 ok\r\n".
+			"Content-type: application/octet-stream\r\n".
+			"Content-Disposition: attachment; filename=\"$cat+$page+$spec\"\r\n".
+			"Content-length: ".length($content)."\r\n\r\n".$content;
+		} else {
+		    $content =~s{([\x00-\x1f\\<>\x7f-\xff])}{
+			$1 eq "\\" ? "\\\\" :
+			$1 eq "\r" ? "\\r" :
+			$1 eq "\n" ? "\n" :
+			$1 eq "<" ? "&lt;" :
+			$1 eq ">" ? "&gt;" :
+			sprintf("\\%02x",ord($1))
+		    }esg;
+
+		    (my $raw = $path) =~s{/src/}{/rawsrc/};
+		    $content = "<pre>$content</pre><hr>".
+			"<a class=srclink href=$raw>raw source</a>";
+
+		    return "HTTP/1.0 200 ok\r\n".
+			"Content-type: text/html\r\n".
+			"Content-length: ".length($content)."\r\n\r\n".$content;
+		    
+		}
+
 	    }
 	}
 

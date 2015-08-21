@@ -8,11 +8,10 @@ SETUP(
     'mime',
     "no all MIME makes sense for HTTP",
     <<'DESC',
-Various tests with multipart contents.
-- most systems do not handle multipart in a special way
-- but Firefox often just uses the last part and ignores the rest
-- while Opera additionally interprets Content-Transfer-Encoding header
-Details see http://noxxi.de/research/dubious-http.html
+Various tests with multipart contents. 
+Most systems do not handle multipart in a special way but Firefox often just
+uses the last part and ignores the rest while Opera additionally interprets
+Content-Transfer-Encoding header.
 DESC
     
     # ---------------------- Tests ------------------------------------

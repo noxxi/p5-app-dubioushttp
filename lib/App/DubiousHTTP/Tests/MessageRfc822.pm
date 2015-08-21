@@ -10,7 +10,7 @@ SETUP(
     'messagerfc822',
     "RFC822 message transfered with HTTP",
     <<'DESC',
-This tries to transfer RFC822 encoded messages with Attachment
+This test tries to transfer RFC822 encoded messages with attachments.
 DESC
 
     # ------------------------- Tests ----------------------------------------

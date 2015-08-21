@@ -13,13 +13,101 @@ for my $cat ( qw( Chunked Compressed Clen Broken Mime MessageRfc822 Range ) ) {
 
 sub categories { @cat }
 sub make_response {
-    my $page = "<!doctype html><html><body>";
-    $page .= "<a href=/auto/all/novirus.txt>Bulk test browser/proxy behavior</a><br>\n";
-    $page .= "<a href=/auto/all/eicar.txt>Bulk test firewall evasion with EICAR test virus</a><br>\n";
-    $page .= "<hr>\n";
+    my $page = <<'HTML';
+<!doctype html><html><body>
+<link rel="stylesheet" href="/stylesheet.css">
+<h1>HTTP standard conformance tests - HTTP evader</h1>
+
+<p>
+While HTTP seems to be a simple protocol it is in reality complex enough that
+different implementations of the protocol vary how the behave in case of HTTP
+responses which are either slightly invalid or valid but uncommon.
+These interpretation differences is critical if a firewall behaves
+differently then the browser it should protect because it can be abused to
+bypass the protection of the firewall.
+</p>
+
+<p>
+The following tests are intended to test the behavior of browsers regarding
+invalid or uncommon HTTP responses. And if there is a firewall or proxy between
+the test server and the browser then it can be seen how this affects the results
+and if a bypass of the protection would be possible.
+More information about bypassing firewalls using interpretation differences can
+be found <a href=http://noxxi.de/research/semantic-gap.html>here</a>.
+</p>
+
+<h2>Bulk test with innocent payload</h2>
+
+<p>
+This bulk test automatically triggers various kinds of strange HTTP responses
+which contain an innocent payload and compares the payload it gets in the
+browser against the expected payload. It uses XMLHttpRequests for this purpose
+which often but not in all cases show the same behavior as other HTTP requests
+by the browser (i.e. loading image, script,...). 
+In lots of cases the browser will extract the original payload from the response
+even the response itself was invalid. On the other hand there are cases were the
+browser does not get the expected payload even if the response was valid,
+because either the browser or a proxy/firewall in between does not fully
+understand legit HTTP or blocked legit but uncommon HTTP for security reasons.
+</p>
+<p class=runtest><a href=/auto/all/novirus.txt>Run Test</a></p>
+
+<h2>Bulk test with virus payload</h2>
+
+<p>
+This is the same bulk test as the previous test with the exception that the
+payload is a virus this time. The payload consists of the <a
+href=http://www.eicar.org/86-0-Intended-use.html>EICAR test virus</a> which is
+commonly used for basic tests of antivirus and which should be detected by every
+firewall which does deep inspection to filter out malware. 
+</p>
+<p>
+The goal of this test is to find out if the firewall interprets the HTTP
+response in a different way then the browser and if this would allow a critical
+bypass of the firewalls protection. Since the EICAR test virus used in this test
+is not malicious it is safe to run this test even if the firewall gets
+successfully bypassed.
+It is important to consider that the XMLHttpRequests used for this tests do 
+behave the same as normal download links in most but not all cases. This means
+to verify that an evasion is actually possible with a download link one should
+use the provided link to actually test the evasion.
+</p>
+<p class=runtest><a href=/auto/all/eicar.txt>Run Test</a></p>
+
+<h2>Non-Bulk tests</h2>
+
+<p>
+The following tests analyze the behavior of browsers in specific cases, like
+loading an image or loading HTML into an iframe and also offer a download for
+the EICAR test virus. They all follow the same style:
+<ul>
+<li>A background image is used to check loading of images:
+<ul>
+<li>If the response is the expected one (i.e. success for good responses and
+failure for bad responses) the background of the description is green or yellow.
+Yellow is used for success when getting a valid but uncommon responses.</li>
+<li>In case the response is not expected (i.e. success for bad responses or
+failure for good responses) the background gets red.</li>
+</ul>
+</li>
+<li>An iframe is used to check loading of HTML. The text it contains depends on
+what was expected:
+<ul>
+<li>If "ok" is shown it successfully got the expected valid response</li>
+<li>If "EEEK!" is shown it successfully got the expected valid but uncommon response</li>
+<li>If "BAD!" is shown it interpreted an invalid response as valid</li>
+<li>If nothing is or garbage is shown it failed to load the response correctly. This might
+be good or bad, depending on the response.
+</ul>
+</li>
+</ul>
+</p>
+
+HTML
     for( grep { $_->TESTS } @cat ) {
-	$page .= "<a href=/".$_->ID.">".html_escape($_->SHORT_DESC)."</a>\n";
-	$page .= "<pre>".html_escape( $_->LONG_DESC )."</pre>";
+	$page .= "<h3>".html_escape($_->SHORT_DESC)."</h3>";
+	$page .= $_->LONG_DESC_HTML;
+	$page .= "<p class=runtest><a href=/".$_->ID.">Run Test</a></p>\n";
     }
     $page .= "</body></html>";
     return "HTTP/1.0 200 ok\r\n".

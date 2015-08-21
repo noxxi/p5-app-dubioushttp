@@ -5,9 +5,14 @@ use App::DubiousHTTP::Tests::Common;
 
 SETUP( 
     'broken',
-    "Various broken requests",
+    "Various broken responses",
     <<'DESC',
-This tries various kinds of broken HTTP responses.
+This test tries various kinds of broken HTTP responses like
+<ul>
+<li>invalid characters inside the response header</li>
+<li>invalid HTTP versions</li>
+<li>invalid status codes or missing information for these status codes (like location with redirects)</li>
+</ul>
 DESC
 
     # ------------------------- Tests ----------------------------------------
@@ -42,20 +47,30 @@ DESC
     [ INVALID, 'no-cr-lf' => 'use \n instead of \r\n' ],
 
     [ 'redirect without location' ],
+    [ INVALID, '300' => 'code 300 without location header'],
     [ INVALID, '301' => 'code 301 without location header'],
     [ INVALID, '302' => 'code 302 without location header'],
     [ INVALID, '303' => 'code 303 without location header'],
+    [ INVALID, '305' => 'code 305 without location header'],
     [ INVALID, '307' => 'code 307 without location header'],
     [ INVALID, '308' => 'code 308 without location header'],
 
     [ 'other status codes' ],
-    [ INVALID, '300' => 'code 300 with body'],
     [ INVALID, '100' => 'code 100 with body'],
     [ INVALID, '101' => 'code 101 with body'],
     [ INVALID, '102' => 'code 102 with body'],
     [ INVALID, '204' => 'code 204 with body'],
+    [ INVALID, '205' => 'code 205 with body'],
+    [ INVALID, '206' => 'code 206 with body'],
     [ INVALID, '304' => 'code 304 with body'],
-    [ INVALID, '305' => 'code 305 with body'],
+    [ UNCOMMON_VALID, '400' => 'code 400 with body'],
+    [ INVALID, '401' => 'code 401 with body and no authorization requested'],
+    [ UNCOMMON_VALID, '403' => 'code 403 with body'],
+    [ UNCOMMON_VALID, '404' => 'code 404 with body'],
+    [ UNCOMMON_VALID, '406' => 'code 406 with body'],
+    [ INVALID, '407' => 'code 407 with body and no authorization requested'],
+    [ UNCOMMON_VALID, '500' => 'code 500 with body'],
+    [ UNCOMMON_VALID, '502' => 'code 502 with body'],
     [ INVALID, '2xx' => 'invalid status code with non-digits (2xx)'],
     [ INVALID, '2'   => 'invalid status code, only single digit (2)'],
     [ INVALID, '2000' => 'invalid status code, too much digits (2000)'],

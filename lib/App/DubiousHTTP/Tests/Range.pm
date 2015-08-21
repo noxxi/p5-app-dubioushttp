@@ -7,7 +7,7 @@ SETUP(
     'range',
     "unexpected range header",
     <<'DESC',
-Try to trick browsers into accepting partial data (and requesting rest)
+These tests try to trick browsers into accepting partial data (and requesting rest)
 by using Range headers in response, even if no range was requested.
 It seems, that this does not work - but at least wget tries to automatically
 resume a broken request with a partial request.

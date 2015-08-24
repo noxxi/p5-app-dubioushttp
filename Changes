@@ -1,3 +1,7 @@
+2015/08/21 0.023
+- lots of beautification and documentation
+- added tests for script include behavior too (which shows that Chrome is more
+  strict when including scripts)
 2015/08/05 0.022
 - add some more tests
 - offer to show src of response in auto-mode

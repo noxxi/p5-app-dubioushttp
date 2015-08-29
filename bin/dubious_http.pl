@@ -103,6 +103,14 @@ sub serve {
 	return App::DubiousHTTP::Tests->auto($cat,$page,$spec,$qstring,$rqhdr)
 	    if $auto;
 
+	if ( $page eq 'ALL' && $cat ) {
+	    for ( App::DubiousHTTP::Tests->categories ) {
+		return $_->make_index_page(undef,,$spec,$rqhdr)
+		    if $_->ID eq $cat;
+	    }
+	}
+
+
 	if ( $page && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
 		$_->ID eq $cat or next;

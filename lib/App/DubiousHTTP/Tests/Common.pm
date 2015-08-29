@@ -201,7 +201,11 @@ sub SETUP {
     *{$pkg.'::SHORT_DESC'} = sub { $desc };
     *{$pkg.'::LONG_DESC_HTML'} = sub { $ldesc };
     *{$pkg.'::TESTS'} = sub { @tests_only };
-    *{$pkg.'::make_index_page'} = sub { make_index_page($pkg,@tests) };
+    *{$pkg.'::make_index_page'} = sub { 
+	my ($self,$page,$spec,$rqhdr) = @_;
+	return make_index_page($pkg,@tests) if ! $spec;
+	return make_index_page($pkg,undef,grep { $_->[0] && $_->[0] eq $spec } @tests);
+    };
 
     *{$pkg.'::Test::ID'} = sub { shift->[0] };
     *{$pkg.'::Test::DESCRIPTION'} = sub { shift->[1] };
@@ -217,16 +221,21 @@ sub SETUP {
 }
 
 sub make_index_page {
-    my $class = shift;
+    my ($class,@tests) = @_;
     my $body = <<'BODY';
 <!doctype html><html lang=en><body>
 <script src=/ping.js></script>
 <link rel="stylesheet" href="/stylesheet.css">
 BODY
-    $body .= "<h1>".$class->SHORT_DESC."</h1>";
-    $body .= $class->LONG_DESC_HTML()."<hr>";
+    if ($tests[0]) {
+	$body .= "<h1>".$class->SHORT_DESC."</h1>";
+	$body .= $class->LONG_DESC_HTML()."<hr>";
+    } else {
+	# skip header
+	shift @tests
+    }
     $body .= '<table style="width: 100%; border-style: none; border-spacing: 0px;">';
-    for my $test (@_) {
+    for my $test (@tests) {
 	if (!blessed($test)) {
 	    $body .= "<tr><td colspan=5><h2>$test->[0]</h2></td></tr>";
 	    next;

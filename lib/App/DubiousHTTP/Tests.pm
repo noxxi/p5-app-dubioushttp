@@ -33,7 +33,7 @@ invalid or uncommon HTTP responses. And if there is a firewall or proxy between
 the test server and the browser then it can be seen how this affects the results
 and if a bypass of the protection would be possible.
 More information about bypassing firewalls using interpretation differences can
-be found <a href=http://noxxi.de/research/semantic-gap.html>here</a>.
+be found <a href="http://noxxi.de/research/semantic-gap.html">here</a>.
 </p>
 
 <h2>Bulk test with innocent payload</h2>
@@ -50,14 +50,14 @@ browser does not get the expected payload even if the response was valid,
 because either the browser or a proxy/firewall in between does not fully
 understand legit HTTP or blocked legit but uncommon HTTP for security reasons.
 </p>
-<p class=runtest><a href=/auto/all/novirus.txt>Run Test</a></p>
+<p class=runtest><a href="/auto/all/novirus.txt">Run Test</a></p>
 
 <h2>Bulk test with virus payload</h2>
 
 <p>
 This is the same bulk test as the previous test with the exception that the
 payload is a virus this time. The payload consists of the <a
-href=http://www.eicar.org/86-0-Intended-use.html>EICAR test virus</a> which is
+href="http://www.eicar.org/86-0-Intended-use.html">EICAR test virus</a> which is
 commonly used for basic tests of antivirus and which should be detected by every
 firewall which does deep inspection to filter out malware. 
 </p>
@@ -72,7 +72,7 @@ behave the same as normal download links in most but not all cases. This means
 to verify that an evasion is actually possible with a download link one should
 use the provided link to actually test the evasion.
 </p>
-<p class=runtest><a href=/auto/all/eicar.txt>Run Test</a></p>
+<p class=runtest><a href="/auto/all/eicar.txt">Run Test</a></p>
 
 <h2>Non-Bulk tests</h2>
 
@@ -100,6 +100,7 @@ which behave differently.
 </p>
 
 HTML
+    $page =~s{href="(/[^"]+)"}{ 'href="'. garble_url($1). '"' }eg;
     for( grep { $_->TESTS } @cat ) {
 	$page .= "<h3>".html_escape($_->SHORT_DESC)."</h3>";
 	$page .= $_->LONG_DESC_HTML;
@@ -130,7 +131,8 @@ sub auto {
     $isbad ||= '';
     $html .= "isbad ='$isbad';\n";
     $html .= "var checks = [];\n";
-    $html .= "checks.push({ page:'/clen/$page/close,clen,content', desc:'sanity check', valid:1, expect_bad:1 });\n";
+    $html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content"). 
+	"', desc:'sanity check', valid:1, expect_bad:1 });\n";
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {

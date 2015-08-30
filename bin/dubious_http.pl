@@ -16,7 +16,7 @@ See --mode doc for details about the tests.
 
 Help:               $0 -h|--help
 Test descriptions:  $0 -M|--mode doc
-Use as HTTP server: $0 -M|--mode server ip:port
+Use as HTTP server: $0 -M|--mode server [--no-garble-url] ip:port 
 Export Pcaps:       $0 -M|--mode pcap target-dir
 
 USAGE
@@ -28,6 +28,7 @@ my $mode = 'doc';
 GetOptions(
     'h|help'   => sub { usage() },
     'M|mode=s' => \$mode,
+    'no-garble-url' => \$NOGARBLE,
 );
 
 if ( $mode eq 'server' ) {
@@ -83,6 +84,7 @@ sub serve {
 
 	if ($path =~m{\A/submit_results} && $payload) {
 	    $rqhdr .= $payload;
+	    $rqhdr =~s{( /=[A-Za-z0-9_\-]+={0,2} )}{ ungarble_url($1) }eg;
 	    $rqhdr =~s{^}{ }mg;
 	    warn $rqhdr;
 	    return "HTTP/1.0 204 ok\r\n\r\n";
@@ -140,7 +142,7 @@ sub serve {
 
 		    (my $raw = $path) =~s{/src/}{/rawsrc/};
 		    $content = "<pre>$content</pre><hr>".
-			"<a class=srclink href=$raw>raw source</a>";
+			"<a class=srclink href=".garble_url($raw).">raw source</a>";
 
 		    return "HTTP/1.0 200 ok\r\n".
 			"Content-type: text/html\r\n".

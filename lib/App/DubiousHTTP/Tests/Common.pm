@@ -3,9 +3,10 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(SETUP content html_escape VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID);
+our @EXPORT = qw(SETUP content html_escape VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE);
 use Scalar::Util 'blessed';
 
+our $NOGARBLE = 0;
 use constant {
     VALID => 1,
     INVALID => 0,
@@ -212,7 +213,7 @@ sub SETUP {
     *{$pkg.'::Test::VALID'} = sub { shift->[2] };
     *{$pkg.'::Test::url'} = sub { 
 	my ($self,$page) = @_;
-	return "/$id/$page/$self->[0]"
+	return garble_url("/$id/$page/$self->[0]");
     };
     *{$pkg.'::Test::make_response'} = sub { 
 	my ($self,$page,$spec,$rqhdr) = @_;
@@ -260,6 +261,47 @@ BODY
         "Content-type: text/html\r\n".
         "Content-length: ".length($body)."\r\n\r\n".
         $body;
+}
+
+sub garble_url {
+    my $url = shift;
+    return $url if $NOGARBLE;
+    my ($keep,$garble) = $url =~m{^((?:https?://[^/]+)?/)(.+)}
+        or return $url;
+    my @g = split('',$garble);
+    my $g = pack('L',rand(2**32));
+    my @r = unpack("aaaa",$g);
+    while (@g) {
+        $g .= shift(@g) ^ $r[0];
+        push @r, shift(@r);
+    }
+    # url safe base64
+    $g = pack('u',$g);
+    $g =~s{(^.|\n)}{}mg;
+    $g =~tr{` -_}{AA-Za-z0-9\-_};
+    if ( my $pad = ( 3 - (4+length($garble)) % 3 ) % 3) {
+	substr($g,-$pad) = '=' x $pad;
+    }
+    return "$keep=$g";
+}
+
+sub ungarble_url {
+    my $url = shift;
+    my ($keep,$u,$rest) = $url =~m{^(.*/)=([0-9A-Za-z_\-]+={0,2})([/? ].*)?$}
+        or return $url;
+    # url safe base64 -d
+    $u =~s{=+$}{};
+    $u =~tr{AA-Za-z0-9\-_}{` -_};
+    $u =~s{(.{1,60})}{ chr(32 + length($1)*3/4) . $1 . "\n" }eg;
+    $u = unpack("u",$u);
+    my @r = unpack('aaaa',substr($u,0,4,''));
+    my @u = split('',$u);
+    $u = '';
+    while (@u) {
+        $u .= shift(@u) ^ $r[0];
+        push @r, shift(@r);
+    }
+    return $keep . $u . ($rest || '');
 }
 
 

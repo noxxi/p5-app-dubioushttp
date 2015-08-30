@@ -3,6 +3,7 @@ use warnings;
 package App::DubiousHTTP::TestServer;
 use IO::Socket::INET;
 use Scalar::Util 'weaken';
+use App::DubiousHTTP::Tests::Common 'ungarble_url';
 
 my $MAX_CLIENTS = 100;
 my $SELECT = App::DubiousHTTP::TestServer::Select->new;
@@ -97,12 +98,13 @@ sub add_client {
 	    my ($ua) = $hdr =~m{^User-Agent:\s*([^\r\n]*)}mi;
 	    $ua ||= 'Unknown-UA';
 	    my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
+	    $line = ungarble_url($line);
 	    $line =~s{\?rand=0\.\d+ }{ };  # remove random for anti-caching
 	    warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
-	    (my $method,$page) = $hdr =~m{ \A 
+	    (my $method,$page) = $line =~m{ \A 
 		(GET|POST) [\040]+ 
 		(/\S*) [\040]+ 
-		HTTP/1\.[01] \r?\n
+		HTTP/1\.[01] \z
 	    }x or do {
 		$wbuf .= "HTTP/1.0 204 ok\r\n\r\n";
 		$close = 1;

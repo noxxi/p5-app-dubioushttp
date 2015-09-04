@@ -331,6 +331,9 @@ function check_page(req,test,status) {
 		results = results + "E | " + status + " | " + test['page'] + " | " + test['desc'] + " | evasion\n";
 		evasions++;
 	    }
+	} else if (test['expect_bad']) {
+	    // add answer to results, maybe we can get the type of firewall from the error message
+	    results = results + "T | " + result64 + "\n";
 	}
 	return;
     }

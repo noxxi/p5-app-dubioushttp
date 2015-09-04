@@ -3,12 +3,14 @@ use warnings;
 package App::DubiousHTTP::TestServer;
 use IO::Socket::INET;
 use Scalar::Util 'weaken';
-use App::DubiousHTTP::Tests::Common 'ungarble_url';
+use Digest::MD5 'md5_base64';
+use App::DubiousHTTP::Tests::Common qw($TRACKHDR ungarble_url);
 
 my $MAX_CLIENTS = 100;
 my $SELECT = App::DubiousHTTP::TestServer::Select->new;
 my %clients;
 my $DEBUG = 0;
+my %trackhdr;
 
 sub run {
     shift;
@@ -95,12 +97,35 @@ sub add_client {
 	    # read header
 	    $hdr = substr($rbuf,0,pos($rbuf),'');
 	    my ($line) = $hdr =~m{^([^\r\n]*)};
-	    my ($ua) = $hdr =~m{^User-Agent:\s*([^\r\n]*)}mi;
-	    $ua ||= 'Unknown-UA';
-	    my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
 	    $line = ungarble_url($line);
 	    $line =~s{\?rand=0\.\d+ }{ };  # remove random for anti-caching
-	    warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
+
+	    my $digest = '';
+	    if ($TRACKHDR) {
+		my $xhdr = $hdr;
+		$xhdr =~s{\r?\n}{\n}g;
+		$xhdr =~s{\A.*\n}{}; # remove request line
+		my %KEEPHDR = map { lc($_) => 1 } qw(Accept-Encoding Accept User-Agent Accept-Language);
+		( my $dhdr = $xhdr ) =~s{^([^\s:]+)(:\s*)(.*(\n[ \t].*)*\n)}{
+		    $KEEPHDR{lc($1)} ? "$1$2$3" : "$1$2XXX\r\n"
+		}emg;
+		my $digest = substr(md5_base64($dhdr),0,8);
+		$digest =~ tr{+/}{\$%};
+		if (!$trackhdr{$digest}) {
+		    $trackhdr{$digest} = 1;
+		    my $accept = $xhdr =~m{^Accept:\s*([^\r\n]+)}mi && $1 || '-';
+		    my $ua = $xhdr =~m{^User-Agent:\s*([^\r\n]+)}mi && $1 || 'Unknown-UA';
+		    my @via = $xhdr =~m{^Via:\s*([^\r\n]*)}mig;
+		    $xhdr =~s{^}{ |$digest|- }mg;
+		    warn " |$digest|-BEGIN $accept | $ua\n |$digest|- $line\n$xhdr";
+		}
+		warn localtime()." |$digest| ". $cl->peerhost." | $line\n";
+	    } else {
+		my $ua = $hdr =~m{^User-Agent:\s*([^\r\n]+)}mi && $1 || 'Unknown-UA';
+		my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
+		warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
+	    }
+
 	    (my $method,$page) = $line =~m{ \A 
 		(GET|POST) [\040]+ 
 		(/\S*) [\040]+ 

@@ -16,7 +16,7 @@ See --mode doc for details about the tests.
 
 Help:               $0 -h|--help
 Test descriptions:  $0 -M|--mode doc
-Use as HTTP server: $0 -M|--mode server [--no-garble-url] ip:port 
+Use as HTTP server: $0 -M|--mode server [--no-garble-url] [--no-track-header] ip:port 
 Export Pcaps:       $0 -M|--mode pcap target-dir
 
 USAGE
@@ -24,11 +24,13 @@ USAGE
 }
 
 our $BASE_URL="http://foo";
+$TRACKHDR=1;
 my $mode = 'doc';
 GetOptions(
     'h|help'   => sub { usage() },
     'M|mode=s' => \$mode,
     'no-garble-url' => \$NOGARBLE,
+    'track-header!' => \$TRACKHDR,
 );
 
 if ( $mode eq 'server' ) {

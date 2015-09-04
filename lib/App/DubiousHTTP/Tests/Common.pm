@@ -3,7 +3,7 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(SETUP content html_escape VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE);
+our @EXPORT = qw(SETUP content html_escape VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $TRACKHDR);
 use Scalar::Util 'blessed';
 
 our $NOGARBLE = 0;
@@ -291,7 +291,7 @@ sub ungarble_url {
         or return $url;
     # url safe base64 -d
     $u =~s{=+$}{};
-    $u =~tr{AA-Za-z0-9\-_}{` -_};
+    $u =~tr{A-Za-z0-9\-_}{`!-_};
     $u =~s{(.{1,60})}{ chr(32 + length($1)*3/4) . $1 . "\n" }eg;
     $u = unpack("u",$u);
     my @r = unpack('aaaa',substr($u,0,4,''));

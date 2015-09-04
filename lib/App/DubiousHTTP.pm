@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 package App::DubiousHTTP;
-our $VERSION = '0.023_2';
+our $VERSION = '0.024';
 
 1;
 __END__
@@ -57,8 +57,8 @@ With luck the client tries to resume starting with the given position.
 
 =head1 SEE ALSO
 
-http://noxxi.de/research/dubious-http.html
-http://noxxi.de/research/unusual-http-content-encoding.html
+http://noxxi.de/research/http-evader.html
+http://noxxi.de/research/semantic-gap.html
 
 =head1 AUTHOR
 

@@ -1,3 +1,4 @@
+2015/09/04 0.024
 - if in the automated evasion test the initial simple request to eicar.txt
   results in the expected failure add the error message to the results sent
   in /submit_results

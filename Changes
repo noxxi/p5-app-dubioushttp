@@ -1,3 +1,13 @@
+- if in the automated evasion test the initial simple request to eicar.txt
+  results in the expected failure add the error message to the results sent
+  in /submit_results
+- track different request headers, i.e order of fields etc to distinguish browsers 
+  and changes done by proxies
+- by default garble URLs so firewalls can not simply block all URLs with 
+  eicar.txt inside, switch off with --no-garble-url. It will still accept
+  ungarbled URLs but produce garbled ones.
+- with http://host/broken/ALL/testid etc one will get the test line with
+  image, script, html ... for only this test (i.e http://host/broken/ALL/302).
 2015/08/21 0.023
 - lots of beautification and documentation
 - added tests for script include behavior too (which shows that Chrome is more

@@ -131,8 +131,17 @@ sub auto {
     $isbad ||= '';
     $html .= "isbad ='$isbad';\n";
     $html .= "var checks = [];\n";
-    $html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content"). 
-	"', desc:'sanity check', valid:1, expect_bad:1 });\n";
+    if ($isbad) {
+	my (undef,$novirus) = content('novirus.txt');
+	$html .= "checks.push({ page:'". garble_url("/clen/novirus.txt/close,clen,content").
+	    "', desc:'sanity check without test virus', valid:1, log_header:1, expect_harmless:'".
+	    encode_base64($novirus,'')."' });\n";
+	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
+	    "', desc:'sanity check with test virus', valid:1, expect_bad:1, log_header:1 });\n";
+    } else {
+	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
+	    "', desc:'sanity check', valid:1, log_header:1 });\n";
+    }
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
@@ -303,18 +312,38 @@ function check_page(req,test,status) {
 	if (response == null) {
 	    _log("no data for " + test['page']);
 	} else {
+	    var expect = test['expect_harmless'] || expect64;
 	    var result64 = base64_encode(response);
-	    if (result64 == expect64) {
+	    if (result64 == expect) {
 		status = 'match';
 	    } else {
 		status = 'change(' + status + ')';
 		_log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
 		_log( "response: " + result64 );
-		_log( "expect:   " + expect64 );
+		_log( "expect:   " + expect );
 	    }
 	}
     }
     add_debug( test['desc'] + ' - ' + status );
+
+    if (test['log_header']) {
+	// i.e. Via added or similar
+	try {
+	    var header = req.getAllResponseHeaders();
+	    results = results + "H | " + test['page'] + " | " + base64_encode(header) + "\n";
+	} catch(e) {}
+    }
+
+    if (test['expect_harmless']) {
+	// should simply pass
+	if (status != 'match') {
+	    add_notice("Blocked harmless request",test['page'],test['desc']);
+	    results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | blocked harmless\n";
+	    results = results + "T | " + test['page'] + " | " + result64 + "\n";
+	}
+	return;
+    }
+
     if (isbad != '') {
 	// check for evasion
 	if (status == 'match') {
@@ -333,7 +362,7 @@ function check_page(req,test,status) {
 	    }
 	} else if (test['expect_bad']) {
 	    // add answer to results, maybe we can get the type of firewall from the error message
-	    results = results + "T | " + result64 + "\n";
+	    results = results + "T | " + test['page'] + " | " + result64 + "\n";
 	}
 	return;
     }

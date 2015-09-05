@@ -21,7 +21,7 @@ my %builtin = (
     'novirus.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
 	"Content-disposition: attachment; filename=\"novirus.txt\"\r\n",
-	'5762z	etuf6udezjtd3qi7rvesghwvs79xc 6ceei zieftqwdy d3yf6zex ydf5u',
+	"Don't be afraid to look at this message. It is completely harmless. Really!",
     ],
     'eicar.txt' => [ 
 	"Content-type: application/octet-stream\r\n".

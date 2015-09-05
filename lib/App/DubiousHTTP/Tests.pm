@@ -162,7 +162,8 @@ sub _auto_static_html { return <<'HTML'; }
 <meta charset="utf-8">
 <style>
 body      { font-family: Verdana, sans-serif; }
-#nobad    { padding: 1em; margin: 1em; background: red; display: none; }
+#nobad    { padding: 2em; margin: 1em; background: #ff3333; display: none; }
+#nobad div   { font-size: 150%; margin: 0.5em;  }
 #noevade  { padding: 1em; margin: 1em; background: green; display: none; }
 #notice   { padding: 1em; margin: 1em; background: #e9f2e1; display: none; }
 #warnings { padding: 1em; margin: 1em; background: #e3a79f; display: none; }
@@ -175,8 +176,8 @@ body      { font-family: Verdana, sans-serif; }
 <div id=noscript>
 You need to have JavaScript enabled to run this tests.
 </div>
-<div id=process></div>
 <div id=nobad> </div>
+<div id=process></div>
 <div id=noevade> </div>
 <div id=warnings><h1>Serious Problems</h1><ol id=ol_warnings></ol></div>
 <div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
@@ -349,8 +350,17 @@ function check_page(req,test,status) {
 	if (status == 'match') {
 	    if (test['expect_bad']) {
 		// assume no or stupid content filter
-		div_nobad.innerHTML = div_nobad.innerHTML + "No content filter detecting " + isbad + ".<br>"
-		    + "Assuming no content filter.<br>";
+		div_nobad.innerHTML = div_nobad.innerHTML + "<div>" +
+		    "It looks like no malware filtering is done by the firewall since " + isbad +
+		    " could not be detected when transferred using a valid and typical HTTP response.</div><div>" +
+		    "The tests will continue but it is assumed that there is no malware filter available. " +
+		    "This means no firewall bypasses can be detected (there is nothing to bypass) but instead " +
+		    "it will only check the behavior of the browser regarding atypical or malformed responses." +
+		    "</div><div>" +
+		    "If you feel that your firewall should be able to detect the malware please check your " +
+		    "firewall configuration and make sure that antivirus is enabled. This test uses only " + isbad +
+		    " which any antivirus product should be able to detect." +
+		    "</div>";
 		div_nobad.style.display = 'block';
 		results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | no content filter\n";
 		isbad = '';

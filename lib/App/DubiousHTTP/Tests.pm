@@ -441,7 +441,7 @@ function runtests(todo,done) {
 	    if (evasions == 0) {
 		results = results + "NO EVASIONS\n";
 		div = document.getElementById('noevade');
-		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>" +
+		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>"
 		    + "<br><br>To get an overview which products behave that nicely "
 		    + "it would be helpful if you provide us with information about the firewall product you use. "
 		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";

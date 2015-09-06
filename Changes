@@ -1,3 +1,7 @@
+- If one evasion failed re-check with novirus.txt if it failed because of the
+  firewall or because the browser considered the response invalid. Also add
+  these information to the summary for the user and tell the user again how to
+  check for false positives and how EICAR looks like.
 - give summary and offer a way to give feedback with product details
 - log response header we got for initial innocent and test virus request
 2015/09/04 0.024

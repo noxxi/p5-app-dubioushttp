@@ -14,7 +14,7 @@ DESC
 
     # ------------------------ Tests -----------------------------------
     [ 'VALID: single or no content-length' ],
-    [ VALID, 'close,clen,content' => 'single content-length with connection close'],
+    [ SANITY_VALID, 'close,clen,content' => 'single content-length with connection close'],
     #[ VALID, 'keep-alive,clen,content' => 'single content-length with keep-alive'],
     [ VALID, 'close,content' => 'no content-length with connection close'],
     [ VALID, 'close,clen,content,junk' => 'single content-length with connection close, content followed by junk'],

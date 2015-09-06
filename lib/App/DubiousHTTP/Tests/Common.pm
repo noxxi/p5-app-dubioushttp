@@ -3,11 +3,12 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(SETUP content html_escape VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $TRACKHDR);
+our @EXPORT = qw(SETUP content html_escape SANITY_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $TRACKHDR);
 use Scalar::Util 'blessed';
 
 our $NOGARBLE = 0;
 use constant {
+    SANITY_VALID => 2, # no browser should fail on this
     VALID => 1,
     INVALID => 0,
     UNCOMMON_VALID => -1,

@@ -134,22 +134,27 @@ sub auto {
     $html .= "isbad ='$isbad';\n";
     $html .= "var checks = [];\n";
     if ($isbad) {
-	my (undef,$novirus) = content('novirus.txt');
+	$html .= "expect64_harmless = '".encode_base64( (content('novirus.txt'))[1],'')."';\n";
 	$html .= "checks.push({ page:'". garble_url("/clen/novirus.txt/close,clen,content").
-	    "', desc:'sanity check without test virus', valid:1, log_header:1, expect_harmless:'".
-	    encode_base64($novirus,'')."' });\n";
+	    "', desc:'sanity check without test virus', valid:2, log_header:1, harmless:1 });\n";
 	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
-	    "', desc:'sanity check with test virus', valid:1, expect_bad:1, log_header:1 });\n";
+	    "', desc:'sanity check with test virus', valid:2, expect_bad:1, log_header:1 });\n";
     } else {
 	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
-	    "', desc:'sanity check', valid:1, log_header:1 });\n";
+	    "', desc:'sanity check', valid:2, log_header:1 });\n";
     }
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
-	    $html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d });\n",
-		$_->url($page), quotemeta($_->DESCRIPTION), $_->VALID)
+	    if ($isbad) {
+		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, harmless_page: '%s'  });\n",
+		    $_->url($page), quotemeta($_->DESCRIPTION), $_->VALID, $_->url('novirus.txt'))
+	    } else {
+		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d });\n",
+		    $_->url($page), quotemeta($_->DESCRIPTION), $_->VALID)
+	    }
 	}
+
     }
     $html .= "runtests(checks,0);\n</script>\n";
     return "HTTP/1.0 200 ok\r\n".
@@ -175,6 +180,7 @@ body      { font-family: Verdana, sans-serif; }
 .desc     { font-size: 110%; }
 .srclink  { font-variant: small-caps; }
 .trylink  { font-variant: small-caps; }
+#eicar    { font-family: Lucida Sans Typewriter,Lucida Console,monaco,Bitstream Vera Sans Mono,monospace; padding: 0.5em; margin: 0.5em; border-style: solid; border-width: 1px; }
 </style>
 <div id=noscript>
 You need to have JavaScript enabled to run this tests.
@@ -229,6 +235,7 @@ var div_nobad = document.getElementById('nobad');
 var div_evasions = document.getElementById('evasions');
 var div_process = document.getElementById('process');
 var expect64;
+var expect64_harmless;
 var isbad;
 var results = '';
 var reference;
@@ -269,6 +276,8 @@ function _log(m) {
 }
 
 var evasions = 0;
+var evasions_blocked = 0;
+var browser_invalid = 0;
 function xhr(method,page,payload,callback) {
     var req = null;
     try { req = new XMLHttpRequest(); } 
@@ -329,7 +338,10 @@ function check_page(req,test,status) {
 	if (response == null) {
 	    _log("no data for " + test['page']);
 	} else {
-	    var expect = test['expect_harmless'] || expect64;
+	    var expect = expect64;
+	    if (test['harmless'] || test['harmless_retry']) {
+		expect = expect64_harmless;
+	    }
 	    var result64 = base64_encode(response);
 	    if (result64 == expect) {
 		status = 'match';
@@ -341,7 +353,6 @@ function check_page(req,test,status) {
 	    }
 	}
     }
-    add_debug( test['desc'] + ' - ' + status );
 
     if (test['log_header']) {
 	// i.e. Via added or similar
@@ -351,17 +362,33 @@ function check_page(req,test,status) {
 	} catch(e) {}
     }
 
-    if (test['expect_harmless']) {
-	// should simply pass
+    add_debug( test['desc'] + ' - ' + status + ( test['harmless_retry'] ? ' - retry with harmless content':'' ));
+
+    if (test['harmless'] || test['harmless_retry']) {
+	// perfectly good response should pass, bad might fail or not
 	if (status != 'match') {
-	    add_notice("Blocked harmless request",test['page'],test['desc']);
-	    results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | blocked harmless\n";
-	    results = results + "T | " + test['page'] + " | " + result64 + "\n";
+	    browser_invalid++;
+	    if (test['valid'] == 2) { // no browser should fail on this!
+		add_warning("Failed to load harmless and perfectly valid response",test['page'],test['desc']);
+		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
+		results = results + "T | " + test['page'] + " | " + result64 + "\n";
+	    } else if (['valid']>0) {
+		add_notice("Failed to load harmless and valid response, might be browser bug",test['page'],test['desc']);
+		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
+		results = results + "T | " + test['page'] + " | " + result64 + "\n";
+	    } else {
+		results = results + "B | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
+	    }
+	} else if (test['harmless_retry']) {
+	    // in this case an evasion attempt was blocked by the firewall
+	    evasions_blocked++;
+	    results = results + "Z | " + status + " | " + test['page'] + " | " + test['desc'] + " | evasion blocked\n";
 	}
-	return;
+	return status;
     }
 
-    if (isbad != '') {
+
+    if (isbad) {
 	// check for evasion
 	if (status == 'match') {
 	    if (test['expect_bad']) {
@@ -390,7 +417,7 @@ function check_page(req,test,status) {
 	    // add answer to results, maybe we can get the type of firewall from the error message
 	    results = results + "T | " + test['page'] + " | " + result64 + "\n";
 	}
-	return;
+	return status;
     }
 
     // check for standard conformance
@@ -421,6 +448,7 @@ function check_page(req,test,status) {
 	    results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | ok\n";
 	}
     }
+    return status;
 }
 
 var rand = Math.random();
@@ -428,38 +456,53 @@ function runtests(todo,done) {
     var test = todo.shift();
     if (test) {
 	var total = todo.length + done;
-	div_process.innerHTML = "Progress: " + done + "/" + total + " - " + test['desc'];
+	div_process.innerHTML = "Progress: " + (100*done/total).toFixed(1) + "% - " + test['desc'];
 	xhr('GET',test['page'] + '?rand=' + rand,null,function(req,status) {
-	    check_page(req,test,status);
+	    status = check_page(req,test,status);
+	    if (isbad && test['harmless_page'] && status != 'match') {
+		// malware not found, either because the firewall filtered it
+		// or because the browser did not understand the response.
+		// check for the last by trying with novirus.txt
+		todo.unshift({ page: test['harmless_page'], desc: test['desc'], valid: test['valid'], harmless_retry:1 });
+	    }
 	    runtests(todo,done+1);
 	});
     } else {
 	div_process.style.display = 'none';
 	add_debug("*DONE*");
-	if (isbad != '') {
+	if (isbad) {
 	    var div;
 	    if (evasions == 0) {
 		results = results + "NO EVASIONS\n";
 		div = document.getElementById('noevade');
 		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>"
+		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
+		    + browser_invalid + " attempts failed because the browser considered the response invalid."
+		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too."
 		    + "<br><br>To get an overview which products behave that nicely "
 		    + "it would be helpful if you provide us with information about the firewall product you use. "
 		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
 	    } else {
 		div = document.getElementById('evadable');
-		div.innerHTML = "<h1>Danger!<br>" + evasions + " possible evasions detected!</h1>"
-		    + "This does not necessarily mean that all of these are usable with your browser so you better try each one by clicking the [TRY] link. "
-		    + "And since browsers behave differently it can also be that other evasions will be found if you try with another browser. "
-		    + "<br><br>To get an overview which products are affected by which evasions and to inform the maker of the product about the problems " 
+		div.innerHTML = "<h1>Danger!<br>Possible evasions detected!</h1>"
+		    + "The test detected that " + evasions + " evasion attempts were not blocked by the firewall.<br>"
+		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
+		    + browser_invalid + " attempts failed because the browser considered the response invalid."
+		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too.<br>"
+		    + "Since the test differs slightly from a manually triggered download it might be that some of the detected evasions are "
+		    + "not usable in reality, so please make sure the evasion works by clicking the [TRY] link "
+		    + "and comparing the downloaded file with the EICAR test virus. The file should be 68 byte and contain the string "
+		    + "<p><span id=eicar>X5O!P%@AP" + "[4\PZX54(P^)" + "7CC)7}$EICAR-STAND" + "ARD-ANTIVI" + "RUS-TEST-FILE!$H+H*</span></p>"
+		    + "To get an overview which products are affected by which evasions and to inform the maker of the product about the problems " 
 		    + "it would be helpful if you provide us with information about the firewall product you use. "
 		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
 	    }
-	    div.innerHTML += '<br><br><form enctype="multipart/form-data" method=POST action="/submit_details/' + reference + '/evasions=' + evasions + '">'
+	    div.innerHTML += '<br><br><form enctype="multipart/form-data" method=POST action="/submit_details/' + reference + '/evasions=' + evasions + "/evasions_blocked=" + evasions_blocked + '">'
 		+ '<input type=hidden name=results value="' + escapeAttribute(results) + '">'
 		+ '<textarea name=product cols=80 rows=4>... please add product description here ...</textarea>'
 		+ '<br><input type=submit name=Send></form>';
 	    div.style.display = 'block';
-	    xhr('POST','/submit_results/' + reference + '/evasions=' + evasions, results, null);
+	    xhr('POST','/submit_results/' + reference + '/evasions=' + evasions + "/evasions_blocked=" + evasions_blocked, results, null);
 	} else {
 	    xhr('POST','/submit_results/' + reference ,results, null);
 	}

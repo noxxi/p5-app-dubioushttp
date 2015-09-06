@@ -84,12 +84,16 @@ sub serve {
 	my ($path,$listen,$rqhdr,$payload) = @_;
 	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
 
-	if ($path =~m{\A/submit_results} && $payload) {
+	if ($path =~m{\A/submit_(?:(details)|results)} && $payload) {
+	    my $details = $1;
 	    $rqhdr .= $payload;
 	    $rqhdr =~s{( /=[A-Za-z0-9_\-]+={0,2} )}{ ungarble_url($1) }eg;
 	    $rqhdr =~s{^}{ }mg;
 	    warn $rqhdr;
-	    return "HTTP/1.0 204 ok\r\n\r\n";
+	    return "HTTP/1.0 204 ok\r\n\r\n" if ! $details;
+	    return "HTTP/1.0 200 ok\r\nContent-type: text/html\r\n\r\n"
+		."<!doctype html>"
+		."<h1>Thanks for providing us with the feedback.</h1>";
 	}
 
 	local $BASE_URL = "http://$listen";

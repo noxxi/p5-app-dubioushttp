@@ -121,6 +121,8 @@ sub auto {
     my ($hdr,$body,$isbad) = content($page);
     $html .= "<script>\n";
 
+    $html .= sprintf("reference='%x%x';\n", rand(2**32), time());
+
     my ($accept) = $rqhdr =~m{^Accept:[ \t]*([^\r\n]+)}mi;
     if ($qstring =~m{(?:^|\&)accept=([^&]*)}) {
 	($accept = $1) =~s{(?:%([a-f\d]{2})|(\+))}{ $2 ? ' ' : chr(hex($1)) }esg;
@@ -165,6 +167,7 @@ body      { font-family: Verdana, sans-serif; }
 #nobad    { padding: 2em; margin: 1em; background: #ff3333; display: none; }
 #nobad div   { font-size: 150%; margin: 0.5em;  }
 #noevade  { padding: 1em; margin: 1em; background: green; display: none; }
+#evadable { padding: 1em; margin: 1em; background: #ff3333; display: none; }
 #notice   { padding: 1em; margin: 1em; background: #e9f2e1; display: none; }
 #warnings { padding: 1em; margin: 1em; background: #e3a79f; display: none; }
 #process  { padding: 1em; margin: 1em; background: #f2f299; }
@@ -177,7 +180,9 @@ body      { font-family: Verdana, sans-serif; }
 You need to have JavaScript enabled to run this tests.
 </div>
 <div id=nobad> </div>
+<div id=evasions></td>
 <div id=process></div>
+<div id=evadable> </div>
 <div id=noevade> </div>
 <div id=warnings><h1>Serious Problems</h1><ol id=ol_warnings></ol></div>
 <div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
@@ -221,10 +226,12 @@ var div_ol_notice = document.getElementById('ol_notice');
 var div_warnings = document.getElementById('warnings');
 var div_ol_warnings = document.getElementById('ol_warnings');
 var div_nobad = document.getElementById('nobad');
+var div_evasions = document.getElementById('evasions');
 var div_process = document.getElementById('process');
 var expect64;
 var isbad;
 var results = '';
+var reference;
 var accept = null;
 
 function add_warning(m,page,desc) {
@@ -245,6 +252,15 @@ function add_notice(m,page,desc) {
 
 function add_debug(m) {
     div_debug.innerHTML = div_debug.innerHTML + m + "<br>";
+}
+
+function escapeAttribute(attr) {
+    return attr
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
 }
 
 function _log(m) {
@@ -421,15 +437,31 @@ function runtests(todo,done) {
 	div_process.style.display = 'none';
 	add_debug("*DONE*");
 	if (isbad != '') {
+	    var div;
 	    if (evasions == 0) {
-		var div = document.getElementById('noevade');
-		div.style.display = 'block';
-		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>";
 		results = results + "NO EVASIONS\n";
+		div = document.getElementById('noevade');
+		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>" +
+		    + "<br><br>To get an overview which products behave that nicely "
+		    + "it would be helpful if you provide us with information about the firewall product you use. "
+		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
+	    } else {
+		div = document.getElementById('evadable');
+		div.innerHTML = "<h1>Danger!<br>" + evasions + " possible evasions detected!</h1>"
+		    + "This does not necessarily mean that all of these are usable with your browser so you better try each one by clicking the [TRY] link. "
+		    + "And since browsers behave differently it can also be that other evasions will be found if you try with another browser. "
+		    + "<br><br>To get an overview which products are affected by which evasions and to inform the maker of the product about the problems " 
+		    + "it would be helpful if you provide us with information about the firewall product you use. "
+		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
 	    }
-	    xhr('POST','/submit_results/evasions=' + evasions ,results, null);
+	    div.innerHTML += '<br><br><form enctype="multipart/form-data" method=POST action="/submit_details/' + reference + '/evasions=' + evasions + '">'
+		+ '<input type=hidden name=results value="' + escapeAttribute(results) + '">'
+		+ '<textarea name=product cols=80 rows=4>... please add product description here ...</textarea>'
+		+ '<br><input type=submit name=Send></form>';
+	    div.style.display = 'block';
+	    xhr('POST','/submit_results/' + reference + '/evasions=' + evasions, results, null);
 	} else {
-	    xhr('POST','/submit_results' ,results, null);
+	    xhr('POST','/submit_results/' + reference ,results, null);
 	}
     }
 }

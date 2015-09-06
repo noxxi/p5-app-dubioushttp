@@ -477,7 +477,7 @@ function runtests(todo,done) {
 		div = document.getElementById('noevade');
 		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>"
 		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
-		    + browser_invalid + " attempts failed because the browser considered the response invalid."
+		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks invalid responses even if there is no malware payload."
 		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too."
 		    + "<br><br>To get an overview which products behave that nicely "
 		    + "it would be helpful if you provide us with information about the firewall product you use. "
@@ -487,7 +487,7 @@ function runtests(todo,done) {
 		div.innerHTML = "<h1>Danger!<br>Possible evasions detected!</h1>"
 		    + "The test detected that " + evasions + " evasion attempts were not blocked by the firewall.<br>"
 		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
-		    + browser_invalid + " attempts failed because the browser considered the response invalid."
+		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks invalid responses even if there is no malware payload."
 		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too.<br>"
 		    + "Since the test differs slightly from a manually triggered download it might be that some of the detected evasions are "
 		    + "not usable in reality, so please make sure the evasion works by clicking the [TRY] link "

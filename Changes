@@ -1,3 +1,5 @@
+- complain if the firewall blocks sane response without virus, because that
+  might indicate that they employ a URL filter only or similar
 - If one evasion failed re-check with novirus.txt if it failed because of the
   firewall or because the browser considered the response invalid. Also add
   these information to the summary for the user and tell the user again how to

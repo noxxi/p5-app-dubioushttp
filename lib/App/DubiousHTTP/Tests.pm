@@ -173,6 +173,8 @@ body      { font-family: Verdana, sans-serif; }
 #nobad div   { font-size: 150%; margin: 0.5em;  }
 #noevade  { padding: 1em; margin: 1em; background: green; display: none; }
 #evadable { padding: 1em; margin: 1em; background: #ff3333; display: none; }
+#urlblock { padding: 1em; margin: 1em; background: #ffff00  ; display: none; }
+#urlblock div  { font-size: 150%; margin: 0.5em;  }
 #notice   { padding: 1em; margin: 1em; background: #e9f2e1; display: none; }
 #warnings { padding: 1em; margin: 1em; background: #e3a79f; display: none; }
 #process  { padding: 1em; margin: 1em; background: #f2f299; }
@@ -186,6 +188,7 @@ body      { font-family: Verdana, sans-serif; }
 You need to have JavaScript enabled to run this tests.
 </div>
 <div id=nobad> </div>
+<div id=urlblock> </div>
 <div id=evasions></td>
 <div id=process></div>
 <div id=evadable> </div>
@@ -372,6 +375,14 @@ function check_page(req,test,status) {
 		add_warning("Failed to load harmless and perfectly valid response",test['page'],test['desc']);
 		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
 		results = results + "T | " + test['page'] + " | " + result64 + "\n";
+		var div_urlblock = document.getElementById('urlblock');
+		div_urlblock.innerHTML = "<div>" 
+		    + "The firewall blocked a harmless and perfectly valid response from the server, which did not contain any kind of evasion attempts.<br>"
+		    + "It might be that the firewall blocked the access based on URL filtering and not based on the response at all. "
+		    + "This means any results you get during this tests should be considered with great caution because they might not actually reflect "
+		    + "the abilities of the firewall to detect malware."
+		    + "</div>";
+		div_urlblock.style.display = 'block';
 	    } else if (['valid']>0) {
 		add_notice("Failed to load harmless and valid response, might be browser bug",test['page'],test['desc']);
 		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
@@ -477,7 +488,7 @@ function runtests(todo,done) {
 		div = document.getElementById('noevade');
 		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>"
 		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
-		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks invalid responses even if there is no malware payload."
+		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks (invalid) responses even if there is no malware payload."
 		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too."
 		    + "<br><br>To get an overview which products behave that nicely "
 		    + "it would be helpful if you provide us with information about the firewall product you use. "
@@ -487,7 +498,7 @@ function runtests(todo,done) {
 		div.innerHTML = "<h1>Danger!<br>Possible evasions detected!</h1>"
 		    + "The test detected that " + evasions + " evasion attempts were not blocked by the firewall.<br>"
 		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
-		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks invalid responses even if there is no malware payload."
+		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks (invalid) responses even if there is no malware payload."
 		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too.<br>"
 		    + "Since the test differs slightly from a manually triggered download it might be that some of the detected evasions are "
 		    + "not usable in reality, so please make sure the evasion works by clicking the [TRY] link "

@@ -83,7 +83,7 @@ DESC
     [ INVALID, '20'  => 'invalid status code, two digits (20)'],
     [ INVALID, '2000' => 'invalid status code, too much digits (2000)'],
     [ INVALID, '0200' => 'invalid status code, numeric (0200)'],
-    [ INVALID, 'space-200' => 'invalid status code, SPACE+200)'],
+    [ INVALID, ' 200' => 'invalid status code, SPACE+200)'],
 );
 
 sub make_response {
@@ -121,7 +121,7 @@ sub make_response {
 	    $only = 1;
 	} elsif ( $_ eq 'http09' ) {
 	    return $data;
-	} elsif ( m{^(\d.*)$} ) {
+	} elsif ( m{^(\s*\d.*)$} ) {
 	    $code = $1;
 	    $hdr .= "Connection: close\r\n";
 	} elsif ( $_ eq 'code-only' ) {

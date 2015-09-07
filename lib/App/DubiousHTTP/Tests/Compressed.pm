@@ -129,7 +129,7 @@ sub make_response {
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
     for (split(';',$spec)) {
-	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?((?:,(?:deflate|gzip))*)$} ) {
+	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?((?:,(?:deflate|gzip|identity))*)$} ) {
 	    $hdr .= $1 eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "\r\n " if $2;
 	    $hdr .= "x " if $3;

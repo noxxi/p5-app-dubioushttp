@@ -17,7 +17,7 @@ DESC
 
     # ------------------------- Tests ----------------------------------------
 
-    [ VALID,  'ok' => 'VALID: simple request'],
+    [ VALID,  'ok' => 'VALID: simple request with content-length'],
     [ UNCOMMON_VALID, 'http09' => 'HTTP 0.9 response (no header)'],
 
     [ 'INVALID: data before content-length and content' ],
@@ -25,26 +25,28 @@ DESC
     [ INVALID, '8bitkey' => 'line using 8bit field name'],
     [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
     [ INVALID, '177' => 'line \177\r\n' ],
-    [ INVALID, 'chunked;177' => 'chunked, after that line \177\r\n' ],
-    [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header' ],
+    [ INVALID, 'chunked;177' => 'Transfer-Encoding: chunked\r\n\177\r\n, served chunked' ],
+    [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header after status line' ],
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
     [ INVALID, 'cr' => 'line just containing CR: \r\r\n'],
 
     [ 'INVALID: various broken responses' ],
     [ INVALID, 'code-only' => 'status line stops after code, no phrase'],
-    [ INVALID, 'http-lower' => 'http/1.1 instead of HTTP/1.1'],
-    [ INVALID, 'proto:HTTP/0.9' => 'HTTP/0.9 instead of HTTP/1.1'],
-    [ INVALID, 'proto:HTTP/1.10' => 'HTTP/1.10 instead of HTTP/1.1'],
-    [ INVALID, 'proto:HTTP/1.00' => 'HTTP/1.00 instead of HTTP/1.0'],
-    [ INVALID, 'proto:HTTP/1.01' => 'HTTP/1.01 instead of HTTP/1.0'],
-    [ INVALID, 'proto:HTTP/1.2' => 'HTTP/1.2 instead of HTTP/1.1'],
-    [ INVALID, 'proto:HTTP/1.1 ' => 'HTTP/1.1+SPACE instead of HTTP/1.1'],
-    [ INVALID, "proto:HTTP/1.1\t" => 'HTTP/1.1+TAB instead of HTTP/1.1'],
-    #[ INVALID, "proto:HTTP/1.1\r" => 'HTTP/1.1+CR instead of HTTP/1.1'],
-    [ INVALID, "proto: HTTP/1.1" => 'SPACE+HTTP/1.1 instead of HTTP/1.1'],
-    [ INVALID, 'proto:FTP/1.1' => 'FTP/1.1 instead of HTTP/1.1'],
-    [ INVALID, 'cr-no-lf' => 'use \r instead of \r\n' ],
-    [ INVALID, 'no-cr-lf' => 'use \n instead of \r\n' ],
+    [ INVALID, 'http-lower' => 'version given as http/1.1 instead of HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/0.9' => 'version given as HTTP/0.9 instead of HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/1.10' => 'version given as HTTP/1.10 instead of HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/1.00' => 'version given as HTTP/1.00 instead of HTTP/1.0'],
+    [ INVALID, 'proto:HTTP/1.01' => 'version given as HTTP/1.01 instead of HTTP/1.0'],
+    [ INVALID, 'proto:HTTP/1.2' => 'version given as HTTP/1.2 instead of HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/1.1 ' => 'HTTP/1.1+SPACE: space after version in status line'],
+    [ INVALID, 'proto:HTTP/1.1\t' => 'HTTP/1.1+TAB: tab after version in status line'],
+    [ INVALID, 'proto:HTTP/1.1\r' => 'HTTP/1.1\r\r\n instead of HTTP/1.1\r\n'],
+    [ INVALID, "proto: HTTP/1.1" => 'version prefixed with space: SPACE+HTTP/1.1'],
+    [ INVALID, 'proto:FTP/1.1' => 'version FTP/1.1 instead of HTTP/1.1'],
+    [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
+    [ INVALID, 'lf-no-crlf' => 'single \n instead of \r\n' ],
+    [ INVALID, 'crcr-no-crlf' => '\r\r instead of \r\n' ],
+    [ INVALID, 'lfcr-no-crlf' => '\n\r instead of \r\n' ],
 
     [ 'INVALID: redirect without location' ],
     [ INVALID, '300' => 'code 300 without location header'],
@@ -76,9 +78,12 @@ DESC
 
     [ 'INVALID: malformed status codes' ],
     [ INVALID, '2xx' => 'invalid status code with non-digits (2xx)'],
+    [ INVALID, '20x' => 'invalid status code with non-digits (20x)'],
     [ INVALID, '2'   => 'invalid status code, only single digit (2)'],
+    [ INVALID, '20'  => 'invalid status code, two digits (20)'],
     [ INVALID, '2000' => 'invalid status code, too much digits (2000)'],
     [ INVALID, '0200' => 'invalid status code, numeric (0200)'],
+    [ INVALID, 'space-200' => 'invalid status code, SPACE+200)'],
 );
 
 sub make_response {
@@ -123,12 +128,17 @@ sub make_response {
 	    $statusline = "HTTP/$version $code\r\n";
 	} elsif ( $_ eq 'http-lower' ) {
 	    $statusline = "http/$version $code\r\n";
-	} elsif ( $_ eq 'cr-no-lf' ) {
-	    push @transform, sub { $_[0] =~ s{\r?\n}{\r}g }
-	} elsif ( $_ eq 'no-cr-lf' ) {
-	    push @transform, sub { $_[0] =~ s{\r?\n}{\n}g }
+	} elsif ( $_ =~ m{^((?:cr|lf)+)-no-crlf$} ) {
+	    my $w = $1;
+	    $w =~s{cr}{\r}g;
+	    $w =~s{lf}{\n}g;
+	    push @transform, sub { $_[0] =~ s{\r?\n}{$w}g }
 	} elsif ( m{^proto:(.*)} ) {
-	    $statusline = "$1 $code ok\r\n";
+	    my $proto = $1;
+	    $proto =~s{\\r}{\r};
+	    $proto =~s{\\t}{\t};
+	    $proto =~s{\\n}{\n};
+	    $statusline = "$proto $code ok\r\n";
 	} elsif ( $_ eq 'ok' ) {
 	} else {
 	    die $_

@@ -15,9 +15,10 @@ DESC
 
     # ---------------- Tests ----------------------------------------
     [ "VALID: all data at once" ],
-    [ VALID, 'full' => 'all data at once' ],
+    [ VALID, 'full' => 'simple response code 200' ],
 
     [ "INVALID: range without requested" ],
+    [ UNCOMMON_INVALID, 'range,full' => 'all data, but with code 206 and range header' ],
     [ INVALID, 'range',"send partial response even if full was requested" ],
     [ INVALID, 'range,incomplete',"use incomplete response to trigger partial request for rest of data" ],
 );
@@ -42,6 +43,12 @@ sub make_response {
 		"Accept-Ranges: bytes\r\n".
 		"Content-Range: bytes %d-%d/%d\r\n",
 		length($data),$start,$end-1,$total;
+	} elsif ( $spec{full} ) {
+	    $resp = sprintf "HTTP/$version 206 partial content\r\n".
+		"Content-length: %d\r\n".
+		"Accept-Ranges: bytes\r\n".
+		"Content-Range: bytes 0-%d/%d\r\n",
+		length($data),length($data)-1,$total;
 	} elsif ( $spec{incomplete} ) {
 	    $resp = "HTTP/$version 200 ok\r\n".
 		"Content-length: ".length($data)."\r\n";

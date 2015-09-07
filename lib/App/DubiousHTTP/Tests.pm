@@ -393,7 +393,7 @@ function check_page(req,test,status) {
 	} else if (test['harmless_retry']) {
 	    // in this case an evasion attempt was blocked by the firewall
 	    evasions_blocked++;
-	    results = results + "Z | " + status + " | " + test['page'] + " | " + test['desc'] + " | evasion blocked\n";
+	    results = results + "Z | " + test['retry4status'] + " | " + test['retry4page'] + " | " + test['desc'] + " | evasion blocked\n";
 	}
 	return status;
     }
@@ -474,7 +474,8 @@ function runtests(todo,done) {
 		// malware not found, either because the firewall filtered it
 		// or because the browser did not understand the response.
 		// check for the last by trying with novirus.txt
-		todo.unshift({ page: test['harmless_page'], desc: test['desc'], valid: test['valid'], harmless_retry:1 });
+		todo.unshift({ page: test['harmless_page'], desc: test['desc'], valid: test['valid'], harmless_retry:1,
+		    retry4status:status, retry4page: test['page']});
 	    }
 	    runtests(todo,done+1);
 	});

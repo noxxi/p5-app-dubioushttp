@@ -36,6 +36,25 @@ DESC
     [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
     [ INVALID, 'chunked,http10' => 'Chunked Header and HTTP/1.0. Served chunked.'],
     [ INVALID, 'chunked,clen,http10' => 'Chunked Header and Content-length and HTTP/1.0. Served chunked.'],
+    [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
+
+    [ 'INVALID: chunking with invalid HTTP versions' ],
+    [ INVALID, 'chunked,HTTP/1.2' => 'Chunked Header and HTTP/1.2. Served chunked.'],
+    [ INVALID, 'chunked,clen,HTTP/1.2,do_clen' => 'Chunked Header and HTTP/1.2. Not served chunked.'],
+    [ INVALID, 'chunked,HTTP/2.0' => 'Chunked Header and HTTP/2.0. Served chunked.'],
+    [ INVALID, 'chunked,clen,HTTP/2.0,do_clen' => 'Chunked Header and HTTP/2.0. erved chunked.'],
+    [ INVALID, 'chunked,HTTP/2.1' => 'Chunked Header and HTTP/2.1. Served chunked.'],
+    [ INVALID, 'chunked,clen,HTTP/2.1,do_clen' => 'Chunked Header and HTTP/2.1. erved chunked.'],
+    [ INVALID, 'chunked,HTTP/0.9' => 'Chunked Header and HTTP/0.9. Served chunked.'],
+    [ INVALID, 'chunked,clen,HTTP/0.9,do_clen' => 'Chunked Header and HTTP/0.9. Not served chunked.'],
+    [ INVALID, 'chunked,HTTP/1.01' => 'Chunked Header and HTTP/1.01. Served chunked.'],
+    [ INVALID, 'chunked,clen,HTTP/1.01,do_clen' => 'Chunked Header and HTTP/1.01. Not served chunked.'],
+    [ INVALID, 'chunked,HTTP/1.10' => 'Chunked Header and HTTP/1.10. Served chunked.'],
+    [ INVALID, 'chunked,clen,HTTP/1.10,do_clen' => 'Chunked Header and HTTP/1.10. Not served chunked.'],
+    [ INVALID, 'chunked,http/1.1' => 'Chunked Header and http/1.1. Served chunked.'],
+    [ INVALID, 'chunked,clen,http/1.1,do_clen' => 'Chunked Header and http/1.1. Not served chunked.'],
+    [ INVALID, 'chunked,http/1.0' => 'Chunked Header and http/1.0. Served chunked.'],
+    [ INVALID, 'chunked,clen,http/1.0,do_clen' => 'Chunked Header and http/1.0. Not served chunked.'],
 
     [ 'VALID: valid variations on "chunked" value' ],
     [ VALID, 'chUnked' => 'mixed case "chUnked", served chunked'],
@@ -68,7 +87,7 @@ sub make_response {
     my ($self,$page,$spec) = @_;
     return make_index_page() if $page eq '';
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
-    my $version = '1.1';
+    my $version = 'HTTP/1.1';
     my $te;
     for (split(',',$spec)) {
 	if ( ! $_ || $_ eq 'chunked' ) {
@@ -94,7 +113,9 @@ sub make_response {
 	} elsif ( $_ =~ m{^clen(\d+)?$} ) {
 	    $hdr .= "Content-length: ". int(($1||100)/100*length($data)) ."\r\n"
 	} elsif ( $_ eq 'http10' ) {
-	    $version = "1.0";
+	    $version = "HTTP/1.0";
+	} elsif ( $_ =~m{^HTTP/\S+}i ) {
+	    $version = $_;
 	} elsif ( $_ eq 'do_clen' ) {
 	    $te = 'clen'
 	} elsif ( $_ eq 'do_chunked' ) {
@@ -112,7 +133,7 @@ sub make_response {
 	    die $_
 	}
     }
-    $hdr = "HTTP/$version 200 ok\r\n$hdr";
+    $hdr = "$version 200 ok\r\n$hdr";
     $te ||= $hdr =~m{^Transfer-Encoding:}im ? 'chunked':'clen';
     if ( $te eq 'chunked' ) {
 	$data = join("", 

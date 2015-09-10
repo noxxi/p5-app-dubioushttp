@@ -38,6 +38,7 @@ DESC
     [ INVALID, 'proto:HTTP/1.00' => 'version given as HTTP/1.00 instead of HTTP/1.0'],
     [ INVALID, 'proto:HTTP/1.01' => 'version given as HTTP/1.01 instead of HTTP/1.0'],
     [ INVALID, 'proto:HTTP/1.2' => 'version given as HTTP/1.2 instead of HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/2.0' => 'version given as HTTP/2.0 instead of HTTP/1.1'],
     [ INVALID, 'proto:HTTP/1.1 ' => 'HTTP/1.1+SPACE: space after version in status line'],
     [ INVALID, 'proto:HTTP/1.1\t' => 'HTTP/1.1+TAB: tab after version in status line'],
     [ INVALID, 'proto:HTTP/1.1\r' => 'HTTP/1.1\r\r\n instead of HTTP/1.1\r\n'],

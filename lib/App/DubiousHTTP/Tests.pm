@@ -136,22 +136,22 @@ sub auto {
     if ($isbad) {
 	$html .= "expect64_harmless = '".encode_base64( (content('novirus.txt'))[1],'')."';\n";
 	$html .= "checks.push({ page:'". garble_url("/clen/novirus.txt/close,clen,content").
-	    "', desc:'sanity check without test virus', valid:2, log_header:1, harmless:1 });\n";
+	    "', desc:'sanity check without test virus', valid:2, log_header:1, harmless:1, file: 'novirus.txt' });\n";
 	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
-	    "', desc:'sanity check with test virus', valid:2, expect_bad:1, log_header:1 });\n";
+	    "', desc:'sanity check with test virus', valid:2, expect_bad:1, log_header:1, file: '$page' });\n";
     } else {
 	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
-	    "', desc:'sanity check', valid:2, log_header:1 });\n";
+	    "', desc:'sanity check', valid:2, log_header:1, file: '$page' });\n";
     }
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
 	    if ($isbad) {
-		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, harmless_page: '%s'  });\n",
-		    $_->url($page), quotemeta($_->DESCRIPTION), $_->VALID, $_->url('novirus.txt'))
+		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, harmless_page: '%s', file: '%s'  });\n",
+		    $_->url($page), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, $_->url('novirus.txt'),'novirus.txt')
 	    } else {
-		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d });\n",
-		    $_->url($page), quotemeta($_->DESCRIPTION), $_->VALID)
+		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, file:'%s' });\n",
+		    $_->url($page), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID,$page)
 	    }
 	}
 
@@ -244,24 +244,27 @@ var results = '';
 var reference;
 var accept = null;
 
-function add_warning(m,page,desc) {
-    div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <span class=desc>" + desc + "</span>" +
-	"&nbsp;<a class=trylink target=_blank href=" + page + ">try</a>" +
-	"&nbsp;<a class=srclink target=_blank href=/src" + page + ">src</a>" +
+function add_warning(m,test) {
+    div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <span class=desc>" + test['desc'] + "</span>" +
+	"&nbsp;<a class=trylink download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
+	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
 	"</li>";
     div_warnings.style.display = 'block';
 }
 
-function add_notice(m,page,desc) {
-    div_ol_notice.innerHTML = div_ol_notice.innerHTML + "<li>" + m + ": <span class=desc>" + desc + "</span>" +
-	"&nbsp;<a class=trylink target=_blank href=" + page + ">try</a>" +
-	"&nbsp;<a class=srclink target=_blank href=/src" + page + ">src</a>" +
+function add_notice(m,test) {
+    div_ol_notice.innerHTML = div_ol_notice.innerHTML + "<li>" + m + ": <span class=desc>" + test['desc'] + "</span>" +
+	"&nbsp;<a class=trylink download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
+	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
 	"</li>";
     div_notice.style.display = 'block';
 }
 
-function add_debug(m) {
-    div_debug.innerHTML = div_debug.innerHTML + m + "<br>";
+function add_debug(m,test) {
+    div_debug.innerHTML = div_debug.innerHTML + m +  
+	"&nbsp;<a class=trylink download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
+	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
+	"<br>";
 }
 
 function escapeAttribute(attr) {
@@ -365,14 +368,14 @@ function check_page(req,test,status) {
 	} catch(e) {}
     }
 
-    add_debug( test['desc'] + ' - ' + status + ( test['harmless_retry'] ? ' - retry with harmless content':'' ));
+    add_debug( test['desc'] + ' - ' + status + ( test['harmless_retry'] ? ' - retry with harmless content':''), test);
 
     if (test['harmless'] || test['harmless_retry']) {
 	// perfectly good response should pass, bad might fail or not
 	if (status != 'match') {
 	    browser_invalid++;
 	    if (test['valid'] == 2) { // no browser should fail on this!
-		add_warning("Failed to load harmless and perfectly valid response",test['page'],test['desc']);
+		add_warning("Failed to load harmless and perfectly valid response",test);
 		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
 		results = results + "T | " + test['page'] + " | " + result64 + "\n";
 		var div_urlblock = document.getElementById('urlblock');
@@ -384,7 +387,7 @@ function check_page(req,test,status) {
 		    + "</div>";
 		div_urlblock.style.display = 'block';
 	    } else if (['valid']>0) {
-		add_notice("Failed to load harmless and valid response, might be browser bug",test['page'],test['desc']);
+		add_notice("Failed to load harmless and valid response, might be browser bug",test);
 		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
 		results = results + "T | " + test['page'] + " | " + result64 + "\n";
 	    } else {
@@ -420,7 +423,7 @@ function check_page(req,test,status) {
 		isbad = '';
 	    } else {
 		// possible evasion of content filter
-		add_warning("Evasion possible",test['page'],test['desc']);
+		add_warning("Evasion possible",test);
 		results = results + "E | " + status + " | " + test['page'] + " | " + test['desc'] + " | evasion\n";
 		evasions++;
 	    }
@@ -434,26 +437,26 @@ function check_page(req,test,status) {
     // check for standard conformance
     if (status == 'match') {
 	if (test['valid'] == 0) {
-	    add_warning("success for bad response",test['page'],test['desc']);
+	    add_warning("success for bad response",test);
 	    results = results + "W | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for bad response\n";
 	} else if (test['valid'] == -1) {
-	    add_notice("success for valid uncommon response",test['page'],test['desc']);
+	    add_notice("success for valid uncommon response",test);
 	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for valid uncommon response\n";
 	} else if (test['valid']<0) {
-	    add_notice("success for invalid uncommon response",test['page'],test['desc']);
+	    add_notice("success for invalid uncommon response",test);
 	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for invalid uncommon response\n";
 	} else {
 	    results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | ok\n";
 	}
     } else {
 	if (test['valid']>0) {
-	    add_warning("failure for valid response",test['page'],test['desc']);
+	    add_warning("failure for valid response",test);
 	    results = results + "W | " + status + " | " + test['page'] + " | " + test['desc'] + " | failure for valid response\n";
 	} else if (test['valid'] == -1) {
-	    add_notice("failure for valid uncommon response",test['page'],test['desc']);
+	    add_notice("failure for valid uncommon response",test);
 	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | failure for valid uncommon response\n";
 	} else if (test['valid'] < 0) {
-	    add_notice("failure for invalid uncommon response",test['page'],test['desc']);
+	    add_notice("failure for invalid uncommon response",test);
 	    results = results + "N | " + status + " | " + test['page'] + " | " + test['desc'] + " | failure for invalid uncommon response\n";
 	} else {
 	    results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | ok\n";

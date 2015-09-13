@@ -33,6 +33,8 @@ DESC
     [ 'VALID: less common but valid requests' ],
     [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw' => 'content-encoding deflate, served with RFC1950 style deflate'],
     [ UNCOMMON_VALID, 'ce:nl-gzip;gzip' => 'content-encoding gzip but with continuation line, served gzipped'],
+    [ UNCOMMON_VALID, 'ce:nl-deflate;deflate' => 'content-encoding deflate but with continuation line, served with deflate'],
+    [ UNCOMMON_VALID, 'ce:nl-nl-deflate;deflate' => 'content-encoding deflate but with double continuation line, served with deflate'],
 
     # These should be fine according to RFC, but are not supported in the browsers
     # Thus treat is as problem if they get supported.
@@ -129,9 +131,10 @@ sub make_response {
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
     for (split(';',$spec)) {
-	if ( m{^(ce|te):(nl-)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?((?:,(?:deflate|gzip|identity))*)$} ) {
+	if ( m{^(ce|te):(nl-(?:nl-)?)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?((?:,(?:deflate|gzip|identity))*)$} ) {
 	    $hdr .= $1 eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "\r\n " if $2;
+	    $hdr .= "\r\n " if $2 eq 'nl-nl-';
 	    $hdr .= "x " if $3;
 	    $hdr .= $4;
 	    $hdr .= $6 if $6;

@@ -61,6 +61,7 @@ DESC
     [ VALID, 'rfc2047,do_clen' => 'rfc2047/base64 encoded "chunked", not served chunked' ],
     [ VALID, 'rfc2047,clen,do_clen' => 'rfc2047/base64 encoded "chunked" and content-length, not served chunked' ],
     [ UNCOMMON_VALID,'nl-chunked' => "chunked header with continuation line, served chunked"],
+    [ UNCOMMON_VALID,'nl-nl-chunked' => "chunked header with double continuation line, served chunked"],
 
     [ 'INVALID: invalid variations on "chunked" value' ],
     [ INVALID, 'chu' => '"chu" not "chunked"'],
@@ -77,6 +78,7 @@ DESC
     [ INVALID, 'xte,chunked,clen,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Served chunked." ],
     [ INVALID, 'chunked,clen,do_clen' => 'chunking and content-length, not served chunked'],
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
+    [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
 
     [ 'INVALID: invalid chunks' ],
     [ INVALID, 'chunked-lf' => "chunk with LF as delimiter instead of CRLF" ],
@@ -97,11 +99,15 @@ sub make_response {
 	    $te = $_
 	} elsif ( $_ eq 'chUnked' ) {
 	    $hdr .= "Transfer-Encoding: chUnked\r\n"
-	} elsif ( m{^(.*-)?nl-chunked$} ) {
+	} elsif ( m{^(.*-)?nl-(nl-)?chunked$} ) {
 	    my $prefix = $1 ||'';
-	    $hdr .= "Transfer-Encoding: $prefix\r\n chunked\r\n"
+	    $hdr .= "Transfer-Encoding: $prefix\r\n ";
+	    $hdr .= "\r\n " if $2;
+	    $hdr .= "chunked\r\n"
 	} elsif ( $_ eq 'chu' ) {
 	    $hdr .= "Transfer-Encoding: chu\r\n"
+	} elsif ( $_ eq 'ce-chunked' ) {
+	    $hdr .= "Content-Encoding: chunked\r\n"
 	} elsif ( $_ eq 'xchunked' ) {
 	    $hdr .= "Transfer-Encoding: xchunked\r\n"
 	} elsif ( $_ eq 'chunkedx' ) {

@@ -250,8 +250,8 @@ BODY
 	$body .= "<td><div style='height: 2em; border-style: solid; border-width: 1px; width: 6em; text-align: center; background: $bg url(\"".$test->url("$base.png"). "\");'><span style='vertical-align: middle;'>IMAGE</span></div></td>";
 	$body .= "<td><div id='".$test->ID."' style='height: 2em; border-style: solid; border-width: 1px; width: 6em; text-align: center; background: $bg'><span style='vertical-align: middle;'>SCRIPT</span></div></td>";
 	$body .= "<td><iframe seamless=seamless scrolling=no style='border-style: solid; border-width: 1px; width: 6em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
-	$body .= "<td>&nbsp;<a class=button target=_blank href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
-	# $body .= "<td>&nbsp;<a class=button target=_blank href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
+	$body .= "<td>&nbsp;<a class=button download='eicar.com' href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
+	# $body .= "<td>&nbsp;<a class=button download='eicar.zip' href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
 	$body .= "</tr>";
 	$body .= "<script src=".$test->url("$base.js")."></script>";
 	$body .= "<tr><td colspan=5><hr></td></tr>";

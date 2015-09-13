@@ -26,6 +26,12 @@ DESC
     [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
     [ INVALID, '177' => 'line \177\r\n' ],
     [ INVALID, 'chunked;177' => 'Transfer-Encoding: chunked\r\n\177\r\n, served chunked' ],
+    [ INVALID, 'hdrfirst;space;chunked' => '<space>Transfer-Encoding: chunked as first header line, served chunked' ],
+    [ INVALID, 'hdrfirst;tab;chunked' => '<tab>Transfer-Encoding: chunked as first header line, served chunked' ],
+    [ INVALID, 'hdrfirst;space;chunked;do_clen' => '<space>Transfer-Encoding: chunked as first header line, not served chunked' ],
+    [ INVALID, 'hdrfirst;tab;chunked;do_clen' => '<tab>Transfer-Encoding: chunked as first header line, not served chunked' ],
+    [ INVALID, 'hdrfirst;space;chunked;do_close' => '<space>Transfer-Encoding: chunked as first header line, not served chunked and no content-length' ],
+    [ INVALID, 'hdrfirst;tab;chunked;do_close' => '<tab>Transfer-Encoding: chunked as first header line, not served chunked and no content-length' ],
     [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header after status line' ],
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
     [ INVALID, 'cr' => 'line just containing CR: \r\r\n'],
@@ -90,13 +96,15 @@ DESC
 sub make_response {
     my ($self,$page,$spec) = @_;
     return make_index_page() if $page eq '';
-    my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
+    my ($cthdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
     my $te = 'clen';
     my $only = 0;
     my $code = 200;
     my $statusline;
     my @transform;
+    my $hdr = '';
+    my $hdrfirst;
     for (split(';',$spec)) {
 	if ( $_ eq 'emptycont' ) {
 	    $hdr .= "Foo: bar\r\n \r\n"
@@ -106,16 +114,23 @@ sub make_response {
 	    $hdr .= "Foo Bar: foobar\r\n"
 	} elsif ( $_ eq 'colon' ) {
 	    $hdr .= ": foo\r\n"
+	} elsif ( $_ eq 'space' ) {
+	    $hdr .= " "
+	} elsif ( $_ eq 'tab' ) {
+	    $hdr .= "\t"
+	} elsif ( $_ eq 'hdrfirst') {
+	    $hdrfirst = 1;
 	} elsif ( $_ eq 'junkline' ) {
 	    $hdr .= "qutqzdafsdshadsdfdshsdd sddfd\r\n"
 	} elsif ( $_ eq 'cr' ) {
 	    $hdr .= "\r\r\n"
-	} elsif ( $_ eq 'space' ) {
-	    $hdr .= " ";
 	} elsif ( $_ eq 'chunked' ) {
 	    $te = 'chunked';
-	    $data = sprintf("%x\r\n%s\r\n0\r\n\r\n",length($data),$data);
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
+	} elsif ( $_ eq 'do_clen') {
+	    $te = 'clen';
+	} elsif ( $_ eq 'do_close') {
+	    $te = 'close';
 	} elsif ( $_ eq '177' ) {
 	    $hdr .= "\177\r\n";
 	} elsif ( $_ eq 'only' ) {
@@ -145,11 +160,18 @@ sub make_response {
 	    die $_
 	}
     }
+    $data = join('', map { sprintf("%x\r\n%s\r\n", length($_),$_) } ($data =~m{(.{1,4})}sg,''))
+	if $te eq 'chunked';
     if (!$only) {
 	$hdr .= "Yet-another-header: foo\r\n";
 	$hdr .= "Content-length: ".length($data)."\r\n" if $te eq 'clen';
     }
     $statusline ||= "HTTP/$version $code ok\r\n";
+    if ($hdrfirst) {
+	$hdr .= $cthdr
+    } else {
+	$hdr = $cthdr . $hdr
+    }
     $hdr = "$statusline$hdr\r\n";
     for(@transform) {
 	$_->($hdr,$data);

@@ -134,7 +134,7 @@ sub make_response {
 	if ( m{^(ce|te):(nl-(?:nl-)?)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?((?:,(?:deflate|gzip|identity))*)$} ) {
 	    $hdr .= $1 eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "\r\n " if $2;
-	    $hdr .= "\r\n " if $2 eq 'nl-nl-';
+	    $hdr .= "\r\n " if $2 && $2 eq 'nl-nl-';
 	    $hdr .= "x " if $3;
 	    $hdr .= $4;
 	    $hdr .= $6 if $6;

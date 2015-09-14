@@ -261,10 +261,10 @@ function add_notice(m,test) {
 }
 
 function add_debug(m,test) {
-    div_debug.innerHTML = div_debug.innerHTML + m +  
+    div_debug.innerHTML = div_debug.innerHTML + m + (test ?
 	"&nbsp;<a class=trylink download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
-	"<br>";
+	"<br>": "");
 }
 
 function escapeAttribute(attr) {

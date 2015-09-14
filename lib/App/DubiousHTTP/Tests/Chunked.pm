@@ -28,7 +28,8 @@ DESC
 
     [ 'VALID: combined with content-length' ],
     # according to RFC2616 TE chunked has preference to clen
-    [ VALID, 'chunked,clen' => 'chunking and content-length, served chunked'],
+    [ VALID, 'chunked,clen' => 'chunked first then content-length, served chunked'],
+    [ VALID, 'clen,chunked' => 'content-length first then chunked, served chunked'],
     # but some still expect clen bytes
     [ VALID, 'chunked,clen200' => 'chunking and content-length header with double length, served chunked'],
     [ VALID, 'chunked,clen50'  => 'chunking and content-length header with half length, served chunked'],
@@ -36,7 +37,12 @@ DESC
     [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
     [ INVALID, 'chunked,http10' => 'Chunked Header and HTTP/1.0. Served chunked.'],
     [ INVALID, 'chunked,clen,http10' => 'Chunked Header and Content-length and HTTP/1.0. Served chunked.'],
-    [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
+    [ INVALID, 'clen,chunked,http10' => 'Content-length Header and Chunked and HTTP/1.0. Served chunked.'],
+
+    [ 'VALID: chunked header should be ignored with HTTP/1.0' ],
+    [ UNCOMMON_VALID, 'chunked,http10,do_clen' => 'Chunked Header and HTTP/1.0. Not served chunked.'],
+    [ UNCOMMON_VALID, 'chunked,clen,http10,do_clen' => 'Chunked Header and Content-length and HTTP/1.0. Not served chunked.'],
+    [ UNCOMMON_VALID, 'clen,chunked,http10,do_clen' => 'Content-length Header and Chunked and HTTP/1.0. Not served chunked.'],
 
     [ 'INVALID: chunking with invalid HTTP versions' ],
     [ INVALID, 'chunked,HTTP/1.2' => 'Chunked Header and HTTP/1.2. Served chunked.'],
@@ -78,6 +84,7 @@ DESC
     [ INVALID, 'xte,chunked,clen,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Served chunked." ],
     [ INVALID, 'chunked,clen,do_clen' => 'chunking and content-length, not served chunked'],
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
+    [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
     [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
 
     [ 'INVALID: invalid chunks' ],

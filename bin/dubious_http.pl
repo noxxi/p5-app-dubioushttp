@@ -61,15 +61,18 @@ sub make_doc {
 ############################ create pcap files
 sub make_pcaps {
     my $base = shift;
+    $NOGARBLE = 1;
     eval { require Net::PcapWriter }
 	or die "cannot load Net::PcapWriter\n";
     -d $base or die "$base does not exist";
     for my $cat ( App::DubiousHTTP::Tests->categories ) {
 	$cat->TESTS or next;
-	my $dir = "$base/".$cat->ID;
+	( my $id = $cat->ID ) =~s{[^\w\-.,;+=]+}{_}g;
+	my $dir = "$base/$id";
 	-d $dir or mkdir($dir) or die "cannot create $dir: $!";
 	for my $tst ( $cat->TESTS ) {
-	    my $pc = Net::PcapWriter->new( "$dir/".$tst->ID.".pcap" );
+	    ( my $id = $tst->ID ) =~s{[^\w\-.,;+=]+}{_}g;
+	    my $pc = Net::PcapWriter->new( "$dir/$id.pcap" );
 	    my $conn = $pc->tcp_conn('1.1.1.1',1111,'8.8.8.8',80);
 	    $conn->write(0, "GET ".$tst->url('eicar.txt')." HTTP/1.1\r\nHost: foo.bar\r\n\r\n" );
 	    $conn->write(1, $tst->make_response('eicar.txt') );

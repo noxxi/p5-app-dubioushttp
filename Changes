@@ -1,9 +1,10 @@
+2015/09/14 0.025
 - some more tests
+- better description for some tests
 - enforce download via download attribute for eicar.txt etc
 - according to RFC2616 a content-encoding header with 'identity' should not
   be used, moved to UNCOMMON_INVALID and added variations with double
   encoding etc
-- better description for some tests
 - complain if the firewall blocks sane response without virus, because that
   might indicate that they employ a URL filter only or similar
 - If one evasion failed re-check with novirus.txt if it failed because of the

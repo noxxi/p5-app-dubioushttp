@@ -33,7 +33,7 @@ sub make_response {
     my $resp = "";
     if ( $spec{range} ) {
 	my $total = length($data);
-	if ($rqhdr =~m{^Range:\s*bytes=(\d+)-(\d*)}mi ) {
+	if ($rqhdr && $rqhdr =~m{^Range:\s*bytes=(\d+)-(\d*)}mi ) {
 	    # send requested range
 	    my ($start,$end) = ($1,$2);
 	    $end = length($data) if $end eq '';

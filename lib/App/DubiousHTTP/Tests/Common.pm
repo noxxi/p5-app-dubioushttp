@@ -302,6 +302,8 @@ sub ungarble_url {
         $u .= shift(@u) ^ $r[0];
         push @r, shift(@r);
     }
+    # make sure we only have valid stuff here
+    $u = 'some-binary-junk' if $u =~m{[\x00-\x1f\x7f-\xff]};
     return $keep . $u . ($rest || '');
 }
 

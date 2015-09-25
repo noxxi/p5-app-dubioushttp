@@ -88,6 +88,8 @@ DESC
     [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
     [ INVALID, 'space-colon-chunked,do_chunked' => '"Transfer-Encoding<space>:", served chunked' ],
     [ UNCOMMON_INVALID, 'space-colon-chunked,do_clen' => '"Transfer-Encoding<space>:", not served chunked' ],
+    [ INVALID, 'colon-colon-chunked,do_chunked' => '"Transfer-Encoding::", served chunked' ],
+    [ UNCOMMON_INVALID, 'colon-colon-chunked,do_clen' => '"Transfer-Encoding::", not served chunked' ],
 
     [ 'INVALID: invalid chunks' ],
     [ INVALID, 'chunked-lf' => "chunk with LF as delimiter instead of CRLF" ],
@@ -106,6 +108,9 @@ sub make_response {
 	} elsif ( $_ eq 'space-colon-chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding : chunked\r\n"
+	} elsif ( $_ eq 'colon-colon-chunked' ) {
+	    $te = 'chunked';
+	    $hdr .= "Transfer-Encoding:: chunked\r\n"
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    $te = $_

@@ -132,6 +132,12 @@ DESC
     [ UNCOMMON_INVALID, 'ce-space-colon-deflate' => '"Content-Encoding<space>: deflate", served not with deflate' ],
     [ INVALID, 'ce-space-colon-gzip;gzip' => '"Content-Encoding<space>: gzip", served with gzip' ],
     [ UNCOMMON_INVALID, 'ce-space-colon-gzip' => '"Content-Encoding<space>: gzip", served not with gzip' ],
+
+    [ 'INVALID: "Content-encoding:: encoding"' ],
+    [ INVALID, 'ce-colon-colon-deflate;deflate' => '"Content-Encoding:: deflate", served with deflate' ],
+    [ UNCOMMON_INVALID, 'ce-colon-colon-deflate' => '"Content-Encoding:: deflate", served not with deflate' ],
+    [ INVALID, 'ce-colon-colon-gzip;gzip' => '"Content-Encoding:: gzip", served with gzip' ],
+    [ UNCOMMON_INVALID, 'ce-colon-colon-gzip' => '"Content-Encoding:: gzip", served not with gzip' ],
 );
 
 sub make_response {
@@ -180,6 +186,8 @@ sub make_response {
 	    $data = $newdata;
 	} elsif (m{^ce-space-colon-(.*)}) {
 	    $hdr .= "Content-Encoding : $1\r\n";
+	} elsif (m{^ce-colon-colon-(.*)}) {
+	    $hdr .= "Content-Encoding:: $1\r\n";
 	} else {
 	    die $_
 	}

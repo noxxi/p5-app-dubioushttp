@@ -10,7 +10,7 @@ SETUP(
     <<'DESC',
 Compression of Content is usueally done with a Content-Encoding header and a
 value of 'gzip' (RFC1952) or 'deflate' (RFC1951). Most browsers additionally 
-accept RFC1950 compressed data for 'deflate'.
+accept RFC1950 compressed data (zlib) if 'deflate' is specified.
 Some browsers also support compression with the Transfer-Encoding header, 
 which is actually specified in the HTTP RFC, but most browsers don't.
 Some browsers just guess the encoding, e.g. accept gzip even if deflate is
@@ -26,12 +26,15 @@ DESC
     # these should be fine
     [ 'VALID: correct compressed requests' ],
     [ VALID, 'ce:gzip;gzip' => 'content-encoding gzip, served gzipped'],
+    [ VALID, 'ce:gzip;gzip2p' => 'content-encoding gzip, served gzipped with 2 compressed blocks'],
     [ VALID, 'ce:x-gzip;gzip' => 'content-encoding "x-gzip", served gzipped'],
     [ VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
+    [ VALID, 'ce:deflate;deflate2p' => 'content-encoding deflate, served with deflate with 2 compressed blocks'],
 
     # these might be strange/unsupported
     [ 'VALID: less common but valid requests' ],
-    [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw' => 'content-encoding deflate, served with RFC1950 style deflate'],
+    [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw' => 'content-encoding deflate, served with RFC1950 style deflate (zlib)'],
+    [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw2p' => 'content-encoding deflate, served with RFC1950 style deflate (zlib) with 2 compressed blocks'],
     [ UNCOMMON_VALID, 'ce:nl-gzip;gzip' => 'content-encoding gzip but with continuation line, served gzipped'],
     [ UNCOMMON_VALID, 'ce:nl-deflate;deflate' => 'content-encoding deflate but with continuation line, served with deflate'],
     [ UNCOMMON_VALID, 'ce:nl-nl-deflate;deflate' => 'content-encoding deflate but with double continuation line, served with deflate'],
@@ -123,6 +126,12 @@ DESC
 
     [ 'VALID: transfer-encoding should be ignored for compression' ],
     [ UNCOMMON_VALID,'te:gzip' => 'transfer-encoding gzip but not compressed'],
+
+    [ 'INVALID: "Content-encoding<space>: encoding"' ],
+    [ INVALID, 'ce-space-colon-deflate;deflate' => '"Content-Encoding<space>: deflate", served with deflate' ],
+    [ UNCOMMON_INVALID, 'ce-space-colon-deflate' => '"Content-Encoding<space>: deflate", served not with deflate' ],
+    [ INVALID, 'ce-space-colon-gzip;gzip' => '"Content-Encoding<space>: gzip", served with gzip' ],
+    [ UNCOMMON_INVALID, 'ce-space-colon-gzip' => '"Content-Encoding<space>: gzip", served not with gzip' ],
 );
 
 sub make_response {
@@ -140,21 +149,25 @@ sub make_response {
 	    $hdr .= $6 if $6;
 	    $hdr .= " x" if $5;
 	    $hdr .= "\r\n";
-	} elsif ( m{^(?:(gzip)|deflate(-raw)?)$} ) {
+	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
 		-AppendOutput => 1,
 	    );
+	    my $size = int(length($data)/($3||1)) || 1;
 	    my $newdata = '';
-	    $zlib->deflate($data, $newdata);
+	    while ($data ne '') {
+		my $out = '';
+		$zlib->deflate(substr($data,0,$size,''), $out);
+		$zlib->flush($out,Z_FULL_FLUSH);
+		$newdata .= $out;
+	    }
 	    $zlib->flush($newdata,Z_FINISH);
 	    $data = $newdata;
 	} elsif ( $_ =~m{^gzip-split(\d+)?$} ) {
-	    my $count = $1 || 2;
-	    my @parts;
-	    my $size = int(length($data)/$count);
+	    my $size = int(length($data)/($1||2)) || 1;
 	    my $newdata = '';
-	    for( my $i=0;$i<$count-1;$i++) {
+	    while ($data ne '') {
 		my $zlib = Compress::Raw::Zlib::Deflate->new(
 		    -WindowBits => WANT_GZIP,
 		    -AppendOutput => 1,
@@ -165,6 +178,8 @@ sub make_response {
 		$newdata .= $out;
 	    }
 	    $data = $newdata;
+	} elsif (m{^ce-space-colon-(.*)}) {
+	    $hdr .= "Content-Encoding : $1\r\n";
 	} else {
 	    die $_
 	}

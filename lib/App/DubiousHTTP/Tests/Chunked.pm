@@ -86,6 +86,8 @@ DESC
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
     [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
     [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
+    [ INVALID, 'space-colon-chunked,do_chunked' => '"Transfer-Encoding<space>:", served chunked' ],
+    [ UNCOMMON_INVALID, 'space-colon-chunked,do_clen' => '"Transfer-Encoding<space>:", not served chunked' ],
 
     [ 'INVALID: invalid chunks' ],
     [ INVALID, 'chunked-lf' => "chunk with LF as delimiter instead of CRLF" ],
@@ -101,6 +103,9 @@ sub make_response {
     for (split(',',$spec)) {
 	if ( ! $_ || $_ eq 'chunked' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n"
+	} elsif ( $_ eq 'space-colon-chunked' ) {
+	    $te = 'chunked';
+	    $hdr .= "Transfer-Encoding : chunked\r\n"
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    $te = $_

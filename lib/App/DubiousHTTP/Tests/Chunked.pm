@@ -80,8 +80,14 @@ DESC
     [ INVALID, 'rfc2047,do_chunked' => 'rfc2047/base64 encoded "chunked", served chunked' ],
     [ INVALID, 'xte,chunked,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Served chunked." ],
     [ INVALID, 'chunked,xte,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Served chunked." ],
+    [ INVALID, 'xte,chunked,xte,do_chunked' => "triple Transfer-Encoding: first junk, then chunked, then junk again. Served chunked." ],
+    [ INVALID, 'xte,chunked,do_clen' => "double Transfer-Encoding: first junk, last chunked. Not served chunked." ],
+    [ INVALID, 'chunked,xte,do_clen' => "double Transfer-Encoding: first chunked, last junk. Not served chunked." ],
     [ INVALID, 'chunked,xte,clen,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Also Content-length header. Served chunked." ],
     [ INVALID, 'xte,chunked,clen,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Served chunked." ],
+    [ INVALID, 'xte,chunked,xte,clen,do_chunked' => "triple Transfer-Encoding: first junk, then chunked, then junk again. Also Content-length header. Served chunked." ],
+    [ INVALID, 'chunked,xte,clen,do_clen' => "double Transfer-Encoding: first chunked, last junk. Also Content-length header. Not served chunked." ],
+    [ INVALID, 'xte,chunked,clen,do_clen' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Not served chunked." ],
     [ INVALID, 'chunked,clen,do_clen' => 'chunking and content-length, not served chunked'],
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
     [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
@@ -117,10 +123,10 @@ sub make_response {
 	} elsif ( $_ eq 'colon-colon-chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding:: chunked\r\n"
-	} elsif ( $_ =~m {^(lf|cr)only-chunked$} ) {
+	} elsif ( my ($crlf) = m {^(lf|cr)only-chunked$} ) {
 	    $te = 'chunked';
 	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
-	    $hdr .= ($1 eq 'lf') ? "\n":"\r";
+	    $hdr .= ($crlf eq 'lf') ? "\n":"\r";
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";

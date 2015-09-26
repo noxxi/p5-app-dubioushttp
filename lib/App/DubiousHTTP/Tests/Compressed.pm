@@ -127,17 +127,26 @@ DESC
     [ 'VALID: transfer-encoding should be ignored for compression' ],
     [ UNCOMMON_VALID,'te:gzip' => 'transfer-encoding gzip but not compressed'],
 
-    [ 'INVALID: "Content-encoding<space>: encoding"' ],
+    [ 'INVALID: "Hiding the Content-encoding header"' ],
     [ INVALID, 'ce-space-colon-deflate;deflate' => '"Content-Encoding<space>: deflate", served with deflate' ],
     [ UNCOMMON_INVALID, 'ce-space-colon-deflate' => '"Content-Encoding<space>: deflate", served not with deflate' ],
     [ INVALID, 'ce-space-colon-gzip;gzip' => '"Content-Encoding<space>: gzip", served with gzip' ],
     [ UNCOMMON_INVALID, 'ce-space-colon-gzip' => '"Content-Encoding<space>: gzip", served not with gzip' ],
 
-    [ 'INVALID: "Content-encoding:: encoding"' ],
     [ INVALID, 'ce-colon-colon-deflate;deflate' => '"Content-Encoding:: deflate", served with deflate' ],
     [ UNCOMMON_INVALID, 'ce-colon-colon-deflate' => '"Content-Encoding:: deflate", served not with deflate' ],
     [ INVALID, 'ce-colon-colon-gzip;gzip' => '"Content-Encoding:: gzip", served with gzip' ],
     [ UNCOMMON_INVALID, 'ce-colon-colon-gzip' => '"Content-Encoding:: gzip", served not with gzip' ],
+
+    [ INVALID, 'cronly-deflate;deflate' => 'Content-Encoding with only <CR> as line delimiter before, served deflate' ],
+    [ UNCOMMON_INVALID, 'cronly-deflate' => 'Content-Encoding with only <CR> as line delimiter before, not served deflate' ],
+    [ INVALID, 'cronly-gzip;gzip' => 'Content-Encoding with only <CR> as line delimiter before, served gzip' ],
+    [ UNCOMMON_INVALID, 'cronly-gzip' => 'Content-Encoding with only <CR> as line delimiter before, not served gzip' ],
+
+    [ UNCOMMON_INVALID, 'lfonly-deflate;deflate' => 'Content-Encoding with only <LF> as line delimiter before, served deflate' ],
+    [ INVALID, 'lfonly-deflate' => 'Content-Encoding with only <LF> as line delimiter before, not served deflate' ],
+    [ UNCOMMON_INVALID, 'lfonly-gzip;gzip' => 'Content-Encoding with only <LF> as line delimiter before, served gzip' ],
+    [ INVALID, 'lfonly-gzip' => 'Content-Encoding with only <LF> as line delimiter before, not served gzip' ],
 );
 
 sub make_response {
@@ -188,6 +197,10 @@ sub make_response {
 	    $hdr .= "Content-Encoding : $1\r\n";
 	} elsif (m{^ce-colon-colon-(.*)}) {
 	    $hdr .= "Content-Encoding:: $1\r\n";
+	} elsif ( my ($crlf,$encoding) = m{^(lf|cr)only-(.*)}) {
+	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
+	    $hdr .= ($crlf eq 'lf') ? "\n":"\r";
+	    $hdr .= "Content-Encoding: $encoding\r\n";
 	} else {
 	    die $_
 	}

@@ -86,10 +86,16 @@ DESC
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
     [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
     [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
+
+    [ 'INVALID: hiding the Transfer-Encoding header' ],
     [ INVALID, 'space-colon-chunked,do_chunked' => '"Transfer-Encoding<space>:", served chunked' ],
     [ UNCOMMON_INVALID, 'space-colon-chunked,do_clen' => '"Transfer-Encoding<space>:", not served chunked' ],
     [ INVALID, 'colon-colon-chunked,do_chunked' => '"Transfer-Encoding::", served chunked' ],
     [ UNCOMMON_INVALID, 'colon-colon-chunked,do_clen' => '"Transfer-Encoding::", not served chunked' ],
+    [ INVALID, 'cronly-chunked,do_chunked' => 'Transfer-Encoding with only <CR> as line delimiter before, served chunked' ],
+    [ UNCOMMON_INVALID, 'cronly-chunked,do_clen' => 'Transfer-Encoding with only <CR> as line delimiter before, not served chunked' ],
+    [ UNCOMMON_INVALID, 'lfonly-chunked,do_chunked' => 'Transfer-Encoding with only <LF> as line delimiter before, served chunked' ],
+    [ INVALID, 'lfonly-chunked,do_clen' => 'Transfer-Encoding with only <LF> as line delimiter before, not served chunked' ],
 
     [ 'INVALID: invalid chunks' ],
     [ INVALID, 'chunked-lf' => "chunk with LF as delimiter instead of CRLF" ],
@@ -111,6 +117,11 @@ sub make_response {
 	} elsif ( $_ eq 'colon-colon-chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding:: chunked\r\n"
+	} elsif ( $_ =~m {^(lf|cr)only-chunked$} ) {
+	    $te = 'chunked';
+	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
+	    $hdr .= ($1 eq 'lf') ? "\n":"\r";
+	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    $te = $_

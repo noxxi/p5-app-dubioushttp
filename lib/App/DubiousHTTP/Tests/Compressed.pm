@@ -123,6 +123,8 @@ DESC
     [ INVALID, 'ce:deflate;ce:gzip_x;deflate' => 'content-encoding deflate + "gzip x", but only deflated' ],
     [ INVALID, 'ce:gzip_x;ce:deflate;deflate' => 'content-encoding  "gzip x" + deflate, but only deflated' ],
     [ INVALID, 'ce:foo', '"content-encoding:foo" and no encoding' ],
+    [ INVALID, 'ce:rfc2047-deflate', '"content-encoding:rfc2047(deflate)" and no encoding' ],
+    [ INVALID, 'ce:rfc2047-deflate;deflate', '"content-encoding:rfc2047(deflate)" with encoding' ],
 
     [ 'VALID: transfer-encoding should be ignored for compression' ],
     [ UNCOMMON_VALID,'te:gzip' => 'transfer-encoding gzip but not compressed'],
@@ -201,6 +203,8 @@ sub make_response {
 	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
 	    $hdr .= ($crlf eq 'lf') ? "\n":"\r";
 	    $hdr .= "Content-Encoding: $encoding\r\n";
+	} elsif ($_ eq 'ce:rfc2047-deflate') {
+	    $hdr .= "Content-Encoding: =?UTF-8?B?ZGVmbGF0ZQo=?=\r\n";
 	} else {
 	    die $_
 	}

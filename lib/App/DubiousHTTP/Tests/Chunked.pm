@@ -64,8 +64,6 @@ DESC
 
     [ 'VALID: valid variations on "chunked" value' ],
     [ VALID, 'chUnked' => 'mixed case "chUnked", served chunked'],
-    [ VALID, 'rfc2047,do_clen' => 'rfc2047/base64 encoded "chunked", not served chunked' ],
-    [ VALID, 'rfc2047,clen,do_clen' => 'rfc2047/base64 encoded "chunked" and content-length, not served chunked' ],
     [ UNCOMMON_VALID,'nl-chunked' => "chunked header with continuation line, served chunked"],
     [ UNCOMMON_VALID,'nl-nl-chunked' => "chunked header with double continuation line, served chunked"],
 
@@ -76,8 +74,17 @@ DESC
     [ INVALID, 'chunkedx' => '"chunkedx" not "chunked"'],
     [ INVALID, 'chunked-x' => '"chunked x" not "chunked"'],
     [ INVALID, 'x-chunked' => '"x chunked" not "chunked"'],
+    [ UNCOMMON_INVALID, 'chunked-x,do_clen' => '"chunked x" not "chunked", not served chunked'],
+    [ UNCOMMON_INVALID, 'x-chunked,do_clen' => '"x chunked" not "chunked", not served chunked'],
     [ INVALID, 'x-nl-chunked' => '"x-folding-chunked" not "chunked"'],
     [ INVALID, 'rfc2047,do_chunked' => 'rfc2047/base64 encoded "chunked", served chunked' ],
+    [ UNCOMMON_VALID, 'rfc2047,do_clen' => 'rfc2047/base64 encoded "chunked", not served chunked' ],
+    [ UNCOMMON_VALID, 'rfc2047,clen,do_clen' => 'rfc2047/base64 encoded "chunked" and content-length, not served chunked' ],
+    [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
+    [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
+    [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
+
+    [ 'INVALID: hiding with another Transfer-Encoding' ],
     [ INVALID, 'xte,chunked,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Served chunked." ],
     [ INVALID, 'chunked,xte,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Served chunked." ],
     [ INVALID, 'xte,chunked,xte,do_chunked' => "triple Transfer-Encoding: first junk, then chunked, then junk again. Served chunked." ],
@@ -89,9 +96,6 @@ DESC
     [ INVALID, 'chunked,xte,clen,do_clen' => "double Transfer-Encoding: first chunked, last junk. Also Content-length header. Not served chunked." ],
     [ INVALID, 'xte,chunked,clen,do_clen' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Not served chunked." ],
     [ INVALID, 'chunked,clen,do_clen' => 'chunking and content-length, not served chunked'],
-    [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
-    [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
-    [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
 
     [ 'INVALID: hiding the Transfer-Encoding header' ],
     [ INVALID, 'space-colon-chunked,do_chunked' => '"Transfer-Encoding<space>:", served chunked' ],

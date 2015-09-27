@@ -2,6 +2,7 @@ use strict;
 use warnings;
 package App::DubiousHTTP::Tests;
 use App::DubiousHTTP::Tests::Common;
+use App::DubiousHTTP;
 use MIME::Base64 'encode_base64';
 
 my @cat;
@@ -130,6 +131,7 @@ sub auto {
     $html .= "accept = '".quotemeta($accept)."';\n" if $accept;
 
     $html .= "expect64 = '".encode_base64($body,'')."';\n";
+    $html .= 'results = "V | '.App::DubiousHTTP->VERSION.'\n";' . "\n";
     $isbad ||= '';
     $html .= "isbad ='$isbad';\n";
     $html .= "var checks = [];\n";

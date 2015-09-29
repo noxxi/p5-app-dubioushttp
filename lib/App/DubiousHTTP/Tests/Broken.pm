@@ -47,7 +47,7 @@ DESC
     [ INVALID, 'proto:HTTP/2.0' => 'version given as HTTP/2.0 instead of HTTP/1.1'],
     [ INVALID, 'proto:HTTP/1.1 ' => 'HTTP/1.1+SPACE: space after version in status line'],
     [ INVALID, 'proto:HTTP/1.1\t' => 'HTTP/1.1+TAB: tab after version in status line'],
-    [ INVALID, 'proto:HTTP/1.1\r' => 'HTTP/1.1\r\r\n instead of HTTP/1.1\r\n'],
+    [ INVALID, 'proto:HTTP/1.1\r' => 'HTTP/1.1+CR: \r after version in status line'],
     [ INVALID, "proto: HTTP/1.1" => 'version prefixed with space: SPACE+HTTP/1.1'],
     [ INVALID, 'proto:FTP/1.1' => 'version FTP/1.1 instead of HTTP/1.1'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
@@ -143,7 +143,7 @@ sub make_response {
 	} elsif ( $_ eq 'code-only' ) {
 	    $statusline = "HTTP/$version $code\r\n";
 	} elsif ( $_ eq 'http-lower' ) {
-	    $statusline = "http/$version $code\r\n";
+	    $statusline = "http/$version $code ok\r\n";
 	} elsif ( $_ =~ m{^((?:cr|lf)+)-no-crlf$} ) {
 	    my $w = $1;
 	    $w =~s{cr}{\r}g;

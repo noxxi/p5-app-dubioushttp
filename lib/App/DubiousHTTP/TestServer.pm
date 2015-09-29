@@ -1,10 +1,15 @@
 use strict;
 use warnings;
 package App::DubiousHTTP::TestServer;
-use IO::Socket::INET;
 use Scalar::Util 'weaken';
 use Digest::MD5 'md5_base64';
 use App::DubiousHTTP::Tests::Common qw($TRACKHDR ungarble_url);
+
+use IO::Socket::INET;
+my $IOCLASS;
+BEGIN {
+    $IOCLASS = 'IO::Socket::'. ( eval { require IO::Socket::IP } ? 'IP':'INET' );
+}
 
 my $MAX_CLIENTS = 100;
 my $SELECT = App::DubiousHTTP::TestServer::Select->new;
@@ -15,7 +20,7 @@ my %trackhdr;
 sub run {
     shift;
     my ($addr,$response) = @_;
-    my $srv = IO::Socket::INET->new( LocalAddr => $addr, Listen => 10, Reuse => 1 )
+    my $srv = $IOCLASS->new( LocalAddr => $addr, Listen => 10, Reuse => 1 )
 	or die "listen failed: $!";
     $SELECT->handler($srv,0,sub {
 	my $cl = $srv->accept or return;

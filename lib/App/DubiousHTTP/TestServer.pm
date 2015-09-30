@@ -142,7 +142,7 @@ sub add_client {
 		return;
 	    };
 	    $clen = $method eq 'POST' && $hdr =~m{^Content-length:[ \t]*(\d+)}mi && $1 || 0;
-	    if ($clen > 2**20) {
+	    if ($clen > 2**22) {
 		warn "request body too large ($clen)";
 		delete_client($cl);
 		return;

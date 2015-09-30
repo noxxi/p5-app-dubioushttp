@@ -360,7 +360,7 @@ function check_page(req,test,status) {
 		status = 'match';
 	    } else {
 		status = 'change(' + status + ')';
-		results = results + "R | " + test['page'] + " | " + response.length + " | " + base64_encode((header + response).substr(0,300)) + "\n";
+		results = results + "R | " + test['page'] + " | " + response.length + " | " + base64_encode((header + "--\n" + response).substr(0,1000)) + "\n";
 		_log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
 		_log( "response: " + result64 );
 		_log( "expect:   " + expect );

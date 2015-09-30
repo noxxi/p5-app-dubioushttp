@@ -137,11 +137,6 @@ sub make_response {
 	    $te = $_
 	} elsif ( $_ eq 'chUnked' ) {
 	    $hdr .= "Transfer-Encoding: chUnked\r\n"
-	} elsif ( m{^(.*-)?nl-(nl-)?chunked$} ) {
-	    my $prefix = $1 ||'';
-	    $hdr .= "Transfer-Encoding: $prefix\r\n ";
-	    $hdr .= "\r\n " if $2;
-	    $hdr .= "chunked\r\n"
 	} elsif ( $_ eq 'chu' ) {
 	    $hdr .= "Transfer-Encoding: chu\r\n"
 	} elsif ( $_ eq 'ce-chunked' ) {
@@ -173,6 +168,11 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\n";
 	} elsif ( $_ eq 'xte' ) {
 	    $hdr .= "Transfer-Encoding: lalala\r\n";
+	} elsif ( m{^(.*-)chunked$} ) {
+	    my $prefix = $1;
+	    $prefix =~s{-}{ }g;
+	    $prefix =~s{\bnl\b}{\r\n}g;
+	    $hdr .= "Transfer-Encoding: ${prefix}chunked\r\n";
 	} else {
 	    die $_
 	}

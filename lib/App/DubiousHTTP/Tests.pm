@@ -336,6 +336,11 @@ function check_page(req,test,status) {
     if (!status) {
 	status = req.status;
     }
+
+    var header;
+    try { header = req.getAllResponseHeaders(); } catch(e) {}
+    if (header == undefined || header == null) { header = ''; }
+
     if (!status) {
 	status = 'invalid';
     } else if (status >0) {
@@ -355,6 +360,7 @@ function check_page(req,test,status) {
 		status = 'match';
 	    } else {
 		status = 'change(' + status + ')';
+		results = results + "R | " + test['page'] + " | " + response.length + " | " + base64_encode((header + response).substr(0,300)) + "\n";
 		_log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
 		_log( "response: " + result64 );
 		_log( "expect:   " + expect );
@@ -362,12 +368,9 @@ function check_page(req,test,status) {
 	}
     }
 
-    if (test['log_header']) {
+    if (test['log_header'] && header != '') {
 	// i.e. Via added or similar
-	try {
-	    var header = req.getAllResponseHeaders();
-	    results = results + "H | " + test['page'] + " | " + base64_encode(header) + "\n";
-	} catch(e) {}
+	results = results + "H | " + test['page'] + " | " + base64_encode(header) + "\n";
     }
 
     add_debug( test['desc'] + ' - ' + status + ( test['harmless_retry'] ? ' - retry with harmless content':''), test);

@@ -16,8 +16,19 @@ See --mode doc for details about the tests.
 
 Help:               $0 -h|--help
 Test descriptions:  $0 -M|--mode doc
-Use as HTTP server: $0 -M|--mode server [--no-garble-url] [--no-track-header] ip:port 
 Export Pcaps:       $0 -M|--mode pcap target-dir
+Use as HTTP server: $0 -M|--mode server [options] ip:port
+
+Options for server mode:
+ --cert cert.pem    SSL certificate if SSL should be used. It will listen for
+		    SSL and plain requests on the same address.
+ --key  key.pem     Key for SSL certificate
+ --no-garble-url    Use clear names for URL's instead of the default garbled
+		    names which were introduced to defer simple URL filters.
+		    Logging will be done always with the clear names.
+ --no-track-header  Disable logging of header information for requests, which
+		    are used to analyze the origin and path of the request in
+		    more detail.
 
 USAGE
     exit(1);
@@ -26,16 +37,22 @@ USAGE
 our $BASE_URL="http://foo";
 $TRACKHDR=1;
 my $mode = 'doc';
+my ($cert,$key);
 GetOptions(
     'h|help'   => sub { usage() },
     'M|mode=s' => \$mode,
     'no-garble-url' => \$NOGARBLE,
     'track-header!' => \$TRACKHDR,
+    'cert=s'   => \$cert,
+    'key=s'    => \$key,
 );
 
 if ( $mode eq 'server' ) {
     my $addr = shift(@ARGV) or usage('no listen address given');
-    serve($addr);
+    serve($addr, $cert
+	? { SSL_cert_file => $cert, SSL_key_file => $key||$cert }
+	: ()
+    );
 } elsif ( $mode eq 'doc' ) {
     print make_doc();
 } elsif ( $mode eq 'pcap' ) {
@@ -82,9 +99,9 @@ sub make_pcaps {
 
 ############################ work as server
 sub serve {
-    my $addr = shift;
-    App::DubiousHTTP::TestServer->run($addr, sub {
-	my ($path,$listen,$rqhdr,$payload) = @_;
+    my ($addr,$sslargs) = @_;
+    App::DubiousHTTP::TestServer->run($addr, $sslargs, sub {
+	my ($path,$listen,$rqhdr,$payload,$ssl) = @_;
 	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
 
 	if ($path =~m{\A/submit_(?:(details)|results)} && $payload) {

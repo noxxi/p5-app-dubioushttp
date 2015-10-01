@@ -1,3 +1,7 @@
+2015/10/01 0.026
+- add optional SSL and IPv6 support
+- add more tests and fixed some 
+- add more detailed output
 2015/09/14 0.025
 - some more tests
 - better description for some tests

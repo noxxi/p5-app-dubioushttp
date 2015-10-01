@@ -19,9 +19,17 @@ my %trackhdr;
 
 sub run {
     shift;
-    my ($addr,$response) = @_;
+    my ($addr,$sslargs,$response) = @_;
+    if ($sslargs) {
+	# XXX do we need a specific minimal version?
+	eval { require IO::Socket::SSL } or
+	    die "need IO::Socket::SSL for SSL support";
+	$sslargs = eval { IO::Socket::SSL::SSL_Context->new( SSL_server => 1, %$sslargs) }
+	    or die "creating SSL context: $@";
+    }
     my $srv = $IOCLASS->new( LocalAddr => $addr, Listen => 10, Reuse => 1 )
 	or die "listen failed: $!";
+    $srv->blocking(0);
     $SELECT->handler($srv,0,sub {
 	my $cl = $srv->accept or return;
 	if (keys(%clients)>$MAX_CLIENTS) {
@@ -31,7 +39,8 @@ sub run {
 		delete_client($old->{fd});
 	    }
 	}
-	add_client($cl,$response);
+	$cl->blocking(0);
+	add_client($cl,$response,$sslargs);
     });
     $SELECT->mask($srv,0,1);
     $SELECT->loop;
@@ -39,20 +48,80 @@ sub run {
 
 sub delete_client {
     my $cl = shift;
-    delete $clients{$cl};
+    delete $clients{fileno($cl)};
     $SELECT->delete($cl);
 }
 
 sub add_client {
-    my ($cl,$response) = @_;
+    my ($cl,$response,$sslctx) = @_;
     my $addr = $cl->sockhost.':'.$cl->sockport;
     $DEBUG && warn "new client from $addr\n";
 
+    $clients{fileno($cl)}{time} = time();
+    weaken($clients{fileno($cl)}{fd} = $cl);
+
+    return _install_check_https($cl,$response,$sslctx) if $sslctx;
+    return _install_http($cl,$response);
+}
+
+sub _install_check_https {
+    my ($cl,$response,$sslctx) = @_;
+    $DEBUG && warn "add handler for checking https\n";
+    $SELECT->handler($cl,0,sub {
+	my $cl = shift;
+	my $buf;
+	$DEBUG && warn "socket readable - peek\n";
+	if (!defined recv($cl,$buf,2,MSG_PEEK)) {
+	    $DEBUG && warn "peek failed: $!\n";
+	    delete_client($cl);
+	    return;
+	}
+	# assume GET|POST if only uppercase word characters
+	return _install_http($cl,$response) if $buf =~m{^[A-Z]+$};
+
+	# initiate TLS handshake
+	if (!IO::Socket::SSL->start_SSL($cl,
+	    SSL_startHandshake => 0,
+	    SSL_server => 1,
+	    SSL_reuse_ctx => $sslctx
+	)) {
+	    warn "sslify failed: $IO::Socket::SSL::SSL_ERRR";
+	    delete_client($cl);
+	    return;
+	}
+	return _install_https($cl,$response);
+    });
+    $SELECT->mask($cl,0,1);
+
+}
+
+sub _install_https {
+    my ($cl,$response) = @_;
+    my $handler = sub {
+	my $cl = shift;
+	if ($cl->accept_SSL) {
+	    # handshake finally done
+	    return _install_http($cl,$response,'https');
+	}
+	if ($IO::Socket::SSL::SSL_ERROR == IO::Socket::SSL::SSL_WANT_READ()) {
+	    $SELECT->mask($cl, 0 => 1, 1 => 0);
+	} elsif ($IO::Socket::SSL::SSL_ERROR == IO::Socket::SSL::SSL_WANT_WRITE()) {
+	    $SELECT->mask($cl, 0 => 0, 1 => 1);
+	} else {
+	    warn "sslify failed: $IO::Socket::SSL::SSL_ERRR";
+	    delete_client($cl);
+	    return;
+	}
+    };
+    $SELECT->handler($cl, 0 => $handler, 1 => $handler);
+    $SELECT->mask($cl, 0 => 1);
+}
+
+sub _install_http {
+    my ($cl,$response,$ssl) = @_;
+    
     my ($clen,$hdr,$page,$payload,$close);
 
-    $clients{$cl}{time} = time();
-    weaken($clients{$cl}{fd} = $cl);
-    
     my $write;
     my $rbuf = my $wbuf = '';
     my $read = sub {
@@ -65,7 +134,7 @@ sub add_client {
 	    return;
 	}
 
-	$clients{$cl}{time} = time();
+	$clients{fileno($cl)}{time} = time();
 
 	handle_data:
 	if (defined $clen) {
@@ -80,7 +149,8 @@ sub add_client {
 	    }
 	    return if $clen>0; # need more
 
-	    if ( ! eval { $wbuf .= $response->($page,$addr,$hdr,$payload) } ) {
+	    my $addr = $cl->sockhost.':'.$cl->sockport;
+	    if ( ! eval { $wbuf .= $response->($page,$addr,$hdr,$payload,$ssl) } ) {
 		warn "[$page] creating response failed: $@";
 		delete_client($cl);
 		return;
@@ -124,7 +194,7 @@ sub add_client {
 		    $xhdr =~s{^}{ |$digest|- }mg;
 		    warn " |$digest|-BEGIN $accept | $ua\n |$digest|- $line\n$xhdr";
 		}
-		warn localtime()." |$digest| ". $cl->peerhost." | $line\n";
+		warn localtime()." |$digest| ". $cl->peerhost." | $line".($ssl ? " | $ssl":"")."\n";
 	    } else {
 		my $ua = $hdr =~m{^User-Agent:\s*([^\r\n]+)}mi && $1 || 'Unknown-UA';
 		my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
@@ -185,7 +255,7 @@ sub add_client {
 	    return;
 	}
 
-	$clients{$cl}{time} = time();
+	$clients{fileno($cl)}{time} = time();
 	substr($wbuf,0,$n,'');
 	goto handle_data;
     };

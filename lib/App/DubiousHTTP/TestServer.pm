@@ -85,7 +85,7 @@ sub _install_check_https {
 	    SSL_server => 1,
 	    SSL_reuse_ctx => $sslctx
 	)) {
-	    warn "sslify failed: $IO::Socket::SSL::SSL_ERRR";
+	    warn "sslify failed: $IO::Socket::SSL::SSL_ERROR";
 	    delete_client($cl);
 	    return;
 	}
@@ -108,7 +108,7 @@ sub _install_https {
 	} elsif ($IO::Socket::SSL::SSL_ERROR == IO::Socket::SSL::SSL_WANT_WRITE()) {
 	    $SELECT->mask($cl, 0 => 0, 1 => 1);
 	} else {
-	    warn "sslify failed: $IO::Socket::SSL::SSL_ERRR";
+	    warn "sslify failed: $IO::Socket::SSL::SSL_ERROR";
 	    delete_client($cl);
 	    return;
 	}

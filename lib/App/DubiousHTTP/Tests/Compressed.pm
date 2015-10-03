@@ -3,6 +3,7 @@ use warnings;
 package App::DubiousHTTP::Tests::Compressed;
 use App::DubiousHTTP::Tests::Common;
 use Compress::Raw::Zlib;
+use Compress::Raw::Lzma;
 
 SETUP( 
     'compressed',
@@ -31,6 +32,9 @@ DESC
     [ VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
     [ VALID, 'ce:deflate;deflate2p' => 'content-encoding deflate, served with deflate with 2 compressed blocks'],
     [ VALID, 'ce:deFLaTe;deflate' => 'content-encoding deflate mixed case, served with deflate'],
+
+    [ 'VALID: lzma (supported by at least Opera)' ],
+    [ UNCOMMON_VALID, 'ce:lzma;lzma1' => 'content-encoding lzma, lzma1 (lzma_alone) encoded'],
 
     # these might be strange/unsupported
     [ 'VALID: less common but valid requests' ],
@@ -202,6 +206,18 @@ sub make_response {
 		$newdata .= $out;
 	    }
 	    $data = $newdata;
+
+	} elsif (m{^(lzma[12]|xz)$}) {
+	    my ($lzma,$status) = 
+		$_ eq 'xz'    ? Compress::Raw::Lzma::EasyEncoder->new(AppendOutput => 1)  :
+		$_ eq 'lzma1' ? Compress::Raw::Lzma::AloneEncoder->new(AppendOutput => 1) :
+		Compress::Raw::Lzma::RawEncoder->new(AppendOutput =>1);
+	    $status == LZMA_OK or die "failed to create LZMA object";
+	    my $newdata = '';
+	    $lzma->code($data,$newdata) == LZMA_OK or die "failed to lzma encode data";
+	    $lzma->flush($newdata,LZMA_FINISH) == LZMA_STREAM_END or die "failed to close lzma stream";
+	    $data = $newdata;
+
 	} elsif (m{^ce-space-colon-(.*)}) {
 	    $hdr .= "Content-Encoding : $1\r\n";
 	} elsif (m{^ce-colon-colon-(.*)}) {

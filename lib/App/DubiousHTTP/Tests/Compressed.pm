@@ -30,6 +30,7 @@ DESC
     [ VALID, 'ce:x-gzip;gzip' => 'content-encoding "x-gzip", served gzipped'],
     [ VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
     [ VALID, 'ce:deflate;deflate2p' => 'content-encoding deflate, served with deflate with 2 compressed blocks'],
+    [ VALID, 'ce:deFLaTe;deflate' => 'content-encoding deflate mixed case, served with deflate'],
 
     # these might be strange/unsupported
     [ 'VALID: less common but valid requests' ],
@@ -38,6 +39,9 @@ DESC
     [ UNCOMMON_VALID, 'ce:nl-gzip;gzip' => 'content-encoding gzip but with continuation line, served gzipped'],
     [ UNCOMMON_VALID, 'ce:nl-deflate;deflate' => 'content-encoding deflate but with continuation line, served with deflate'],
     [ UNCOMMON_VALID, 'ce:nl-nl-deflate;deflate' => 'content-encoding deflate but with double continuation line, served with deflate'],
+    [ UNCOMMON_VALID, 'ce:deflate,;deflate' => 'content-encoding "deflate,", served with deflate'],
+    [ UNCOMMON_VALID, 'ce:deflate-nl-,;deflate' => 'content-encoding "deflate<nl> ,", served with deflate'],
+    [ UNCOMMON_VALID, 'ce:deflate-nl-,-nl-;deflate' => 'content-encoding "deflate<nl> ,<nl> ", served with deflate'],
 
     # These should be fine according to RFC, but are not supported in the browsers
     # Thus treat is as problem if they get supported.
@@ -52,6 +56,8 @@ DESC
     [ UNCOMMON_VALID, 'ce:gzip,gzip;gzip;gzip' => 'single content-encoding header "gzip,gzip", served twice gzipped'],
     [ UNCOMMON_VALID, 'ce:deflate;ce:deflate;deflate;deflate' => 'double content-encoding header deflate, compressed twice with deflate'],
     [ UNCOMMON_VALID, 'ce:deflate,deflate;deflate;deflate' => 'single content-encoding header "deflate,deflate", compressed twice with deflate'],
+    [ UNCOMMON_VALID, 'ce:deflate-nl-,-nl-deflate;deflate;deflate' => 'single content-encoding header "deflate<nl> ,<nl> deflate", compressed twice with deflate'],
+    [ UNCOMMON_VALID, 'ce:deflate-nl-,-nl-deflate-nl-;deflate;deflate' => 'single content-encoding header "deflate<nl> ,<nl> deflate<nl> ", compressed twice with deflate'],
 
     [ UNCOMMON_VALID, 'ce:gzip;ce:deflate;gzip;deflate' => 'content-encoding header for gzip and deflate, content compressed in this order'],
     [ UNCOMMON_VALID, 'ce:gzip,deflate;gzip;deflate' => 'single content-encoding "gzip,deflate", content compressed in this order'],
@@ -117,6 +123,10 @@ DESC
     [ INVALID, 'ce:deflate;gzip' => 'content-encoding deflate but served with gzip'],
     [ INVALID, 'ce:gzip;deflate' => 'content-encoding gzip but served with decode'],
     [ INVALID, 'ce:gzip;gzip-split' => 'content-encoding gzip, content split into 2 gzip parts concatenated'],
+    [ INVALID, 'ce:deflate' => 'content-encoding "deflate", not encoded'],
+    [ INVALID, 'ce:deflate,' => 'content-encoding "deflate,", not encoded'],
+    [ INVALID, 'ce:deflate-nl-,' => 'content-encoding "deflate<nl> ,", not encoded'],
+    [ INVALID, 'ce:deflate-nl-,-nl-' => 'content-encoding "deflate<nl> ,<nl> ", not encoded'],
 
     [ 'INVALID: invalid content-encodings should not be ignored' ],
     [ INVALID, 'ce:gzip_x' => 'content-encoding "gzip x", but not encoded' ],
@@ -157,15 +167,12 @@ sub make_response {
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
     for (split(';',$spec)) {
-	if ( m{^(ce|te):(nl-(?:nl-)?)?(x_)?(x-gzip|x-deflate|gzip|deflate|xgzip|gzipx|foo|identity)(_x)?((?:,(?:deflate|gzip|identity))*)$} ) {
-	    $hdr .= $1 eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
-	    $hdr .= "\r\n " if $2;
-	    $hdr .= "\r\n " if $2 && $2 eq 'nl-nl-';
-	    $hdr .= "x " if $3;
-	    $hdr .= $4;
-	    $hdr .= $6 if $6;
-	    $hdr .= " x" if $5;
-	    $hdr .= "\r\n";
+	if ( my ($field,$v) = m{^(ce|te):(.*)$}i ) {
+	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
+	    $v =~s{(\-|\b)nl-}{\r\n }g;
+	    $v =~s{(\-|\b)x-}{x }g;
+	    $v =~s{_x\b}{ x}g;
+	    $hdr .= "$v\r\n";
 	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),

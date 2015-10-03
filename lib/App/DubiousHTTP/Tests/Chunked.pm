@@ -66,6 +66,7 @@ DESC
     [ VALID, 'chUnked' => 'mixed case "chUnked", served chunked'],
     [ UNCOMMON_VALID,'nl-chunked' => "chunked header with continuation line, served chunked"],
     [ UNCOMMON_VALID,'nl-nl-chunked' => "chunked header with double continuation line, served chunked"],
+    [ UNCOMMON_VALID,'nl-nl-chunked-nl-' => "chunked header with double continuation line and continuation afterwareds, served chunked"],
 
     [ 'INVALID: invalid variations on "chunked" value' ],
     [ INVALID, 'chu' => '"chu" not "chunked"'],
@@ -119,8 +120,10 @@ sub make_response {
     my $version = 'HTTP/1.1';
     my $te;
     for (split(',',$spec)) {
-	if ( ! $_ || $_ eq 'chunked' ) {
-	    $hdr .= "Transfer-Encoding: chunked\r\n"
+	if ( m{^(x|-|nl)*chunked(x|-|nl)*$}i ) {
+	    s{-}{ }g;
+	    s{nl}{\r\n}g;
+	    $hdr .= "Transfer-Encoding: $_\r\n"
 	} elsif ( $_ eq 'space-colon-chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding : chunked\r\n"
@@ -135,20 +138,10 @@ sub make_response {
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    $te = $_
-	} elsif ( $_ eq 'chUnked' ) {
-	    $hdr .= "Transfer-Encoding: chUnked\r\n"
 	} elsif ( $_ eq 'chu' ) {
 	    $hdr .= "Transfer-Encoding: chu\r\n"
 	} elsif ( $_ eq 'ce-chunked' ) {
 	    $hdr .= "Content-Encoding: chunked\r\n"
-	} elsif ( $_ eq 'xchunked' ) {
-	    $hdr .= "Transfer-Encoding: xchunked\r\n"
-	} elsif ( $_ eq 'chunkedx' ) {
-	    $hdr .= "Transfer-Encoding: chunkedx\r\n"
-	} elsif ( $_ eq 'x-chunked' ) {
-	    $hdr .= "Transfer-Encoding: x chunked\r\n"
-	} elsif ( $_ eq 'chunked-x' ) {
-	    $hdr .= "Transfer-Encoding: chunked x\r\n"
 	} elsif ( $_ =~ m{^clen(\d+)?$} ) {
 	    $hdr .= "Content-length: ". int(($1||100)/100*length($data)) ."\r\n"
 	} elsif ( $_ eq 'http10' ) {
@@ -168,11 +161,6 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\n";
 	} elsif ( $_ eq 'xte' ) {
 	    $hdr .= "Transfer-Encoding: lalala\r\n";
-	} elsif ( m{^(.*-)chunked$} ) {
-	    my $prefix = $1;
-	    $prefix =~s{-}{ }g;
-	    $prefix =~s{\bnl\b}{\r\n}g;
-	    $hdr .= "Transfer-Encoding: ${prefix}chunked\r\n";
 	} else {
 	    die $_
 	}

@@ -16,6 +16,7 @@ WriteMakefile(
     },
     PREREQ_PM => {
 	'Compress::Raw::Zlib' => 2.012,
+	'Compress::Raw::Lzma' => 2.036,
     },
     VERSION_FROM => 'lib/App/DubiousHTTP.pm',
     EXE_FILES => [ 'bin/dubious_http.pl' ],

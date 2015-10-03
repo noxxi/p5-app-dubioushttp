@@ -499,6 +499,7 @@ function runtests(todo,done) {
 		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
 		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks (invalid) responses even if there is no malware payload."
 		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too."
+		    + "For this reason I would recommend to check with at least Firefox, Chrome, Safari, Internet Explorer, Edge and Opera because they all behave differently."
 		    + "<br><br>To get an overview which products behave that nicely "
 		    + "it would be helpful if you provide us with information about the firewall product you use. "
 		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
@@ -508,7 +509,8 @@ function runtests(todo,done) {
 		    + "The test detected that " + evasions + " evasion attempts were not blocked by the firewall.<br>"
 		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
 		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks (invalid) responses even if there is no malware payload."
-		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too.<br>"
+		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too."
+		    + "For this reason I would recommend to check with at least Firefox, Chrome, Safari, Internet Explorer, Edge and Opera because they all behave differently.<br>"
 		    + "Since the test differs slightly from a manually triggered download it might be that some of the detected evasions are "
 		    + "not usable in reality, so please make sure the evasion works by clicking the [TRY] link "
 		    + "and comparing the downloaded file with the EICAR test virus. The file should be 68 byte and contain the string "

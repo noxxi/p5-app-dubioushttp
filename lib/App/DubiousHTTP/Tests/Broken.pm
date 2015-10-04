@@ -20,7 +20,7 @@ DESC
     [ VALID,  'ok' => 'VALID: simple request with content-length'],
     [ UNCOMMON_VALID, 'http09' => 'HTTP 0.9 response (no header)'],
 
-    [ 'INVALID: data before content-length and content' ],
+    [ 'INVALID: data before content-length or transfer-encoding' ],
     [ INVALID, 'emptycont' => 'empty continuation line'],
     [ INVALID, '8bitkey' => 'line using 8bit field name'],
     [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
@@ -32,6 +32,10 @@ DESC
     [ INVALID, 'hdrfirst;tab;chunked;do_clen' => '<tab>Transfer-Encoding: chunked as first header line, not served chunked' ],
     [ INVALID, 'hdrfirst;space;chunked;do_close' => '<space>Transfer-Encoding: chunked as first header line, not served chunked and no content-length' ],
     [ INVALID, 'hdrfirst;tab;chunked;do_close' => '<tab>Transfer-Encoding: chunked as first header line, not served chunked and no content-length' ],
+    [ INVALID, 'somehdr;space;chunked' => '<space>Transfer-Encoding: chunked as continuation of some header line, served chunked' ],
+    [ INVALID, 'somehdr;tab;chunked' => '<tab>Transfer-Encoding: chunked as continuation of some header line, served chunked' ],
+    [ VALID, 'somehdr;space;chunked;do_clen' => '<space>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
+    [ VALID, 'somehdr;tab;chunked;do_clen' => '<tab>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
     [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header after status line' ],
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
     [ INVALID, 'cr' => 'line just containing CR: \r\r\n'],
@@ -118,6 +122,8 @@ sub make_response {
 	    $hdr .= " "
 	} elsif ( $_ eq 'tab' ) {
 	    $hdr .= "\t"
+	} elsif ( $_ eq 'somehdr') {
+	    $hdr .= "X-Foo: bar\r\n";
 	} elsif ( $_ eq 'hdrfirst') {
 	    $hdrfirst = 1;
 	} elsif ( $_ eq 'junkline' ) {

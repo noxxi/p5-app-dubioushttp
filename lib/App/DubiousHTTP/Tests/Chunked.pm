@@ -83,6 +83,10 @@ DESC
     [ UNCOMMON_VALID, 'rfc2047,clen,do_clen' => 'rfc2047/base64 encoded "chunked" and content-length, not served chunked' ],
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
     [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
+    [ INVALID,'crchunked,do_chunked' => "Transfer-Encoding:<CR>chunked. Served chunked."],
+    [ INVALID,'crchunked,do_clen' => "Transfer-Encoding:<CR>chunked. Not served chunked."],
+    [ INVALID,'cr-chunked,do_chunked' => "Transfer-Encoding:<CR><space>chunked. Served chunked."],
+    [ INVALID,'cr-chunked,do_clen' => "Transfer-Encoding:<CR><space>chunked. Not served chunked."],
     [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
 
     [ 'INVALID: hiding with another Transfer-Encoding' ],
@@ -120,9 +124,11 @@ sub make_response {
     my $version = 'HTTP/1.1';
     my $te;
     for (split(',',$spec)) {
-	if ( m{^(x|-|nl)*chunked(x|-|nl)*$}i ) {
+	if ( m{^(x|-|nl|lf|cr)*chunked(x|-|nl|lf|cr)*$}i ) {
 	    s{-}{ }g;
 	    s{nl}{\r\n}g;
+	    s{lf}{\n}g;
+	    s{cr}{\r}g;
 	    $hdr .= "Transfer-Encoding: $_\r\nConnection: close\r\n";
 	} elsif ( $_ eq 'space-colon-chunked' ) {
 	    $te = 'chunked';

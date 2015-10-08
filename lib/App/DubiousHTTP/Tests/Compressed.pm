@@ -163,6 +163,15 @@ DESC
     [ INVALID, 'lfonly-deflate' => 'Content-Encoding with only <LF> as line delimiter before, not served deflate' ],
     [ UNCOMMON_INVALID, 'lfonly-gzip;gzip' => 'Content-Encoding with only <LF> as line delimiter before, served gzip' ],
     [ INVALID, 'lfonly-gzip' => 'Content-Encoding with only <LF> as line delimiter before, not served gzip' ],
+
+    [ INVALID, 'ce:crdeflate;deflate' => 'Content-Encoding:<CR>deflate, served with deflate' ],
+    [ INVALID, 'ce:crdeflate' => 'Content-Encoding:<CR>deflate, not served with deflate' ],
+    [ INVALID, 'ce:cr-deflate;deflate' => 'Content-Encoding:<CR><space>deflate, served with deflate' ],
+    [ INVALID, 'ce:cr-deflate' => 'Content-Encoding:<CR><space>deflate, not served with deflate' ],
+    [ INVALID, 'ce:crgzip;gzip' => 'Content-Encoding:<CR>gzip, served with gzip' ],
+    [ INVALID, 'ce:crgzip' => 'Content-Encoding:<CR>gzip, not served with gzip' ],
+    [ INVALID, 'ce:cr-gzip;gzip' => 'Content-Encoding:<CR><space>gzip, served with gzip' ],
+    [ INVALID, 'ce:cr-gzip' => 'Content-Encoding:<CR><space>gzip, not served with gzip' ],
 );
 
 sub make_response {
@@ -172,10 +181,15 @@ sub make_response {
     my $version = '1.1';
     for (split(';',$spec)) {
 	if ( my ($field,$v) = m{^(ce|te):(.*)$}i ) {
+	    my $changed;
+	    $changed++ if $v =~s{(\-|\b)nl-}{\r\n }g;
+	    $changed++ if $v =~s{(\-|\b)x-}{x }g;
+	    $changed++ if $v =~s{_x\b}{ x}g;
+	    $changed++ if $v =~s{-}{ }g;
+	    $changed++ if $v =~s{cr}{\r}g;
+	    $changed++ if $v =~s{lf}{\n}g;
+	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
-	    $v =~s{(\-|\b)nl-}{\r\n }g;
-	    $v =~s{(\-|\b)x-}{x }g;
-	    $v =~s{_x\b}{ x}g;
 	    $hdr .= "$v\r\n";
 	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
@@ -232,8 +246,9 @@ sub make_response {
 	    die $_
 	}
     }
-    $hdr .= "Content-length: ".length($data)."\r\n";
-    return "HTTP/$version 200 ok\r\n$hdr\r\n$data";
+    return "HTTP/$version 200 ok\r\n".
+	"Content-length: ".length($data)."\r\n".
+	"$hdr\r\n$data";
 }
 
 1;

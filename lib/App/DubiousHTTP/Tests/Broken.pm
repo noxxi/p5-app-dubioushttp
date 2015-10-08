@@ -118,7 +118,7 @@ sub make_response {
     my $code = 200;
     my $statusline;
     my @transform;
-    my $hdr = '';
+    my $hdr = "Connection: close\r\n";
     my $hdrfirst;
     for (split(';',$spec)) {
 	if ( $_ eq 'emptycont' ) {
@@ -158,7 +158,6 @@ sub make_response {
 	    return $data;
 	} elsif ( m{^(\s*\d.*)$} ) {
 	    $code = $1;
-	    $hdr .= "Connection: close\r\n";
 	} elsif ( $_ eq 'code-only' ) {
 	    $statusline = "HTTP/$version $code\r\n";
 	} elsif ( $_ eq 'http-lower' ) {
@@ -191,6 +190,7 @@ sub make_response {
     } else {
 	$hdr = $cthdr . $hdr
     }
+
     $hdr = "$statusline$hdr\r\n";
     for(@transform) {
 	$_->($hdr,$data);

@@ -17,6 +17,15 @@ my %clients;
 my $DEBUG = 0;
 my %trackhdr;
 
+sub _debug {
+    $DEBUG or return;
+    my $msg = shift;
+    $msg = sprintf($msg,@_) if @_;
+    my $time = localtime();
+    $msg =~s{^}{DEBUG: $time }mg;
+    print STDERR $msg."\n";
+}
+
 # close down properly socket etc if user closes program
 $SIG{TERM} = $SIG{INT} = sub { exit(0) };
 
@@ -58,7 +67,7 @@ sub delete_client {
 sub add_client {
     my ($cl,$response,$sslctx) = @_;
     my $addr = $cl->sockhost.':'.$cl->sockport;
-    $DEBUG && warn "new client from $addr\n";
+    $DEBUG && _debug("new client from $addr");
 
     $clients{fileno($cl)}{time} = time();
     weaken($clients{fileno($cl)}{fd} = $cl);
@@ -69,13 +78,13 @@ sub add_client {
 
 sub _install_check_https {
     my ($cl,$response,$sslctx) = @_;
-    $DEBUG && warn "add handler for checking https\n";
+    $DEBUG && _debug("add handler for checking https");
     $SELECT->handler($cl,0,sub {
 	my $cl = shift;
 	my $buf;
-	$DEBUG && warn "socket readable - peek\n";
+	$DEBUG && _debug("socket readable - peek");
 	if (!defined recv($cl,$buf,2,MSG_PEEK)) {
-	    $DEBUG && warn "peek failed: $!\n";
+	    $DEBUG && _debug("peek failed: $!");
 	    delete_client($cl);
 	    return;
 	}
@@ -130,7 +139,7 @@ sub _install_http {
     my $read = sub {
 	my $cl = shift;
 	my $n = sysread($cl,$rbuf,8192,length($rbuf));
-	$DEBUG && warn "read on ".fileno($cl)." -> ".(defined $n ? $n : $!)."\n";
+	$DEBUG && _debug("read on ".fileno($cl)." -> ".(defined $n ? $n : $!));
 	if ( !$n ) {
 	    # close on eof or error
 	    delete_client($cl) if defined($n) || ! $!{EAGAIN}; 
@@ -158,12 +167,13 @@ sub _install_http {
 		delete_client($cl);
 		return;
 	    }
-		
+
 	    $clen = $hdr = undef;
 	    if (!$close) {
 		if ($wbuf =~m{(\r?\n)\1}g) {
 		    $close = _mustclose( substr($wbuf,0,pos($wbuf)) );
 		} else {
+		    $DEBUG && _debug("set close=1 because of no header end in wbuf=$wbuf");
 		    $close = 1;
 		}
 	    }
@@ -239,6 +249,7 @@ sub _install_http {
 	    # nothing to write
 	    if ($rbuf eq '' && $close) {
 		# done
+		$DEBUG && _debug("close client because all done and close flag set");
 		delete_client($cl);
 	    } else {
 		$SELECT->mask($cl,1,0);
@@ -246,7 +257,7 @@ sub _install_http {
 	    return;
 	} 
 	my $n = syswrite($cl,$wbuf);
-	$DEBUG && warn "write on ".fileno($cl)." -> ".(defined $n ? $n : $!)."\n";
+	$DEBUG && _debug("write on ".fileno($cl)." -> ".(defined $n ? $n : $!));
 	if ( ! $n ) {
 	    if ( defined($n) || ! $!{EAGAIN} ) {
 		# connection broke
@@ -270,13 +281,22 @@ sub _install_http {
 
 sub _mustclose {
     my $hdr = shift;
-    # keep-alive by header
+    my $close;
+    my $type = $hdr =~m{^[A-Z]+ /} ? 'request':'response';
     while ($hdr =~m{^Connection:[ \t]*(?:(close)|keep-alive)}mig) {
-	return $1 ? 1:0;
+	$close = $1 ? 1: ($close||-1);
     }
-    # keep-alive by response
-    $hdr =~m{\A.* HTTP/1\.(?:0|(1))} or return 1;
-    return $1 ? 0:1;
+    if ($close) {
+	$close = 0 if $close<0;
+	$DEBUG && _debug("set close=$close because of connection header in $type");
+    } elsif ($hdr =~m{\A(?:.* )?HTTP/1\.(?:0|(1))}) {
+	$close = $1 ? 0:1;
+	$DEBUG && _debug("set close=$close because of HTTP version in $type");
+    } else {
+	$close = 1;
+	$DEBUG && _debug("set close=$close because no other information are known in $type");
+    }
+    return $close;
 }
 
 package App::DubiousHTTP::TestServer::Select;
@@ -286,12 +306,13 @@ my $maxfn = 0;
 my @handler;
 my @mask = ('','');
 my @tmpmask;
+*_debug = \&App::DubiousHTTP::TestServer::_debug;
 
 sub new { bless {},shift }
 sub delete {
     my ($self,$cl) = @_;
     defined( my $fn = fileno($cl) ) or die "invalid fd";
-    $DEBUG && warn "remove fd $fn\n";
+    $DEBUG && _debug("remove fd $fn");
     vec($mask[0],$fn,1) = vec($mask[1],$fn,1) = 0;
     vec($tmpmask[0],$fn,1) = vec($tmpmask[1],$fn,1) = 0 if @tmpmask;
     $handler[$fn] = undef;
@@ -309,7 +330,7 @@ sub handler {
 	$sub = [ $sub ] if ref($sub) eq 'CODE';
 	splice(@$sub,1,0,$wcl);
 	$handler[$fn][$rw] = $sub;
-	$DEBUG && warn "add handler($fn,$rw)\n";
+	$DEBUG && _debug("add handler($fn,$rw)");
     }
 }
 
@@ -317,7 +338,7 @@ sub mask {
     my ($self,$cl,%val) = @_;
     defined( my $fn = fileno($cl) ) or die "invalid fd";
     while (my ($rw,$val) = each %val) {
-	$DEBUG && warn "set mask($fn,$rw) to $val\n";
+	$DEBUG && _debug("set mask($fn,$rw) to $val");
 	vec($mask[$rw],$fn,1) = $val;
     }
 }
@@ -326,12 +347,12 @@ sub loop {
     loop:
     @tmpmask = @mask;
     my $rv = select($tmpmask[0],$tmpmask[1],undef,undef);
-    $DEBUG && warn "select -> $rv\n";
+    $DEBUG && _debug("select -> $rv");
     die "loop failed: $!" if $rv <= 0;
     for my $rw (0,1) {
 	for( my $fn=0; $fn<=$maxfn; $fn++) {
 	    vec($tmpmask[$rw],$fn,1) or next;
-	    $DEBUG && warn "selected($fn,$rw)\n";
+	    $DEBUG && _debug("selected($fn,$rw)");
 	    my $sub = $handler[$fn][$rw] or die "no handler";
 	    $sub->[0](@{$sub}[1..$#$sub]);
 	}

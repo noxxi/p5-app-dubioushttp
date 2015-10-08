@@ -123,25 +123,25 @@ sub make_response {
 	if ( m{^(x|-|nl)*chunked(x|-|nl)*$}i ) {
 	    s{-}{ }g;
 	    s{nl}{\r\n}g;
-	    $hdr .= "Transfer-Encoding: $_\r\n"
+	    $hdr .= "Transfer-Encoding: $_\r\nConnection: close\r\n";
 	} elsif ( $_ eq 'space-colon-chunked' ) {
 	    $te = 'chunked';
-	    $hdr .= "Transfer-Encoding : chunked\r\n"
+	    $hdr .= "Connection: close\r\nTransfer-Encoding : chunked\r\n"
 	} elsif ( $_ eq 'colon-colon-chunked' ) {
 	    $te = 'chunked';
-	    $hdr .= "Transfer-Encoding:: chunked\r\n"
+	    $hdr .= "Connection: close\r\nTransfer-Encoding:: chunked\r\n"
 	} elsif ( my ($crlf) = m {^(lf|cr)only-chunked$} ) {
 	    $te = 'chunked';
 	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
 	    $hdr .= ($crlf eq 'lf') ? "\n":"\r";
-	    $hdr .= "Transfer-Encoding: chunked\r\n";
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    $te = $_
 	} elsif ( $_ eq 'chu' ) {
-	    $hdr .= "Transfer-Encoding: chu\r\n"
+	    $hdr .= "Transfer-Encoding: chu\r\nConnection: close\r\n"
 	} elsif ( $_ eq 'ce-chunked' ) {
-	    $hdr .= "Content-Encoding: chunked\r\n"
+	    $hdr .= "Content-Encoding: chunked\r\nConnection: close\r\n"
 	} elsif ( $_ =~ m{^clen(\d+)?$} ) {
 	    $hdr .= "Content-length: ". int(($1||100)/100*length($data)) ."\r\n"
 	} elsif ( $_ eq 'http10' ) {
@@ -153,14 +153,14 @@ sub make_response {
 	} elsif ( $_ eq 'do_chunked' ) {
 	    $te = 'chunked'
 	} elsif ( $_ eq 'chunked-semicolon' ) {
-	    $hdr .= "Transfer-Encoding: chunked;\r\n"
+	    $hdr .= "Transfer-Encoding: chunked;\r\nConnection: close\r\n"
 	} elsif ( m{^chunked-ext|^chunked-lf}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    $te = $_
 	} elsif ( $_ eq 'rfc2047' ) {
-	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\n";
+	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\nConnection: close\r\n";
 	} elsif ( $_ eq 'xte' ) {
-	    $hdr .= "Transfer-Encoding: lalala\r\n";
+	    $hdr .= "Transfer-Encoding: lalala\r\nConnection: close\r\n";
 	} else {
 	    die $_
 	}

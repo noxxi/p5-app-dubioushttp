@@ -199,6 +199,7 @@ You need to have JavaScript enabled to run this tests.
 <div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
 <div id=debug><h1>Debug</h1></div>
 <script>
+
 function base64_encode(input) {
     var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
     var output = "";
@@ -229,6 +230,28 @@ function base64_encode(input) {
     }
     return output;
 }
+
+function base64_decode(input) {
+    input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+    var chrs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+    var chr = new Array(3);
+    var enc = new Array(4);
+    var output = "";
+    for(var i=0;i<input.length;i+=4) {
+	for(var j=0;j<4;j++) {
+	    enc[j] = chrs.indexOf(input.charAt(i+j));
+	}
+
+        output = output + 
+            String.fromCharCode( (enc[0] << 2) | (enc[1] >> 4) )
+            + ((enc[2] != 64) ? String.fromCharCode( ((enc[1] & 15) << 4) | (enc[2] >> 2) ) : '')
+            + ((enc[3] != 64) ? String.fromCharCode( ((enc[2] & 3) << 6) | enc[3] ) : '');
+    }
+
+    return output;
+}
+
 
 
 var div_debug = document.getElementById('debug');
@@ -359,7 +382,14 @@ function check_page(req,test,status) {
 	    if (result64 == expect) {
 		status = 'match';
 	    } else {
-		status = 'change(' + status + ')';
+		var pn = response.indexOf(base64_decode(expect));
+		if (pn<0) {
+		    status = 'change(' + status + ')';
+		} else {
+		    _log( 'off=' + pn + 'response="' + response + '" expect="' + base64_decode(expect) + '"');
+		    status = 'change(' + status + ',off=' + pn + ')';
+		}
+		    
 		results = results + "R | " + test['page'] + " | " + response.length + " | " + base64_encode((header + "--\n" + response).substr(0,1000)) + "\n";
 		_log( "len=" + response.length + "   " + test['page'] + ' - ' + test['desc'] );
 		_log( "response: " + result64 );

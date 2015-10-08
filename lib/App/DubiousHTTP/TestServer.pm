@@ -17,6 +17,9 @@ my %clients;
 my $DEBUG = 0;
 my %trackhdr;
 
+# close down properly socket etc if user closes program
+$SIG{TERM} = $SIG{INT} = sub { exit(0) };
+
 sub run {
     shift;
     my ($addr,$sslargs,$response) = @_;

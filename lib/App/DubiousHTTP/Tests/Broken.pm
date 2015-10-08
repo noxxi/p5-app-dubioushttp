@@ -20,11 +20,7 @@ DESC
     [ VALID,  'ok' => 'VALID: simple request with content-length'],
     [ UNCOMMON_VALID, 'http09' => 'HTTP 0.9 response (no header)'],
 
-    [ 'INVALID: data before content-length or transfer-encoding' ],
-    [ INVALID, 'emptycont' => 'empty continuation line'],
-    [ INVALID, '8bitkey' => 'line using 8bit field name'],
-    [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
-    [ INVALID, '177' => 'line \177\r\n' ],
+    [ 'INVALID: junk data around transfer-encoding' ],
     [ INVALID, 'chunked;177' => 'Transfer-Encoding: chunked\r\n\177\r\n, served chunked' ],
     [ INVALID, 'hdrfirst;space;chunked' => '<space>Transfer-Encoding: chunked as first header line, served chunked' ],
     [ INVALID, 'hdrfirst;tab;chunked' => '<tab>Transfer-Encoding: chunked as first header line, served chunked' ],
@@ -36,11 +32,17 @@ DESC
     [ INVALID, 'somehdr;tab;chunked' => '<tab>Transfer-Encoding: chunked as continuation of some header line, served chunked' ],
     [ VALID, 'somehdr;space;chunked;do_clen' => '<space>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
     [ VALID, 'somehdr;tab;chunked;do_clen' => '<tab>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
+
+    [ 'INVALID: various broken responses' ],
+    [ INVALID, 'emptycont' => 'empty continuation line'],
+    [ INVALID, '8bitkey' => 'line using 8bit field name'],
+    [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
+    [ INVALID, '177' => 'line \177\r\n' ],
     [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header after status line' ],
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
     [ INVALID, 'cr' => 'line just containing CR: \r\r\n'],
-
-    [ 'INVALID: various broken responses' ],
+    [ INVALID, 'crcr' => 'line just containing CRCR: \r\r\r\n'],
+    [ INVALID, 'lf' => 'line just containing LF: \n\r\n'],
     [ INVALID, 'code-only' => 'status line stops after code, no phrase'],
     [ INVALID, 'http-lower' => 'version given as http/1.1 instead of HTTP/1.1'],
     [ INVALID, 'proto:HTTP/0.9' => 'version given as HTTP/0.9 instead of HTTP/1.1'],
@@ -128,8 +130,10 @@ sub make_response {
 	    $hdrfirst = 1;
 	} elsif ( $_ eq 'junkline' ) {
 	    $hdr .= "qutqzdafsdshadsdfdshsdd sddfd\r\n"
-	} elsif ( $_ eq 'cr' ) {
-	    $hdr .= "\r\r\n"
+	} elsif ( m{^(?:(cr|lf)+)$} ) {
+	    s{cr}{\r}g;
+	    s{lf}{\n}g;
+	    $hdr .= "$_\r\n"
 	} elsif ( $_ eq 'chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding: chunked\r\n";

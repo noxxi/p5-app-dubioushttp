@@ -106,6 +106,23 @@ DESC
     [ INVALID, '2000' => 'invalid status code, too much digits (2000)'],
     [ INVALID, '0200' => 'invalid status code, numeric (0200)'],
     [ INVALID, ' 200' => 'invalid status code, SPACE+200)'],
+
+    [ 'VALID: new lines before HTTP header' ],
+    [ UNCOMMON_VALID, 'crlf-header;chunked' => 'single <CR><LF> before header, chunked'],
+    [ UNCOMMON_VALID, 'crlf-crlf-header;chunked' => 'double <CR><LF> before header, chunked'],
+    [ INVALID, 'space-crlf-header;chunked' => 'space followed by single <CR><LF> before header, chunked'],
+    [ INVALID, 'space-tab-crlf-header;chunked' => 'space+TAB followed by single <CR><LF> before header, chunked'],
+    [ INVALID, 'space-crlf-tab-crlf-header;chunked' => 'space+CRLF+TAB+CRLF before header, chunked'],
+    [ INVALID, 'space-tab-cr-crlf-header;chunked' => 'space+TAB+CR followed by single <CR><LF> before header, chunked'],
+    [ INVALID, 'foobar-crlf-header;chunked' => 'junk followed by single <CR><LF> before header, chunked'],
+    [ INVALID, 'space-foobar-crlf-header;chunked' => 'space+junk followed by single <CR><LF> before header, chunked'],
+    [ INVALID, 'cr-header;chunked' => 'single <CR> before header, chunked'],
+    [ INVALID, 'cr-cr-header;chunked' => 'double <CR> before header, chunked'],
+    [ INVALID, 'space-cr-header;chunked' => 'space followed by single <CR> before header, chunked'],
+    [ INVALID, 'lf-header;chunked' => 'single <LF> before header, chunked'],
+    [ INVALID, 'lf-lf-header;chunked' => 'double <LF> before header, chunked'],
+    [ INVALID, 'space-lf-header;chunked' => 'space followed by single <LF> before header, chunked'],
+    [ INVALID, 'lfcr-header;chunked' => 'single <LF><CR> before header, chunked'],
 );
 
 sub make_response {
@@ -116,6 +133,7 @@ sub make_response {
     my $te = 'clen';
     my $only = 0;
     my $code = 200;
+    my $prefix = '';
     my $statusline;
     my @transform;
     my $hdr = "Connection: close\r\n";
@@ -174,6 +192,13 @@ sub make_response {
 	    $proto =~s{\\n}{\n};
 	    $statusline = "$proto $code ok\r\n";
 	} elsif ( $_ eq 'ok' ) {
+	} elsif ( m{^(.*)-header$}) {
+	    $prefix = $1;
+	    $prefix =~s{cr}{\r}g;
+	    $prefix =~s{lf}{\n}g;
+	    $prefix =~s{space}{ }g;
+	    $prefix =~s{tab}{\t}g;
+	    $prefix =~s{-}{}g;
 	} else {
 	    die $_
 	}
@@ -191,7 +216,7 @@ sub make_response {
 	$hdr = $cthdr . $hdr
     }
 
-    $hdr = "$statusline$hdr\r\n";
+    $hdr = "$prefix$statusline$hdr\r\n";
     for(@transform) {
 	$_->($hdr,$data);
     }

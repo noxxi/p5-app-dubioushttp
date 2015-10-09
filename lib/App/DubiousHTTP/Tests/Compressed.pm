@@ -172,6 +172,22 @@ DESC
     [ INVALID, 'ce:crgzip' => 'Content-Encoding:<CR>gzip, not served with gzip' ],
     [ INVALID, 'ce:cr-gzip;gzip' => 'Content-Encoding:<CR><space>gzip, served with gzip' ],
     [ INVALID, 'ce:cr-gzip' => 'Content-Encoding:<CR><space>gzip, not served with gzip' ],
+
+    [ 'INVALID: slightly invalid gzip encodings' ],
+    [ INVALID,'ce:gzip;gzip;replace-0,2=1f8c', 'wrong gzip magic header'],
+    [ INVALID,'ce:gzip;gzip;replace-2,1=88', 'wrong compression method 88 instead of 08'],
+    [ UNCOMMON_VALID,'ce:gzip;gzip;replace-3,1|01', 'set flag FTEXT'],
+    [ INVALID,'ce:gzip;gzip;replace:3,1|02', 'set flag FHCRC without having CRC'],
+    [ INVALID,'ce:gzip;gzip;replace:3,1|02;replace:10,0=0000', 'set flag FHCRC and add CRC with 0'],
+    [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|08;replace:10,0=2000', 'set flag FNAME and add short file name'],
+    [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|10;replace:10,0=2000', 'set flag FCOMMENT and add short comment'],
+    [ INVALID,'ce:gzip;gzip;replace:3,1|20', 'set flag reserved bit 5'],
+    [ INVALID,'ce:gzip;gzip;replace:3,1|40', 'set flag reserved bit 6'],
+    [ INVALID,'ce:gzip;gzip;replace:3,1|80', 'set flag reserved bit 7'],
+    [ INVALID,'ce:gzip;gzip;replace:-8,4^ffffffff', 'invalidate final checksum'],
+    [ INVALID,'ce:gzip;gzip;replace:-4,1^ff', 'invalidate length'],
+    [ INVALID,'ce:gzip;gzip;replace:-4,4=', 'remove length'],
+    [ INVALID,'ce:gzip;gzip;replace:-8,8=', 'remove checksum and length'],
 );
 
 sub make_response {
@@ -242,6 +258,18 @@ sub make_response {
 	    $hdr .= "Content-Encoding: $encoding\r\n";
 	} elsif ($_ eq 'ce:rfc2047-deflate') {
 	    $hdr .= "Content-Encoding: =?UTF-8?B?ZGVmbGF0ZQo=?=\r\n";
+	} elsif ( my ($off,$len,$op,$replacement) = m{replace:(-?\d+),(\d+)([=|^])(.*)}) {
+	    $replacement = pack('C*',map { hex($_) } $replacement=~m{(..)}g);
+	    if ($op eq '=') {
+		substr($data,$off,$len,$replacement);
+	    } elsif ($op eq '|') {
+		die "'$_' flags are already set" if (substr($data,$off,$len) & $replacement) eq $replacement;
+		substr($data,$off,$len) |= $replacement;
+	    } elsif ($op eq '^') {
+		substr($data,$off,$len) ^= $replacement;
+	    } else {
+		die "bad op=$op in '$_'"
+	    }
 	} else {
 	    die $_
 	}

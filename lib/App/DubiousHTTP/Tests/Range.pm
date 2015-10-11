@@ -15,7 +15,7 @@ DESC
 
     # ---------------- Tests ----------------------------------------
     [ "VALID: all data at once" ],
-    [ VALID, 'full' => 'simple response code 200' ],
+    [ MUSTBE_VALID, 'full' => 'simple response code 200' ],
 
     [ "INVALID: range without requested" ],
     [ UNCOMMON_INVALID, 'range,full' => 'all data, but with code 206 and range header' ],

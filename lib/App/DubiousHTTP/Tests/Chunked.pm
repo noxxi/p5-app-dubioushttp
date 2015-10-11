@@ -19,8 +19,8 @@ DESC
 
     # ------------------------ Tests -----------------------------------
     [ 'VALID: basic tests' ],
-    [ VALID, 'chunked' => 'simple and valid chunking'],
-    [ VALID, 'clen' => 'content-length header, not chunked'],
+    [ SHOULDBE_VALID, 'chunked' => 'simple and valid chunking'],
+    [ MUSTBE_VALID, 'clen' => 'content-length header, not chunked'],
 
     [ 'VALID: use of extensions in chunked header' ],
     [ VALID, 'chunked-ext-junk' => "chunked with some junk chunk extension" ],

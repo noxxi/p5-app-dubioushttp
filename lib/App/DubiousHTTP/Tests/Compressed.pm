@@ -26,10 +26,10 @@ DESC
 
     # these should be fine
     [ 'VALID: correct compressed requests' ],
-    [ VALID, 'ce:gzip;gzip' => 'content-encoding gzip, served gzipped'],
+    [ SHOULDBE_VALID, 'ce:gzip;gzip' => 'content-encoding gzip, served gzipped'],
     [ VALID, 'ce:gzip;gzip2p' => 'content-encoding gzip, served gzipped with 2 compressed blocks'],
     [ VALID, 'ce:x-gzip;gzip' => 'content-encoding "x-gzip", served gzipped'],
-    [ VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
+    [ SHOULDBE_VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
     [ VALID, 'ce:deflate;deflate2p' => 'content-encoding deflate, served with deflate with 2 compressed blocks'],
     [ VALID, 'ce:deFLaTe;deflate' => 'content-encoding deflate mixed case, served with deflate'],
 
@@ -174,9 +174,9 @@ DESC
     [ INVALID, 'ce:cr-gzip' => 'Content-Encoding:<CR><space>gzip, not served with gzip' ],
 
     [ 'INVALID: slightly invalid gzip encodings' ],
-    [ INVALID,'ce:gzip;gzip;replace-0,2=1f8c', 'wrong gzip magic header'],
-    [ INVALID,'ce:gzip;gzip;replace-2,1=88', 'wrong compression method 88 instead of 08'],
-    [ UNCOMMON_VALID,'ce:gzip;gzip;replace-3,1|01', 'set flag FTEXT'],
+    [ INVALID,'ce:gzip;gzip;replace:0,2=1f8c', 'wrong gzip magic header'],
+    [ INVALID,'ce:gzip;gzip;replace:2,1=88', 'wrong compression method 88 instead of 08'],
+    [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|01', 'set flag FTEXT'],
     [ INVALID,'ce:gzip;gzip;replace:3,1|02', 'set flag FHCRC without having CRC'],
     [ INVALID,'ce:gzip;gzip;replace:3,1|02;replace:10,0=0000', 'set flag FHCRC and add CRC with 0'],
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|08;replace:10,0=2000', 'set flag FNAME and add short file name'],

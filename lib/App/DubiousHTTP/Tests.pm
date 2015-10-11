@@ -37,43 +37,42 @@ More information about bypassing firewalls using interpretation differences can
 be found <a href="http://noxxi.de/research/semantic-gap.html">here</a>.
 </p>
 
-<h2>Bulk test with innocent payload</h2>
-
-<p>
-This bulk test automatically triggers various kinds of strange HTTP responses
-which contain an innocent payload and compares the payload it gets in the
-browser against the expected payload. It uses XMLHttpRequests for this purpose
-which often but not in all cases show the same behavior as other HTTP requests
-by the browser (i.e. loading image, script,...). 
-In lots of cases the browser will extract the original payload from the response
-even the response itself was invalid. On the other hand there are cases were the
-browser does not get the expected payload even if the response was valid,
-because either the browser or a proxy/firewall in between does not fully
-understand legit HTTP or blocked legit but uncommon HTTP for security reasons.
-</p>
-<p class=runtest><a href="/auto/all/novirus.txt">Run Test</a></p>
-
 <h2>Bulk test with virus payload</h2>
 
 <p>
-This is the same bulk test as the previous test with the exception that the
-payload is a virus this time. The payload consists of the <a
-href="http://www.eicar.org/86-0-Intended-use.html">EICAR test virus</a> which is
-commonly used for basic tests of antivirus and which should be detected by every
-firewall which does deep inspection to filter out malware. 
+This bulk test tries to transfer the <a
+href="http://www.eicar.org/86-0-Intended-use.html">EICAR test virus</a> from the
+server to the client. This test virus is commonly used for basic tests of
+antivirus and should be detected by every firewall which does deep
+inspection to filter out malware. Since this virus itself is not malicious it is
+safe to run this test.
+</p><p>
+But, the transfer is done with various kinds of uncommon or even invalid HTTP
+responses to check if the inspection of the firewall can be bypassed this way.
+The response from the server will then compared to the expected payload and
+hopefully all transfers will be blocked either by the firewall or are considered
+invalid by the browser.
+</p><p>
+The test uses XMLHttpRequests to issue the request and get the response. In most but
+not all cases this shows the same behavior as other HTTP requests by the browser
+(i.e. loading image, script,...). But to verify that an evasion is actually
+possible with normal download one should use the provided link to actually test
+the evasion.
 </p>
+<p id=test_virus class=runtest><a href="/auto/all/eicar.txt">Run Test <strong>with</strong> virus payload</a></p>
+
+<h2>Bulk test with innocent payload</h2>
+
 <p>
-The goal of this test is to find out if the firewall interprets the HTTP
-response in a different way then the browser and if this would allow a critical
-bypass of the firewalls protection. Since the EICAR test virus used in this test
-is not malicious it is safe to run this test even if the firewall gets
-successfully bypassed.
-It is important to consider that the XMLHttpRequests used for this tests do 
-behave the same as normal download links in most but not all cases. This means
-to verify that an evasion is actually possible with a download link one should
-use the provided link to actually test the evasion.
+This is the same bulk test as the previous one but this time the payload is
+completely innocent. This test can be used to find out the behavior of the
+browsers itself, i.e. how uncommon or invalid HTTP responses are handled by the
+browser. It can also be used to check if the use of proxies changes this
+behavior and if firewalls block innocent payload if it is transferred using an
+uncommon or invalid HTTP response.
 </p>
-<p class=runtest><a href="/auto/all/eicar.txt">Run Test</a></p>
+<p id=test_novirus class=runtest><a href="/auto/all/novirus.txt">Run Test <strong>without</strong> virus payload</a></p>
+
 
 <h2>Non-Bulk tests</h2>
 
@@ -174,6 +173,7 @@ body      { font-family: Verdana, sans-serif; }
 #nobad    { padding: 2em; margin: 1em; background: #ff3333; display: none; }
 #nobad div   { font-size: 150%; margin: 0.5em;  }
 #noevade  { padding: 1em; margin: 1em; background: green; display: none; }
+#overblock { padding: 1em; margin: 1em; background: #ff9933; display: none; }
 #evadable { padding: 1em; margin: 1em; background: #ff3333; display: none; }
 #urlblock { padding: 1em; margin: 1em; background: #ffff00  ; display: none; }
 #urlblock div  { font-size: 150%; margin: 0.5em;  }
@@ -194,6 +194,7 @@ You need to have JavaScript enabled to run this tests.
 <div id=evasions></td>
 <div id=process></div>
 <div id=evadable> </div>
+<div id=overblock> </div>
 <div id=noevade> </div>
 <div id=warnings><h1>Serious Problems</h1><ol id=ol_warnings></ol></div>
 <div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
@@ -308,6 +309,8 @@ function _log(m) {
 
 var evasions = 0;
 var evasions_blocked = 0;
+var overblocked = 0;
+var maybe_overblocked = 0;
 var browser_invalid = 0;
 function xhr(method,page,payload,callback) {
     var req = null;
@@ -410,8 +413,9 @@ function check_page(req,test,status) {
 	if (status != 'match') {
 	    browser_invalid++;
 	    if (test['valid'] == 2) { // no browser should fail on this!
+		overblocked++;
 		add_warning("Failed to load harmless and perfectly valid response",test);
-		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
+		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless but must succeed\n";
 		results = results + "T | " + test['page'] + " | " + result64 + "\n";
 		var div_urlblock = document.getElementById('urlblock');
 		div_urlblock.innerHTML = "<div>" 
@@ -421,9 +425,16 @@ function check_page(req,test,status) {
 		    + "the abilities of the firewall to detect malware."
 		    + "</div>";
 		div_urlblock.style.display = 'block';
-	    } else if (['valid']>0) {
-		add_notice("Failed to load harmless and valid response, might be browser bug",test);
-		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
+	    } else if (test['valid']>0) {
+		if (test['valid']==3) {
+		    // firewall might have modified request 
+		    maybe_overblocked++;
+		    add_warning("Failed to load harmless and valid response, maybe the firewall blocked too much",test);
+		    results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless but should succeed\n";
+		} else {
+		    add_notice("Failed to load harmless and valid response, might be browser bug",test);
+		    results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
+		}
 		results = results + "T | " + test['page'] + " | " + result64 + "\n";
 	    } else {
 		results = results + "B | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
@@ -522,7 +533,7 @@ function runtests(todo,done) {
 	add_debug("*DONE*");
 	if (isbad) {
 	    var div;
-	    if (evasions == 0) {
+	    if (evasions == 0 && overblocked == 0) {
 		results = results + "NO EVASIONS\n";
 		div = document.getElementById('noevade');
 		div.innerHTML = "<h1>Congratulations!<br>No evasions detected.</h1>"
@@ -533,10 +544,23 @@ function runtests(todo,done) {
 		    + "<br><br>To get an overview which products behave that nicely "
 		    + "it would be helpful if you provide us with information about the firewall product you use. "
 		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
+	    } else if (evasions == 0) {
+		results = results + "NO EVASIONS BUT OVERBLOCKING\n";
+		div = document.getElementById('overblock');
+		div.innerHTML = "<h1>Suspicious!<br>No evasions detected but it looks like overblocking.</h1>"
+		    + evasions_blocked + " evasions attempts were blocked by the firewall but in at least " 
+		    + overblocked + " cases the firewall blocked perfectly valid and innocent responses."
+		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks (invalid) responses even if there is no malware payload."
+		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too."
+		    + "For this reason I would recommend to check with at least Firefox, Chrome, Safari, Internet Explorer, Edge and Opera because they all behave differently."
+		    + "<br><br>To get an overview which products behave that nicely "
+		    + "it would be helpful if you provide us with information about the firewall product you use. "
+		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
 	    } else {
 		div = document.getElementById('evadable');
 		div.innerHTML = "<h1>Danger!<br>Possible evasions detected!</h1>"
 		    + "The test detected that " + evasions + " evasion attempts were not blocked by the firewall.<br>"
+		    + ((overblocked>0) ? "Additionally in " + overblocked + " cases the firewall blocked perfectly valid and innocent responses.<br>" : '' )
 		    + evasions_blocked + " evasions attempts were blocked by the firewall and " 
 		    + browser_invalid + " attempts failed because the browser considered the response invalid or because the firewall blocks (invalid) responses even if there is no malware payload."
 		    + "Please note that these might be considered valid by other browsers and might lead to possible evasions, so better try with other browsers too."

@@ -87,6 +87,11 @@ sub _install_check_https {
 	    $DEBUG && _debug("peek failed: $!");
 	    delete_client($cl);
 	    return;
+	} elsif ($buf eq '') {
+	    # closed immediately
+	    $DEBUG && _debug("client eof after 0 bytes");
+	    delete_client($cl);
+	    return;
 	}
 	# assume GET|POST if only uppercase word characters
 	return _install_http($cl,$response) if $buf =~m{^[A-Z]+$};

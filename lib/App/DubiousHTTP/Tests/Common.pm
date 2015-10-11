@@ -3,12 +3,13 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(SETUP content html_escape SANITY_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $TRACKHDR);
+our @EXPORT = qw(SETUP content html_escape MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $TRACKHDR);
 use Scalar::Util 'blessed';
 
 our $NOGARBLE = 0;
 use constant {
-    SANITY_VALID => 2, # no browser should fail on this
+    SHOULDBE_VALID => 3,  # simple chunked, gzip.. - note if blocked
+    MUSTBE_VALID => 2,    # no browser should fail on this
     VALID => 1,
     INVALID => 0,
     UNCOMMON_VALID => -1,
@@ -123,14 +124,16 @@ body { max-width: 55em; line-height: 140%; margin-left: 2em; }
 ul { list-style-type: square; padding-left: 2em; }
 h1 { font-variant: small-caps; font-size: x-large; }
 h2,h3 { font-size: large; }
-.runtest { text-align: right; margin-right: 20%; }
+.runtest { text-align: right; margin-right: 5em; margin-top: 2em; }
 .runtest a {
   text-decoration: none;
-  background-color: #a3a9d4;
+  background-color: #bfbfbf;
   color: #333333;
-  padding: 4px 6px 4px 6px;
+  padding: 4px 6px;
   white-space: nowrap;
 }
+#test_novirus a { background-color: #70e270; padding: 8px 10px; }
+#test_virus a { background-color: #ff4d4d; padding: 8px 10px; }
 
 h1,h2,h3 { border: 1px; border-style: solid; padding: 5px 10px 5px 10px; }
 h1 { color: #000; background: #eee; padding-top: 10px; padding-bottom: 10px; }

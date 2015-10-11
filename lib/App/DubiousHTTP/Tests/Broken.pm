@@ -17,7 +17,7 @@ DESC
 
     # ------------------------- Tests ----------------------------------------
 
-    [ VALID,  'ok' => 'VALID: simple request with content-length'],
+    [ MUSTBE_VALID,  'ok' => 'VALID: simple request with content-length'],
     [ UNCOMMON_VALID, 'http09' => 'HTTP 0.9 response (no header)'],
 
     [ 'INVALID: junk data around transfer-encoding' ],

@@ -14,11 +14,11 @@ DESC
 
     # ------------------------ Tests -----------------------------------
     [ 'VALID: single or no content-length' ],
-    [ SANITY_VALID, 'close,clen,content' => 'single content-length with connection close'],
+    [ MUSTBE_VALID, 'close,clen,content' => 'single content-length with connection close'],
     #[ VALID, 'keep-alive,clen,content' => 'single content-length with keep-alive'],
-    [ VALID, 'close,content' => 'no content-length with connection close'],
-    [ VALID, 'close,clen,content,junk' => 'single content-length, content followed by junk, then connection close'],
-    [ VALID, 'close,clen,clen,content,junk' => 'correct content-length twice, content followed by junk, then connection close'],
+    [ MUSTBE_VALID, 'close,content' => 'no content-length with connection close'],
+    [ UNCOMMON_INVALID, 'close,clen,content,junk' => 'single content-length, content followed by junk, then connection close'],
+    [ UNCOMMON_INVALID, 'close,clen,clen,content,junk' => 'correct content-length twice, content followed by junk, then connection close'],
 
     [ 'INVALID: content-length does not match content' ],
     [ INVALID, 'close,clen200,content' => 'content-length double real content, close after real content' ],

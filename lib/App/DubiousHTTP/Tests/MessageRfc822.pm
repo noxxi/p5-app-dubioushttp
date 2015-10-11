@@ -17,8 +17,8 @@ DESC
 
     # these should be fine
     [ 'VALID: plain data' ],
-    [ VALID, 'ok' => 'simple response with content-length'],
-    [ VALID, 'ce:gzip' => 'simple response with content-length and content-encoding gzip'],
+    [ MUSTBE_VALID, 'ok' => 'simple response with content-length'],
+    [ SHOULDBE_VALID, 'ce:gzip' => 'simple response with content-length and content-encoding gzip'],
 
     # packed inside message/rfc822
     [ 'INVALID: packed inside message/rfc822' ],

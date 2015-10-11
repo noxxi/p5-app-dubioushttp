@@ -16,7 +16,7 @@ DESC
     
     # ---------------------- Tests ------------------------------------
     [ 'VALID: single parts' ],
-    [ VALID, 'single' => 'single part'],
+    [ MUSTBE_VALID, 'single' => 'single part'],
     [ VALID, 'single,ct64',"single part with Content-Transfer-Encoding base64 header but unencoded data" ],
 
     [ 'INVALID: single part with base64 content' ],

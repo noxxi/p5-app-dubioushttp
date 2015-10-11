@@ -23,8 +23,8 @@ DESC
     [ MUSTBE_VALID, 'clen' => 'content-length header, not chunked'],
 
     [ 'VALID: use of extensions in chunked header' ],
-    [ VALID, 'chunked-ext-junk' => "chunked with some junk chunk extension" ],
-    [ VALID, 'chunked-ext-chunk' => "chunked with some junk chunk extension looking like a chunk" ],
+    [ VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
+    [ VALID, 'chunk-ext-chunk' => "chunked with some junk chunk extension looking like a chunk" ],
 
     [ 'VALID: combined with content-length' ],
     # according to RFC2616 TE chunked has preference to clen
@@ -113,7 +113,13 @@ DESC
     [ INVALID, 'lfonly-chunked,do_clen' => 'Transfer-Encoding with only <LF> as line delimiter before, not served chunked' ],
 
     [ 'INVALID: invalid chunks' ],
-    [ INVALID, 'chunked-lf' => "chunk with LF as delimiter instead of CRLF" ],
+    [ INVALID, 'chunk-lf' => "chunk with LF as delimiter instead of CRLF" ],
+    [ INVALID, 'chunk-cr' => "chunk with CR as delimiter instead of CRLF" ],
+    [ INVALID, 'chunk-crcr' => "chunk with CRCR as delimiter instead of CRLF" ],
+    [ INVALID, 'chunk-lflf' => "chunk with LFLF as delimiter instead of CRLF" ],
+    [ INVALID, 'chunk-lfcr' => "chunk with LFCR as delimiter instead of CRLF" ],
+    [ INVALID, 'nofinal' => 'missing final chunk' ],
+    [ INVALID, 'eof-inchunk' => 'eof inside some chunk' ],
 );
 
 
@@ -122,7 +128,7 @@ sub make_response {
     return make_index_page() if $page eq '';
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = 'HTTP/1.1';
-    my $te;
+    my ($te,@chunks,%chunkmod);
     for (split(',',$spec)) {
 	if ( m{^(x|-|nl|lf|cr)*chunked(x|-|nl|lf|cr)*$}i ) {
 	    s{-}{ }g;
@@ -143,7 +149,7 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
-	    $te = $_
+	    @chunks = $data;
 	} elsif ( $_ eq 'chu' ) {
 	    $hdr .= "Transfer-Encoding: chu\r\nConnection: close\r\n"
 	} elsif ( $_ eq 'ce-chunked' ) {
@@ -160,48 +166,52 @@ sub make_response {
 	    $te = 'chunked'
 	} elsif ( $_ eq 'chunked-semicolon' ) {
 	    $hdr .= "Transfer-Encoding: chunked;\r\nConnection: close\r\n"
-	} elsif ( m{^chunked-ext|^chunked-lf}) {
-	    $hdr .= "Transfer-Encoding: chunked\r\n";
-	    $te = $_
 	} elsif ( $_ eq 'rfc2047' ) {
 	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\nConnection: close\r\n";
 	} elsif ( $_ eq 'xte' ) {
 	    $hdr .= "Transfer-Encoding: lalala\r\nConnection: close\r\n";
+	} elsif ( m{^(chunk-ext-|nofinal$|eof-inchunk$)} ) {
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    $chunkmod{$_} = 1;
+	} elsif ( my ($eol) = m{^chunk-((?:lf|cr)+)$} ) {
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    $eol =~s{cr}{\r}g;
+	    $eol =~s{lf}{\n}g;
+	    $chunkmod{lineend} = $eol;
 	} else {
 	    die $_
 	}
     }
     $hdr = "$version 200 ok\r\n$hdr";
     $te ||= $hdr =~m{^Transfer-Encoding:}im ? 'chunked':'clen';
-    if ( $te eq 'chunked' ) {
-	$data = join("", 
-	    map { sprintf("%x\r\n%s\r\n",length($_),$_) } 
-	    ( $data =~m{(..?)}smg,'')
-	)
-    } elsif ( $te eq '1chunk' ) {
-	$data = sprintf("%x\r\n%s\r\n0\r\n\r\n",length($data),$data);
-    } elsif ($te eq 'chunked-ext-junk') {
-	$data = join("", 
-	    map { sprintf("%x; foobar\r\n%s\r\n",length($_),$_) } 
-	    ( $data =~m{(..?)}smg,'')
-	)
-    } elsif ($te eq 'chunked-ext-chunk') {
-	$data = join("", 
-	    map { sprintf(
-		"%x; %s  %x\r\n%s\r\n",
-		length($_),                    # chunk length
-		"x" x length($_), length($_),  # chunk extensions looking like chunk if any two bytes are skipped instead of \r\n
-		$_                             # chunk
-	    )} 
-	    ( $data =~m{(..?)}smg,'')
-	)
-    } elsif ($te eq 'chunked-lf') {
-	$data = join("", 
-	    map { sprintf("%x\n%s\n",length($_),$_) } 
-	    ( $data =~m{(..?)}smg,'')
-	)
-    }
+    @chunks = ( $data =~m{(.{1,5})}smg,'') if $te eq 'chunked' && ! @chunks;
+    if (@chunks) {
+	@chunks = map { [ length($_), $_ ] } @chunks;
+	my $nl = $chunkmod{lineend} || "\r\n";
+	if ($chunkmod{'chunk-ext-chunk'}) {
+	    $_->[2] = sprintf("; %s  %x","x" x $_->[0],$_->[0]) for @chunks;
+	} elsif ($chunkmod{'chunk-ext-junk'}) {
+	    $_->[2] = "; foobar" for @chunks;
+	}
+	pop @chunks if $chunkmod{nofinal} && ! $chunks[-1][0];
 
+	my $end = '';
+	if ($chunkmod{'eof-inchunk'}) {
+	    pop @chunks if ! $chunks[-1][0]; # remove final chunk
+	    my $last = pop(@chunks);
+	    $end = sprintf("%x%s%s%s",$last->[0]+10,$last->[2],$nl,$last->[1]);
+	}
+
+	$data = join("",map { 
+	    sprintf("%x%s%s%s%s",
+		$_->[0],          # size
+		$_->[2] || '',    # ext
+		$nl,
+		$_->[1],
+		$nl
+	    ).$end;
+	} @chunks);
+    }
     return "$hdr\r\n$data";
 }
 

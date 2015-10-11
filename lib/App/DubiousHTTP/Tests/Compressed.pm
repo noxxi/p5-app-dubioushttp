@@ -198,12 +198,12 @@ sub make_response {
     for (split(';',$spec)) {
 	if ( my ($field,$v) = m{^(ce|te):(.*)$}i ) {
 	    my $changed;
-	    $changed++ if $v =~s{(\-|\b)nl-}{\r\n }g;
-	    $changed++ if $v =~s{(\-|\b)x-}{x }g;
-	    $changed++ if $v =~s{_x\b}{ x}g;
-	    $changed++ if $v =~s{-}{ }g;
+	    $changed++ if $v =~s{(?<=cr|lf|nl)-}{ }g;
 	    $changed++ if $v =~s{cr}{\r}g;
 	    $changed++ if $v =~s{lf}{\n}g;
+	    $changed++ if $v =~s{nl}{\r\n}g;
+	    $changed++ if $v =~s{_}{ }g;
+	    $v =~s{(?<!x)-}{}g;
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "$v\r\n";

@@ -24,15 +24,17 @@ DESC
 
     [ 'VALID: use of extensions in chunked header' ],
     [ VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
-    [ VALID, 'chunk-ext-chunk' => "chunked with some junk chunk extension looking like a chunk" ],
+    # safari does not like it, so mark it as uncommon
+    [ UNCOMMON_VALID, 'chunk-ext-chunk' => "chunked with some junk chunk extension looking like a chunk" ],
 
     [ 'VALID: combined with content-length' ],
     # according to RFC2616 TE chunked has preference to clen
     [ VALID, 'chunked,clen' => 'chunked first then content-length, served chunked'],
     [ VALID, 'clen,chunked' => 'content-length first then chunked, served chunked'],
     # but some still expect clen bytes
-    [ VALID, 'chunked,clen200' => 'chunking and content-length header with double length, served chunked'],
-    [ VALID, 'chunked,clen50'  => 'chunking and content-length header with half length, served chunked'],
+    # safari does not like it, so mark it as uncommon
+    [ UNCOMMON_VALID, 'chunked,clen200' => 'chunking and content-length header with double length, served chunked'],
+    [ UNCOMMON_VALID, 'chunked,clen50'  => 'chunking and content-length header with half length, served chunked'],
 
     [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
     [ INVALID, 'chunked,http10' => 'Chunked Header and HTTP/1.0. Served chunked.'],

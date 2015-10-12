@@ -59,7 +59,7 @@ not all cases this shows the same behavior as other HTTP requests by the browser
 possible with normal download one should use the provided link to actually test
 the evasion.
 </p>
-<p id=test_virus class=runtest><a href="/auto/all/eicar.txt">Run Test <strong>with</strong> virus payload</a></p>
+<p id=test_virus class=runtest><a href="/auto/all/eicar.txt">Run Test with <strong>EICAR test virus</strong> payload</a></p>
 
 <h2>Bulk test with innocent payload</h2>
 
@@ -71,7 +71,7 @@ browser. It can also be used to check if the use of proxies changes this
 behavior and if firewalls block innocent payload if it is transferred using an
 uncommon or invalid HTTP response.
 </p>
-<p id=test_novirus class=runtest><a href="/auto/all/novirus.txt">Run Test <strong>without</strong> virus payload</a></p>
+<p id=test_novirus class=runtest><a href="/auto/all/novirus.txt">Run Test with <strong>innocent</strong> payload</a></p>
 
 
 <h2>Non-Bulk tests</h2>

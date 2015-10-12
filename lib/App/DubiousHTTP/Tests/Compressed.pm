@@ -28,7 +28,7 @@ DESC
     [ 'VALID: correct compressed requests' ],
     [ SHOULDBE_VALID, 'ce:gzip;gzip' => 'content-encoding gzip, served gzipped'],
     [ VALID, 'ce:gzip;gzip2p' => 'content-encoding gzip, served gzipped with 2 compressed blocks'],
-    [ VALID, 'ce:x-gzip;gzip' => 'content-encoding "x-gzip", served gzipped'],
+    [ UNCOMMON_VALID, 'ce:x-gzip;gzip' => 'content-encoding "x-gzip", served gzipped'], # not IE11
     [ SHOULDBE_VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
     [ VALID, 'ce:deflate;deflate2p' => 'content-encoding deflate, served with deflate with 2 compressed blocks'],
     [ VALID, 'ce:deFLaTe;deflate' => 'content-encoding deflate mixed case, served with deflate'],

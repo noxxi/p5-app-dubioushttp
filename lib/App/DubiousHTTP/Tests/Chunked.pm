@@ -201,7 +201,7 @@ sub make_response {
 	if ($chunkmod{'eof-inchunk'}) {
 	    pop @chunks if ! $chunks[-1][0]; # remove final chunk
 	    my $last = pop(@chunks);
-	    $end = sprintf("%x%s%s%s",$last->[0]+10,$last->[2],$nl,$last->[1]);
+	    $end = sprintf("%x%s%s%s",$last->[0]+10,$last->[2]||'',$nl,$last->[1]);
 	}
 
 	$data = join("",map { 

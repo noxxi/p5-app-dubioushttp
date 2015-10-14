@@ -22,9 +22,8 @@ DESC
     [ SHOULDBE_VALID, 'chunked' => 'simple and valid chunking'],
     [ MUSTBE_VALID, 'clen' => 'content-length header, not chunked'],
 
-    [ 'VALID: use of extensions in chunked header' ],
-    [ VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
-    # safari does not like it, so mark it as uncommon
+    [ 'VALID: (but uncommon) use of extensions in chunked header' ],
+    [ UNCOMMON_VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
     [ UNCOMMON_VALID, 'chunk-ext-chunk' => "chunked with some junk chunk extension looking like a chunk" ],
 
     [ 'VALID: combined with content-length' ],

@@ -188,6 +188,10 @@ DESC
     [ INVALID,'ce:gzip;gzip;replace:-4,1^ff', 'invalidate length'],
     [ INVALID,'ce:gzip;gzip;replace:-4,4=', 'remove length'],
     [ INVALID,'ce:gzip;gzip;replace:-8,8=', 'remove checksum and length'],
+    [ INVALID,'ce:gzip;gzip;replace:-4,4=;clen+4', 'remove length but set content-length header to original size'],
+    [ INVALID,'ce:gzip;gzip;replace:-8,8=;clen+8', 'remove checksum and length but set content-length header to original size'],
+    [ INVALID,'ce:gzip;gzip;replace:-4,4=;noclen', 'remove length and close with eof without sending length'],
+    [ INVALID,'ce:gzip;gzip;replace:-8,8=;noclen', 'remove checksum and and close with eof without sending length'],
 );
 
 sub make_response {
@@ -195,6 +199,7 @@ sub make_response {
     return make_index_page() if $page eq '';
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = '1.1';
+    my $clen_extend;
     for (split(';',$spec)) {
 	if ( my ($field,$v) = m{^(ce|te):(.*)$}i ) {
 	    my $changed;
@@ -270,13 +275,24 @@ sub make_response {
 	    } else {
 		die "bad op=$op in '$_'"
 	    }
+	} elsif (m{^clen\+(\d+)$}) {
+	    $clen_extend = $1
+	} elsif ($_ eq 'noclen') {
+	    $clen_extend = -1;
 	} else {
 	    die $_
 	}
     }
-    return "HTTP/$version 200 ok\r\n".
-	"Content-length: ".length($data)."\r\n".
-	"$hdr\r\n$data";
+
+    my $len = length($data);
+    if (!$clen_extend) {
+	$hdr = "Content-length: ".length($data)."\r\n".$hdr;
+    } elsif ($clen_extend<0) {
+	$hdr = "Connection: close\r\n$hdr";
+    } else {
+	$hdr = "Connection: close\r\nContent-length: ".(length($data)+$clen_extend)."\r\n".$hdr;
+    }
+    return "HTTP/$version 200 ok\r\n$hdr\r\n$data";
 }
 
 1;

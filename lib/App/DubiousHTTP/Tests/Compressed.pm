@@ -192,6 +192,31 @@ DESC
     [ INVALID,'ce:gzip;gzip;replace:-8,8=;clen+8', 'remove checksum and length but set content-length header to original size'],
     [ INVALID,'ce:gzip;gzip;replace:-4,4=;noclen', 'remove length and close with eof without sending length'],
     [ INVALID,'ce:gzip;gzip;replace:-8,8=;noclen', 'remove checksum and and close with eof without sending length'],
+    # and now hide the 'gzip' behind a \r so that some firewalls will use the
+    # heuristics of the antivirus which might be different from the the proxy
+    [ INVALID,'ce:cr-gzip;gzip;replace:3,1|01', 'set flag FTEXT (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:3,1|02;replace:10,0=0000', 'set flag FHCRC and add CRC with 0 (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:3,1|08;replace:10,0=2000', 'set flag FNAME and add short file name (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:3,1|10;replace:10,0=2000', 'set flag FCOMMENT and add short comment (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:3,1|20', 'set flag reserved bit 5 (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:3,1|40', 'set flag reserved bit 6 (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:3,1|80', 'set flag reserved bit 7 (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:-8,4^ffffffff', 'invalidate final checksum (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:-4,1^ff', 'invalidate length (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:-4,4=', 'remove length (hide gzip with "content-encoding:\r gzip")'],
+    [ INVALID,'ce:cr-gzip;gzip;replace:-8,8=', 'remove checksum and length (hide gzip with "content-encoding:\r gzip")'],
+    # same game, but with Content-Encoding<space>: for other firewalls
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:3,1|01', 'set flag FTEXT (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:3,1|02;replace:10,0=0000', 'set flag FHCRC and add CRC with 0 (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:3,1|08;replace:10,0=2000', 'set flag FNAME and add short file name (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:3,1|10;replace:10,0=2000', 'set flag FCOMMENT and add short comment (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:3,1|20', 'set flag reserved bit 5 (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:3,1|40', 'set flag reserved bit 6 (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:3,1|80', 'set flag reserved bit 7 (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:-8,4^ffffffff', 'invalidate final checksum (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:-4,1^ff', 'invalidate length (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:-4,4=', 'remove length (hide gzip with "content-encoding : gzip")'],
+    [ INVALID,'ce-space-colon-gzip;gzip;replace:-8,8=', 'remove checksum and length (hide gzip with "content-encoding : gzip")'],
 );
 
 sub make_response {

@@ -27,10 +27,11 @@ DESC
     [ UNCOMMON_VALID, '00size' => "chunks size prefixed with 00" ],
     [ UNCOMMON_VALID, 'ucsize' => "upper case size" ],
     [ UNCOMMON_VALID, '0ucsize' => "upper case size prefix with 0" ],
-    [ INVALID, 'size-' => "size followed by space" ],
-    [ INVALID, 'size\t' => "size followed by tab" ],
-    [ INVALID, 'size\r' => "size followed by \\r" ],
-    [ INVALID, 'size\n' => "size followed by \\n" ],
+    [ INVALID, 'size-space' => "size followed by space" ],
+    [ INVALID, 'size-tab' => "size followed by tab" ],
+    [ INVALID, 'size-cr' => "size followed by <CR>" ],
+    [ INVALID, 'size-lf' => "size followed by <LF>" ],
+    [ INVALID, 'space-size' => "size prefixed by space" ],
 
     [ 'VALID: (but uncommon) use of extensions in chunked header' ],
     [ UNCOMMON_VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
@@ -150,6 +151,7 @@ sub make_response {
     my $version = 'HTTP/1.1';
     my ($te,@chunks,%chunkmod);
     my $sizefmt = '%x';
+    my $before_chunks = '';
     for (split(',',$spec)) {
 	if ( m{^(x|-|nl|lf|cr)*chunked(x|-|nl|lf|cr)*$}i ) {
 	    s{-}{ }g;
@@ -199,15 +201,26 @@ sub make_response {
 	    $eol =~s{cr}{\r}g;
 	    $eol =~s{lf}{\n}g;
 	    $chunkmod{lineend} = $eol;
-	} elsif ( m{^(0*)(uc)?size(-)?$}) {
+	} elsif ( m{^(-|space|cr|lf)*(0*)(uc)?size(-|space|cr|lf|tab)*$}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	    @chunks = ( $data =~m{(.{1,15})}smg,'') if ! @chunks;
 	    s{ucsize}{%X};
 	    s{size}{%x};
 	    s{\\r}{\r}g;
 	    s{\\n}{\n}g;
-	    s{-}{ }g;
+	    s{-}{}g;
+	    s{space}{ }g;
+	    s{tab}{\t}g;
+	    s{cr}{\r}g;
+	    s{lf}{\n}g;
 	    $sizefmt = $_;
+	} elsif (m{((?:space|tab|cr|lf)*)-before-chunks}) {
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    $before_chunks = $1;
+	    $before_chunks =~ s{space}{ }g;
+	    $before_chunks =~ s{tab}{\t}g;
+	    $before_chunks =~ s{cr}{\r}g;
+	    $before_chunks =~ s{lf}{\n}g;
 	} else {
 	    die $_
 	}
@@ -242,7 +255,7 @@ sub make_response {
 	    ) : "0$nl$nl"
 	} @chunks).$end;
     }
-    return "$hdr\r\n$data";
+    return "$hdr\r\n$before_chunks$data";
 }
 
 

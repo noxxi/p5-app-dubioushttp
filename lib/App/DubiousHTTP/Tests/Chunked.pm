@@ -22,6 +22,16 @@ DESC
     [ SHOULDBE_VALID, 'chunked' => 'simple and valid chunking'],
     [ MUSTBE_VALID, 'clen' => 'content-length header, not chunked'],
 
+    [ 'VALID: modification of chunk size' ],
+    [ UNCOMMON_VALID, '0size' => "chunks size prefixed with 0" ],
+    [ UNCOMMON_VALID, '00size' => "chunks size prefixed with 00" ],
+    [ UNCOMMON_VALID, 'ucsize' => "upper case size" ],
+    [ UNCOMMON_VALID, '0ucsize' => "upper case size prefix with 0" ],
+    [ INVALID, 'size-' => "size followed by space" ],
+    [ INVALID, 'size\t' => "size followed by tab" ],
+    [ INVALID, 'size\r' => "size followed by \\r" ],
+    [ INVALID, 'size\n' => "size followed by \\n" ],
+
     [ 'VALID: (but uncommon) use of extensions in chunked header' ],
     [ UNCOMMON_VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
     [ UNCOMMON_VALID, 'chunk-ext-chunk' => "chunked with some junk chunk extension looking like a chunk" ],
@@ -66,6 +76,7 @@ DESC
     [ 'VALID: valid variations on "chunked" value' ],
     [ VALID, 'chUnked' => 'mixed case "chUnked", served chunked'],
     [ UNCOMMON_VALID,'nl-chunked' => "chunked header with continuation line, served chunked"],
+    [ UNCOMMON_VALID,'chunkednl-' => "chunked header followed by empty with continuation line, served chunked"],
     [ UNCOMMON_VALID,'nl-nl-chunked' => "chunked header with double continuation line, served chunked"],
     [ UNCOMMON_VALID,'nl-nl-chunked-nl-' => "chunked header with double continuation line and continuation afterwareds, served chunked"],
 
@@ -79,15 +90,19 @@ DESC
     [ UNCOMMON_INVALID, 'chunked-x,do_clen' => '"chunked x" not "chunked", not served chunked'],
     [ UNCOMMON_INVALID, 'x-chunked,do_clen' => '"x chunked" not "chunked", not served chunked'],
     [ INVALID, 'x-nl-chunked' => '"x-folding-chunked" not "chunked"'],
+    [ INVALID, 'chunked-nl-x' => '"chunked-folding-x" not "chunked"'],
     [ INVALID, 'rfc2047,do_chunked' => 'rfc2047/base64 encoded "chunked", served chunked' ],
     [ UNCOMMON_VALID, 'rfc2047,do_clen' => 'rfc2047/base64 encoded "chunked", not served chunked' ],
     [ UNCOMMON_VALID, 'rfc2047,clen,do_clen' => 'rfc2047/base64 encoded "chunked" and content-length, not served chunked' ],
     [ INVALID,'nl-chunked,do_clen' => "chunked header with continuation line. Not served chunked."],
+    [ INVALID,'chunkednl-,do_clen' => "chunked header followed by empty continuation line. Not served chunked."],
     [ INVALID,'nl-nl-chunked,do_clen' => "chunked header with double continuation line, not served chunked"],
     [ INVALID,'crchunked,do_chunked' => "Transfer-Encoding:<CR>chunked. Served chunked."],
     [ INVALID,'crchunked,do_clen' => "Transfer-Encoding:<CR>chunked. Not served chunked."],
     [ INVALID,'cr-chunked,do_chunked' => "Transfer-Encoding:<CR><space>chunked. Served chunked."],
     [ INVALID,'cr-chunked,do_clen' => "Transfer-Encoding:<CR><space>chunked. Not served chunked."],
+    [ INVALID,'chunkedcr-,do_chunked' => "Transfer-Encoding:chunked<CR><space>. Served chunked."],
+    [ INVALID,'chunkedcr-,do_clen' => "Transfer-Encoding:chunked<CR><space>. Not served chunked."],
     [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
 
     [ 'INVALID: hiding with another Transfer-Encoding' ],
@@ -121,6 +136,10 @@ DESC
     [ INVALID, 'chunk-lfcr' => "chunk with LFCR as delimiter instead of CRLF" ],
     [ INVALID, 'nofinal' => 'missing final chunk' ],
     [ INVALID, 'eof-inchunk' => 'eof inside some chunk' ],
+    [ INVALID, 'space-before-chunks' => 'space before chunks start' ],
+    [ INVALID, 'lf-before-chunks' => '<LF> before chunks start' ],
+    [ INVALID, 'cr-before-chunks' => '<CR> before chunks start' ],
+    [ INVALID, 'crlf-before-chunks' => '<CR><LF> before chunks start' ],
 );
 
 
@@ -130,6 +149,7 @@ sub make_response {
     my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
     my $version = 'HTTP/1.1';
     my ($te,@chunks,%chunkmod);
+    my $sizefmt = '%x';
     for (split(',',$spec)) {
 	if ( m{^(x|-|nl|lf|cr)*chunked(x|-|nl|lf|cr)*$}i ) {
 	    s{-}{ }g;
@@ -179,6 +199,15 @@ sub make_response {
 	    $eol =~s{cr}{\r}g;
 	    $eol =~s{lf}{\n}g;
 	    $chunkmod{lineend} = $eol;
+	} elsif ( m{^(0*)(uc)?size(-)?$}) {
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    @chunks = ( $data =~m{(.{1,15})}smg,'') if ! @chunks;
+	    s{ucsize}{%X};
+	    s{size}{%x};
+	    s{\\r}{\r}g;
+	    s{\\n}{\n}g;
+	    s{-}{ }g;
+	    $sizefmt = $_;
 	} else {
 	    die $_
 	}
@@ -204,14 +233,14 @@ sub make_response {
 	}
 
 	$data = join("",map { 
-	    sprintf("%x%s%s%s%s",
+	    $_->[0] ? sprintf("$sizefmt%s%s%s%s",
 		$_->[0],          # size
 		$_->[2] || '',    # ext
 		$nl,
 		$_->[1],
 		$nl
-	    ).$end;
-	} @chunks);
+	    ) : "0$nl$nl"
+	} @chunks).$end;
     }
     return "$hdr\r\n$data";
 }

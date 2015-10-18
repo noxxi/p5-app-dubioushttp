@@ -40,6 +40,16 @@ DESC
     [ INVALID, 'lf;chunked' => 'line just containing <LF>: \n\r\n, followed by TE chunked'],
     [ INVALID, 'crcr;chunked' => 'line just containing <CR><CR>: \r\r\r\n, followed by TE chunked'],
     [ INVALID, 'lfcr;chunked' => 'line just containing <LF><CR>: \n\r\r\n, followed by TE chunked'],
+    [ INVALID, 'crcronly;chunked' => 'TE chunked prefixed with <CR><CR>,served chunked' ],
+    [ INVALID, 'cr-cronly;chunked' => 'TE chunked prefixed with <CR><space><CR>, served chunked' ],
+    [ INVALID, 'crcronly;chunked;do_clen' => 'TE chunked prefixed with <CR><CR>, not served chunked' ],
+    [ INVALID, 'cr-cronly;chunked;do_clen' => 'TE chunked prefixed with <CR><space><CR>, not served chunked' ],
+    [ INVALID, 'lflfonly;chunked' => 'TE chunked prefixed with <LF><LF>,served chunked' ],
+    [ INVALID, 'lf-lfonly;chunked' => 'TE chunked prefixed with <LF><space><LF>, served chunked' ],
+    [ INVALID, 'lflfonly;chunked;do_clen' => 'TE chunked prefixed with <LF><LF>, not served chunked' ],
+    [ INVALID, 'lf-lfonly;chunked;do_clen' => 'TE chunked prefixed with <LF><space><LF>, not served chunked' ],
+    [ INVALID, 'crlf-crlfonly;chunked' => 'TE chunked prefixed with <CR><LF><space><CR><LF>, served chunked' ],
+    [ INVALID, 'crlf-crlfonly;chunked;do_clen' => 'TE chunked prefixed with <CR><LF><space><CR><LF>, not served chunked' ],
 
     [ 'INVALID: various broken responses' ],
     [ INVALID, 'emptycont' => 'empty continuation line'],
@@ -159,10 +169,11 @@ sub make_response {
 	    $hdrfirst = 1;
 	} elsif ( $_ eq 'junkline' ) {
 	    $hdr .= "qutqzdafsdshadsdfdshsdd sddfd\r\n"
-	} elsif ( m{^(?:(cr|lf)+)$} ) {
+	} elsif ( m{^(?:(cr|lf|-)+)(only)?$} ) {
 	    s{cr}{\r}g;
 	    s{lf}{\n}g;
-	    $hdr .= "$_\r\n"
+	    s{-}{ }g;
+	    $hdr .= s{only$}{} ? $_ : "$_\r\n";
 	} elsif ( $_ eq 'chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding: chunked\r\n";

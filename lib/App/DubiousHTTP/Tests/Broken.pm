@@ -70,10 +70,11 @@ DESC
     [ INVALID, 'proto:HTTP/1.01' => 'version given as HTTP/1.01 instead of HTTP/1.0'],
     [ INVALID, 'proto:HTTP/1.2' => 'version given as HTTP/1.2 instead of HTTP/1.1'],
     [ INVALID, 'proto:HTTP/2.0' => 'version given as HTTP/2.0 instead of HTTP/1.1'],
-    [ INVALID, 'proto:HTTP/1.1 ' => 'HTTP/1.1+SPACE: space after version in status line'],
-    [ INVALID, 'proto:HTTP/1.1\t' => 'HTTP/1.1+TAB: tab after version in status line'],
-    [ INVALID, 'proto:HTTP/1.1\r' => 'HTTP/1.1+CR: \r after version in status line'],
-    [ INVALID, "proto: HTTP/1.1" => 'version prefixed with space: SPACE+HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/1.1-space' => 'HTTP/1.1+SPACE: space after version in status line'],
+    [ INVALID, 'proto:HTTP/1.1-tab' => 'HTTP/1.1+TAB: tab after version in status line'],
+    [ INVALID, 'proto:HTTP/1.1-cr' => 'HTTP/1.1+CR: \r after version in status line'],
+    [ INVALID, 'proto:HTTP/1.1-lf' => 'HTTP/1.1+LF: \n after version in status line'],
+    [ INVALID, "proto:space-HTTP/1.1" => 'version prefixed with space: SPACE+HTTP/1.1'],
     [ INVALID, 'proto:FTP/1.1' => 'version FTP/1.1 instead of HTTP/1.1'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
     [ INVALID, 'lf-no-crlf' => 'single \n instead of \r\n' ],
@@ -200,9 +201,11 @@ sub make_response {
 	    push @transform, sub { $_[0] =~ s{\r?\n}{$w}g }
 	} elsif ( m{^proto:(.*)} ) {
 	    my $proto = $1;
-	    $proto =~s{\\r}{\r};
-	    $proto =~s{\\t}{\t};
-	    $proto =~s{\\n}{\n};
+	    $proto =~s{cr|\\r}{\r}g;
+	    $proto =~s{tab|\\t}{\t}g;
+	    $proto =~s{lf|\\n}{\n}g;
+	    $proto =~s{space}{ }g;
+	    $proto =~s{-}{}g;
 	    $statusline = "$proto $code ok\r\n";
 	} elsif ( $_ eq 'ok' ) {
 	} elsif ( m{^(.*)-header$}) {

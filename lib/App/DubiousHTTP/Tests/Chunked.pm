@@ -31,7 +31,16 @@ DESC
     [ INVALID, 'size-tab' => "size followed by tab" ],
     [ INVALID, 'size-cr' => "size followed by <CR>" ],
     [ INVALID, 'size-lf' => "size followed by <LF>" ],
+    [ INVALID, 'size-x' => "size followed by char 'x'" ],
+    [ INVALID, 'size-spacex' => "size followed by space and char 'x'" ],
     [ INVALID, 'space-size' => "size prefixed by space" ],
+    [ INVALID, 'tab-size' => "size prefixed by tab" ],
+    [ INVALID, 'cr-size' => "size prefixed by cr" ],
+    [ INVALID, 'x-size' => "size prefixed by char 'x'" ],
+    [ INVALID, 'xspace-size' => "size prefixed by char 'x' and space" ],
+    [ UNCOMMON_VALID, 'final=00' => 'final chunk size "00"' ],
+    [ UNCOMMON_VALID, 'final=00000000000000000000' => 'final chunk size "00000000000000000000"' ],
+    [ INVALID, 'final=0x' => 'final chunk size "0x"' ],
 
     [ 'VALID: (but uncommon) use of extensions in chunked header' ],
     [ UNCOMMON_VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
@@ -152,6 +161,7 @@ sub make_response {
     my ($te,@chunks,%chunkmod);
     my $sizefmt = '%x';
     my $before_chunks = '';
+    my $final = '0';
     for (split(',',$spec)) {
 	if ( m{^(x|-|nl|lf|cr)*chunked(x|-|nl|lf|cr)*$}i ) {
 	    s{-}{ }g;
@@ -201,7 +211,7 @@ sub make_response {
 	    $eol =~s{cr}{\r}g;
 	    $eol =~s{lf}{\n}g;
 	    $chunkmod{lineend} = $eol;
-	} elsif ( m{^(-|space|cr|lf)*(0*)(uc)?size(-|space|cr|lf|tab)*$}) {
+	} elsif ( m{^(-|space|cr|lf|tab|x)*(0*)(uc)?size(-|space|cr|lf|tab|x)*$}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	    @chunks = ( $data =~m{(.{1,15})}smg,'') if ! @chunks;
 	    s{ucsize}{%X};
@@ -221,6 +231,9 @@ sub make_response {
 	    $before_chunks =~ s{tab}{\t}g;
 	    $before_chunks =~ s{cr}{\r}g;
 	    $before_chunks =~ s{lf}{\n}g;
+	} elsif (m{^final=(.*)$}) {
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    $final = $1;
 	} else {
 	    die $_
 	}
@@ -252,7 +265,7 @@ sub make_response {
 		$nl,
 		$_->[1],
 		$nl
-	    ) : "0$nl$nl"
+	    ) : "$final$nl$nl"
 	} @chunks).$end;
     }
     return "$hdr\r\n$before_chunks$data";

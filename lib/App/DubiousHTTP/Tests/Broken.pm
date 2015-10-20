@@ -76,6 +76,13 @@ DESC
     [ INVALID, 'proto:HTTP/1.1-lf' => 'HTTP/1.1+LF: \n after version in status line'],
     [ INVALID, "proto:space-HTTP/1.1" => 'version prefixed with space: SPACE+HTTP/1.1'],
     [ INVALID, 'proto:FTP/1.1' => 'version FTP/1.1 instead of HTTP/1.1'],
+    [ INVALID, 'status:HTTP/1.1' => 'HTTP/1.1 without code'],
+    [ INVALID, 'status:HTTP/1.1(cr)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1\rTransfer-Encoding:chunked, not served chunked'],
+    [ INVALID, 'status:HTTP/1.1(cr)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1\rTransfer-Encoding:chunked, served chunked'],
+    [ INVALID, 'status:HTTP/1.1(lf)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1\nTransfer-Encoding:chunked, not served chunked'],
+    [ INVALID, 'status:HTTP/1.1(lf)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1\nTransfer-Encoding:chunked, served chunked'],
+    [ INVALID, 'status:HTTP/1.1(cr)(lf)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1\r\nTransfer-Encoding:chunked, not served chunked'],
+    [ INVALID, 'status:HTTP/1.1(cr)(lf)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1\r\nTransfer-Encoding:chunked, served chunked'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
     [ INVALID, 'lf-no-crlf' => 'single \n instead of \r\n' ],
     [ INVALID, 'crcr-no-crlf' => '\r\r instead of \r\n' ],
@@ -180,6 +187,8 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	} elsif ( $_ eq 'do_clen') {
 	    $te = 'clen';
+	} elsif ( $_ eq 'do_chunked') {
+	    $te = 'chunked';
 	} elsif ( $_ eq 'do_close') {
 	    $te = 'close';
 	} elsif ( $_ eq '177' ) {
@@ -207,6 +216,13 @@ sub make_response {
 	    $proto =~s{space}{ }g;
 	    $proto =~s{-}{}g;
 	    $statusline = "$proto $code ok\r\n";
+	} elsif ( m{^status:(.*)} ) {
+	    my $line = $1;
+	    $line =~s{\Q(cr)}{\r}g;
+	    $line =~s{\Q(tab)}{\t}g;
+	    $line =~s{\Q(lf)}{\n}g;
+	    $line =~s{\Q(space)}{ }g;
+	    $statusline = "$line\r\n";
 	} elsif ( $_ eq 'ok' ) {
 	} elsif ( m{^(.*)-header$}) {
 	    $prefix = $1;

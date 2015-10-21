@@ -32,10 +32,16 @@ DESC
     [ INVALID, 'somehdr;tab;chunked' => '<tab>Transfer-Encoding: chunked as continuation of some header line, served chunked' ],
     [ UNCOMMON_VALID, 'somehdr;space;chunked;do_clen' => '<space>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
     [ UNCOMMON_VALID, 'somehdr;tab;chunked;do_clen' => '<tab>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
-    [ INVALID, '8bitkey;chunked' => 'line using 8bit field name, followed by TE chunked'],
-    [ INVALID, 'colon;chunked' => 'line with empty field name (single colon on line), followed by TE chunked'],
-    [ INVALID, '177;chunked' => 'line \177\r\n, followed by TE chunked' ],
-    [ INVALID, 'junkline;chunked' => 'ASCII junk line w/o colon, followed by TE chunked'],
+    [ INVALID, '8bitkey;chunked' => 'line using 8bit field name, followed by TE chunked, served chunked'],
+    [ INVALID, '8bitkey;chunked;do_clen' => 'line using 8bit field name, followed by TE chunked, not served chunked'],
+    [ INVALID, 'colon;chunked' => 'line with empty field name (single colon on line), followed by TE chunked, served chunked'],
+    [ INVALID, 'colon;chunked;do_clen' => 'line with empty field name (single colon on line), followed by TE chunked, not served chunked'],
+    [ INVALID, '177;chunked' => 'line \177\r\n, followed by TE chunked, served chunked' ],
+    [ INVALID, '177;chunked;do_clen' => 'line \177\r\n, followed by TE chunked, not served chunked' ],
+    [ INVALID, 'junkline;chunked' => 'ASCII junk line w/o colon, followed by TE chunked, served chunked'],
+    [ INVALID, 'junkline;chunked;do_clen' => 'ASCII junk line w/o colon, followed by TE chunked, not served chunked'],
+    [ INVALID, 'spacehdr;chunked' => 'header containing space, followed by TE chunked, served chunked'],
+    [ INVALID, 'spacehdr;chunked,do_clen' => 'header containing space, followed by TE chunked, not served chunked'],
     [ INVALID, 'cr;chunked' => 'line just containing <CR>: \r\r\n, followed by TE chunked'],
     [ INVALID, 'lf;chunked' => 'line just containing <LF>: \n\r\n, followed by TE chunked'],
     [ INVALID, 'crcr;chunked' => 'line just containing <CR><CR>: \r\r\r\n, followed by TE chunked'],
@@ -58,6 +64,7 @@ DESC
     [ INVALID, '177' => 'line \177\r\n' ],
     [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header after status line' ],
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
+    [ INVALID, 'spacehdr' => 'header containing space'],
     [ INVALID, 'cr' => 'line just containing <CR>: \r\r\n'],
     [ INVALID, 'lf' => 'line just containing <LF>: \n\r\n'],
     [ INVALID, 'crcr' => 'line just containing <CR><CR>: \r\r\r\n'],
@@ -83,6 +90,10 @@ DESC
     [ INVALID, 'status:HTTP/1.1(lf)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1\nTransfer-Encoding:chunked, served chunked'],
     [ INVALID, 'status:HTTP/1.1(cr)(lf)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1\r\nTransfer-Encoding:chunked, not served chunked'],
     [ INVALID, 'status:HTTP/1.1(cr)(lf)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1\r\nTransfer-Encoding:chunked, served chunked'],
+    [ INVALID, 'status:HTTP/1.1(space)200(space)(cr)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1 200 \rTransfer-Encoding:chunked, not served chunked'],
+    [ INVALID, 'status:HTTP/1.1(space)200(space)(cr)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1 200 \rTransfer-Encoding:chunked, served chunked'],
+    [ INVALID, 'status:HTTP/1.1(space)200(space)(lf)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1 200 \nTransfer-Encoding:chunked, not served chunked'],
+    [ INVALID, 'status:HTTP/1.1(space)200(space)(lf)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1 200 \nTransfer-Encoding:chunked, served chunked'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
     [ INVALID, 'lf-no-crlf' => 'single \n instead of \r\n' ],
     [ INVALID, 'crcr-no-crlf' => '\r\r instead of \r\n' ],
@@ -163,7 +174,7 @@ sub make_response {
 	    $hdr .= "Foo: bar\r\n \r\n"
 	} elsif ( $_ eq '8bitkey' ) {
 	    $hdr .= "Löchriger-Häddar: foobar\r\n"
-	} elsif ( $_ eq 'spacekey' ) {
+	} elsif ( $_ eq 'spacehdr' ) {
 	    $hdr .= "Foo Bar: foobar\r\n"
 	} elsif ( $_ eq 'colon' ) {
 	    $hdr .= ": foo\r\n"

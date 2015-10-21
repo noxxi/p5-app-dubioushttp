@@ -121,8 +121,6 @@ sub auto {
     my ($hdr,$body,$isbad) = content($page);
     $html .= "<script>\n";
 
-    $html .= sprintf("reference='%x%x';\n", rand(2**32), time());
-
     my ($accept) = $rqhdr =~m{^Accept:[ \t]*([^\r\n]+)}mi;
     if ($qstring =~m{(?:^|\&)accept=([^&]*)}) {
 	($accept = $1) =~s{(?:%([a-f\d]{2})|(\+))}{ $2 ? ' ' : chr(hex($1)) }esg;
@@ -157,6 +155,7 @@ sub auto {
 	}
 
     }
+    $html .= sprintf("reference='%x' + Math.floor(time()/1000).toString(16);\n", rand(2**32));
     $html .= "runtests(checks,0);\n</script>\n";
     return "HTTP/1.0 200 ok\r\n".
 	"Content-type: text/html\r\n".
@@ -200,6 +199,8 @@ You need to have JavaScript enabled to run this tests.
 <div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
 <div id=debug><h1>Debug</h1></div>
 <script>
+
+var time = Date.now || function() { return +new Date; };
 
 function base64_encode(input) {
     var chr1, chr2, chr3, enc1, enc2, enc3, enc4;

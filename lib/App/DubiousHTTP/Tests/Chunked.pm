@@ -130,7 +130,11 @@ DESC
 
     [ 'INVALID: hiding the Transfer-Encoding header' ],
     [ INVALID, 'space-colon-chunked,do_chunked' => '"Transfer-Encoding<space>:", served chunked' ],
+    [ INVALID, 'tab-colon-chunked,do_chunked' => '"Transfer-Encoding<tab>:", served chunked' ],
+    [ INVALID, 'cr-colon-chunked,do_chunked' => '"Transfer-Encoding<CR>:", served chunked' ],
     [ UNCOMMON_INVALID, 'space-colon-chunked,do_clen' => '"Transfer-Encoding<space>:", not served chunked' ],
+    [ UNCOMMON_INVALID, 'tab-colon-chunked,do_clen' => '"Transfer-Encoding<tab>:", not served chunked' ],
+    [ UNCOMMON_INVALID, 'cr-colon-chunked,do_clen' => '"Transfer-Encoding<CR>:", not served chunked' ],
     [ INVALID, 'colon-colon-chunked,do_chunked' => '"Transfer-Encoding::", served chunked' ],
     [ UNCOMMON_INVALID, 'colon-colon-chunked,do_clen' => '"Transfer-Encoding::", not served chunked' ],
     [ INVALID, 'cronly-chunked,do_chunked' => 'Transfer-Encoding with only <CR> as line delimiter before, served chunked' ],

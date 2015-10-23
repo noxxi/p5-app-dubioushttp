@@ -107,7 +107,7 @@ sub serve {
 	if ($path =~m{\A/submit_(?:(details)|results)} && $payload) {
 	    my $details = $1;
 	    $rqhdr .= $payload;
-	    $rqhdr =~s{( /=[A-Za-z0-9_\-]+={0,2} )}{ ungarble_url($1) }eg;
+	    $rqhdr =~s{( /[=-][A-Za-z0-9_\-]+={0,2} )}{ ungarble_url($1) }eg;
 	    $rqhdr =~s{^}{ }mg;
 	    warn $rqhdr;
 	    return "HTTP/1.0 204 ok\r\n\r\n" if ! $details;

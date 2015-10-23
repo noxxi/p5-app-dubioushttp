@@ -173,12 +173,14 @@ sub make_response {
 	    s{lf}{\n}g;
 	    s{cr}{\r}g;
 	    $hdr .= "Transfer-Encoding: $_\r\nConnection: close\r\n";
-	} elsif ( $_ eq 'space-colon-chunked' ) {
+	} elsif ( m{^(space|tab|cr|colon)-colon-chunked$} ) {
+	    my $c = $1;
+	    $c =~s{space}{ }g;
+	    $c =~s{colon}{:}g;
+	    $c =~s{tab}{\t}g;
+	    $c =~s{cr}{\r}g;
 	    $te = 'chunked';
-	    $hdr .= "Connection: close\r\nTransfer-Encoding : chunked\r\n"
-	} elsif ( $_ eq 'colon-colon-chunked' ) {
-	    $te = 'chunked';
-	    $hdr .= "Connection: close\r\nTransfer-Encoding:: chunked\r\n"
+	    $hdr .= "Connection: close\r\nTransfer-Encoding$c: chunked\r\n"
 	} elsif ( my ($crlf) = m {^(lf|cr)only-chunked$} ) {
 	    $te = 'chunked';
 	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};

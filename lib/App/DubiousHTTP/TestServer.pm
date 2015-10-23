@@ -221,7 +221,7 @@ sub _install_http {
 		    $xhdr =~s{^}{ |$digest|- }mg;
 		    warn " |$digest|-BEGIN $accept | $ua\n |$digest|- $line\n$xhdr";
 		}
-		warn localtime()." |$digest| $peer | $line".($ssl ? " | $ssl":"").".$ip_mismatch\n";
+		warn localtime()." |$digest| $peer | $line".($ssl ? " | $ssl":"")."$ip_mismatch\n";
 	    } else {
 		my $ua = $hdr =~m{^User-Agent:\s*([^\r\n]+)}mi && $1 || 'Unknown-UA';
 		my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;

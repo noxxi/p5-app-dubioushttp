@@ -3,9 +3,10 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(SETUP content html_escape MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $TRACKHDR);
+our @EXPORT = qw(SETUP content html_escape MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $CLIENTIP $TRACKHDR);
 use Scalar::Util 'blessed';
 
+our $CLIENTIP = undef;
 our $NOGARBLE = 0;
 use constant {
     SHOULDBE_VALID => 3,  # simple chunked, gzip.. - note if blocked
@@ -272,43 +273,91 @@ sub garble_url {
     return $url if $NOGARBLE;
     my ($keep,$garble) = $url =~m{^((?:https?://[^/]+)?/)(.+)}
         or return $url;
-    my @g = split('',$garble);
-    my $g = pack('L',rand(2**32));
-    my @r = unpack("aaaa",$g);
-    while (@g) {
-        $g .= shift(@g) ^ $r[0];
-        push @r, shift(@r);
-    }
+    my $xor = $CLIENTIP ? _ip2bin($CLIENTIP): pack('L',rand(2**32));
+    my $g = ($CLIENTIP ? pack('C',length($xor)):'') . $xor . _xorall($garble,$xor);
     # url safe base64
+    my $pad = ( 3 - length($g) % 3 ) % 3;
     $g = pack('u',$g);
     $g =~s{(^.|\n)}{}mg;
     $g =~tr{` -_}{AA-Za-z0-9\-_};
-    if ( my $pad = ( 3 - (4+length($garble)) % 3 ) % 3) {
-	substr($g,-$pad) = '=' x $pad;
-    }
-    return "$keep=$g";
+    substr($g,-$pad) = '=' x $pad if $pad;
+    return $keep . ($CLIENTIP?'-':'=') . $g;
 }
 
 sub ungarble_url {
     my $url = shift;
-    my ($keep,$u,$rest) = $url =~m{^(.*/)=([0-9A-Za-z_\-]+={0,2})([/? ].*)?$}
+    my ($keep,$type,$u,$rest) = $url =~m{^(.*/)([=-])([0-9A-Za-z_\-]+={0,2})([/? ].*)?$}
         or return $url;
     # url safe base64 -d
     $u =~s{=+$}{};
     $u =~tr{A-Za-z0-9\-_}{`!-_};
     $u =~s{(.{1,60})}{ chr(32 + length($1)*3/4) . $1 . "\n" }eg;
     $u = unpack("u",$u);
-    my @r = unpack('aaaa',substr($u,0,4,''));
-    my @u = split('',$u);
-    $u = '';
-    while (@u) {
-        $u .= shift(@u) ^ $r[0];
-        push @r, shift(@r);
-    }
+    my $size = ($type eq '=') ? 4: unpack('C',substr($u,0,1,''));
+    my $xor = substr($u,0,$size,'');
+    ${$_[0]} = _bin2ip($xor) if $type ne '=' && @_;
+    $u = _xorall($u,$xor);
     # make sure we only have valid stuff here
     $u = 'some-binary-junk' if $u =~m{[\x00-\x1f\x7f-\xff]};
     return $keep . $u . ($rest || '');
 }
 
+sub _xorall {
+    my ($data,$xor) = @_;
+    my @x = unpack('a' x length($xor),$xor);
+    my @c = split('',$data);
+    $data = '';
+    while (@c) {
+	$data .= shift(@c) ^ $x[0];
+	push @x, shift(@x);
+    }
+    return $data;
+}
+
+sub _ip2bin {
+    my $ip = shift;
+
+    # inet_ntop(AF_INET,...)
+    return pack("CCCC",split(m{\.},$1)) 
+	if $ip =~m{^(?:::ffff:)?(\d+\.\d+\.\d+\.\d+)$};
+
+    # inet_ntop(AF_INET6,...)
+    my @p = split(m{:},$ip);
+    $ip = '';
+    for(my $i=0;$i<@p;$i++) {
+	if ($p[$i] eq '') {
+	    $p[$i] = '0';
+	    splice(@p,$i,0,'0') while @p<8;
+	}
+	$ip .= pack("n",hex($p[$i]));
+    }
+    return $ip;
+}
+
+sub _bin2ip {
+    my $ip = shift;
+    return join('.',unpack('CCCC',$ip)) if length($ip) == 4;
+    my @part = unpack("n8",$ip);
+    my (@null,$null,$maxnull);
+    for( my $i=0;$i<@part;$i++) {
+	if (!$part[$i]) {
+	    $part[$i] = '0';
+	    if ($null) {
+		$$null++;
+		$maxnull = $#null if !$maxnull || $$null>$maxnull;
+	    } else {
+		push @null,[$i,1];
+		$null = \$null[-1][1];
+	    }
+	} else {
+	    $part[$i] = sprintf("%x",$part[$i]);
+	    $null = undef;
+	}
+    }
+    return join(':',@part) if !defined $maxnull;
+    my $begin = $null[$maxnull][0];
+    my $end = $begin + $null[$maxnull][1]-1;
+    return join(':', @part[0 .. $begin-1]).  '::'.  join(':',@part[$end+1 .. $#part]);
+}
 
 1;

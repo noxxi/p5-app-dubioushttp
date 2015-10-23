@@ -111,9 +111,10 @@ sub serve {
 	    $rqhdr =~s{^}{ }mg;
 	    warn $rqhdr;
 	    return "HTTP/1.0 204 ok\r\n\r\n" if ! $details;
-	    return "HTTP/1.0 200 ok\r\nContent-type: text/html\r\n\r\n"
-		."<!doctype html>"
+	    my $body = "<!doctype html>"
 		."<h1>Thanks for providing us with the feedback.</h1>";
+	    return "HTTP/1.1 200 ok\r\nContent-type: text/html\r\n".
+		"Content-length: ".length($body)."\r\n"
 	}
 
 	local $BASE_URL = "http://$listen";

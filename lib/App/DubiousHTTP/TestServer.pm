@@ -3,7 +3,7 @@ use warnings;
 package App::DubiousHTTP::TestServer;
 use Scalar::Util 'weaken';
 use Digest::MD5 'md5_base64';
-use App::DubiousHTTP::Tests::Common qw($TRACKHDR ungarble_url);
+use App::DubiousHTTP::Tests::Common qw($TRACKHDR $CLIENTIP ungarble_url);
 
 use IO::Socket::INET;
 my $IOCLASS;
@@ -39,7 +39,7 @@ sub run {
 	$sslargs = eval { IO::Socket::SSL::SSL_Context->new( SSL_server => 1, %$sslargs) }
 	    or die "creating SSL context: $@";
     }
-    my $srv = $IOCLASS->new( LocalAddr => $addr, Listen => 10, Reuse => 1 )
+    my $srv = $IOCLASS->new( LocalAddr => $addr, Listen => 10, ReuseAddr => 1 )
 	or die "listen failed: $!";
     $srv->blocking(0);
     $SELECT->handler($srv,0,sub {
@@ -167,7 +167,12 @@ sub _install_http {
 	    return if $clen>0; # need more
 
 	    my $addr = $cl->sockhost.':'.$cl->sockport;
-	    if ( ! eval { $wbuf .= $response->($page,$addr,$hdr,$payload,$ssl) } ) {
+	    if ( ! eval {
+		$CLIENTIP = $cl->peerhost;
+		$wbuf .= $response->($page,$addr,$hdr,$payload,$ssl);
+		$CLIENTIP = undef;
+		1;
+	    } ) {
 		warn "[$page] creating response failed: $@";
 		delete_client($cl);
 		return;
@@ -190,8 +195,12 @@ sub _install_http {
 	    # read header
 	    $hdr = substr($rbuf,0,pos($rbuf),'');
 	    my ($line) = $hdr =~m{^([^\r\n]*)};
-	    $line = ungarble_url($line);
+	    my $urlip;
+	    $line = ungarble_url($line,\$urlip);
 	    $line =~s{\?rand=0\.\d+ }{ };  # remove random for anti-caching
+
+	    my $peer = $cl->peerhost;
+	    my $ip_mismatch = ($urlip && $urlip ne $peer) ?  "| original($urlip)" : "";
 
 	    my $digest = '';
 	    if ($TRACKHDR) {
@@ -212,11 +221,11 @@ sub _install_http {
 		    $xhdr =~s{^}{ |$digest|- }mg;
 		    warn " |$digest|-BEGIN $accept | $ua\n |$digest|- $line\n$xhdr";
 		}
-		warn localtime()." |$digest| ". $cl->peerhost." | $line".($ssl ? " | $ssl":"")."\n";
+		warn localtime()." |$digest| $peer | $line".($ssl ? " | $ssl":"").".$ip_mismatch\n";
 	    } else {
 		my $ua = $hdr =~m{^User-Agent:\s*([^\r\n]+)}mi && $1 || 'Unknown-UA';
 		my @via = $hdr =~m{^Via:\s*([^\r\n]*)}mig;
-		warn localtime()." | $ua  | ". $cl->peerhost." | $line | @via\n";
+		warn localtime()." | $ua  | $peer | $line | @via$ip_mismatch\n";
 	    }
 
 	    (my $method,$page) = $line =~m{ \A 

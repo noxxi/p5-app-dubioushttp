@@ -273,7 +273,7 @@ var accept = null;
 
 function add_warning(m,test) {
     div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <span class=desc>" + test['desc'] + "</span>" +
-	"&nbsp;<a class=trylink download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
+	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
 	"</li>";
     div_warnings.style.display = 'block';
@@ -281,7 +281,7 @@ function add_warning(m,test) {
 
 function add_notice(m,test) {
     div_ol_notice.innerHTML = div_ol_notice.innerHTML + "<li>" + m + ": <span class=desc>" + test['desc'] + "</span>" +
-	"&nbsp;<a class=trylink download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
+	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
 	"</li>";
     div_notice.style.display = 'block';
@@ -289,7 +289,7 @@ function add_notice(m,test) {
 
 function add_debug(m,test) {
     div_debug.innerHTML = div_debug.innerHTML + m + (test ?
-	"&nbsp;<a class=trylink download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
+	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
 	"<br>": "");
 }

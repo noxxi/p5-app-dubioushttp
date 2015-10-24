@@ -135,6 +135,13 @@ DESC
     [ UNCOMMON_VALID, '500' => 'code 500 with body'],
     [ UNCOMMON_VALID, '502' => 'code 502 with body'],
 
+    [ 'VALID: non-existing status codes' ],
+    [ INVALID, '000' => 'code 000 with body'],
+    [ INVALID, '600' => 'code 600 with body'],
+    [ INVALID, '700' => 'code 700 with body'],
+    [ INVALID, '800' => 'code 800 with body'],
+    [ INVALID, '900' => 'code 900 with body'],
+
     [ 'INVALID: malformed status codes' ],
     [ INVALID, '2xx' => 'invalid status code with non-digits (2xx)'],
     [ INVALID, '20x' => 'invalid status code with non-digits (20x)'],
@@ -142,7 +149,8 @@ DESC
     [ INVALID, '20'  => 'invalid status code, two digits (20)'],
     [ INVALID, '2000' => 'invalid status code, too much digits (2000)'],
     [ INVALID, '0200' => 'invalid status code, numeric (0200)'],
-    [ INVALID, ' 200' => 'invalid status code, SPACE+200)'],
+    [ INVALID, 'space-200' => 'invalid status code, SPACE+200)'],
+    [ INVALID, 'tab-200' => 'invalid status code, TAB+200)'],
 
     [ 'VALID: new lines before HTTP header' ],
     [ UNCOMMON_VALID, 'crlf-header;chunked' => 'single <CR><LF> before header, chunked'],
@@ -216,8 +224,10 @@ sub make_response {
 	    $only = 1;
 	} elsif ( $_ eq 'http09' ) {
 	    return $data;
-	} elsif ( m{^(\s*\d.*)$} ) {
-	    $code = $1;
+	} elsif ( m{^(space-|tab-)*(\d.*)$} ) {    
+	    s{space-}{ }g;
+	    s{tab-}{\t}g;
+	    $code = $_;
 	} elsif ( $_ eq 'code-only' ) {
 	    $statusline = "HTTP/$version $code\r\n";
 	} elsif ( $_ eq 'http-lower' ) {

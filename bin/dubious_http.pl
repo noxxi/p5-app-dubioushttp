@@ -161,10 +161,11 @@ sub serve {
 		    $content =~s{([\x00-\x1f\\<>\x7f-\xff])}{
 			$1 eq "\\" ? "\\\\" :
 			$1 eq "\r" ? "\\r" :
+			$1 eq "\t" ? "\\t" :
 			$1 eq "\n" ? "\\n\n" :
 			$1 eq "<" ? "&lt;" :
 			$1 eq ">" ? "&gt;" :
-			sprintf("\\%02x",ord($1))
+			sprintf("\\x%02x",ord($1))
 		    }esg;
 
 		    (my $raw = $path) =~s{/src/}{/rawsrc/};

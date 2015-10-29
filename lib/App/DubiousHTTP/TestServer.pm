@@ -147,7 +147,14 @@ sub _install_http {
 	$DEBUG && _debug("read on ".fileno($cl)." -> ".(defined $n ? $n : $!));
 	if ( !$n ) {
 	    # close on eof or error
-	    delete_client($cl) if defined($n) || ! $!{EAGAIN}; 
+	    if (defined($n) || ! $!{EAGAIN}) {
+		if ($clen) {
+		    warn "ERROR: client closed with $clen bytes outstanding";
+		    $payload =~s{^}{DATA|}mg;
+		    print STDERR $payload;
+		}
+		delete_client($cl);
+	    }
 	    return;
 	}
 
@@ -169,6 +176,7 @@ sub _install_http {
 	    my $addr = $cl->sockhost.':'.$cl->sockport;
 	    if ( ! eval {
 		$CLIENTIP = $cl->peerhost;
+		$CLIENTIP =~s{^::ffff:}{};
 		$wbuf .= $response->($page,$addr,$hdr,$payload,$ssl);
 		$CLIENTIP = undef;
 		1;
@@ -200,6 +208,7 @@ sub _install_http {
 	    $line =~s{\?rand=0\.\d+ }{ };  # remove random for anti-caching
 
 	    my $peer = $cl->peerhost;
+	    $peer =~s{^::ffff:}{};
 	    my $ip_mismatch = ($urlip && $urlip ne $peer) ?  "| original($urlip)" : "";
 
 	    my $digest = '';

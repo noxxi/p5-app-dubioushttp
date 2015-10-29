@@ -3,6 +3,7 @@ use warnings;
 package App::DubiousHTTP::TestServer;
 use Scalar::Util 'weaken';
 use Digest::MD5 'md5_base64';
+use MIME::Base64 'decode_base64';
 use App::DubiousHTTP::Tests::Common qw($TRACKHDR $CLIENTIP ungarble_url);
 
 use IO::Socket::INET;
@@ -203,13 +204,49 @@ sub _install_http {
 	    # read header
 	    $hdr = substr($rbuf,0,pos($rbuf),'');
 	    my ($line) = $hdr =~m{^([^\r\n]*)};
-	    my $urlip;
-	    $line = ungarble_url($line,\$urlip);
-	    $line =~s{\?rand=0\.\d+ }{ };  # remove random for anti-caching
 
 	    my $peer = $cl->peerhost;
 	    $peer =~s{^::ffff:}{};
+
+	    my $urlip;
+	    $line = ungarble_url($line,\$urlip);
+	    $line =~s{\?rand=0\.\d+ }{ };  # remove random for anti-caching
 	    my $ip_mismatch = ($urlip && $urlip ne $peer) ?  "| original($urlip)" : "";
+
+	    (my $method,$page) = $line =~m{ \A
+		(GET|POST) [\040]+
+		(/\S*) [\040]+
+		HTTP/1\.[01] \z
+	    }x or do {
+		warn localtime()." | $peer | badhdr | $line\n";
+		$wbuf .= "HTTP/1.0 204 ok\r\n\r\n";
+		$close = 1;
+		$write->($cl);
+		return;
+	    };
+
+	    if ($page =~m{^/([a-zA-Z0-9_\-]+={0,2})$}) {
+		# maybe base64
+		my $data = $1;
+		$data =~tr{_-}{+/};
+		$data = eval { decode_base64($data) };
+		if (! defined $data) {
+		    warn "base64 decode failed: $@";
+		} elsif ( $data =~m{^(\S+)\0(\d+)\0(.*)\z}s ) {
+		    (my $ref, my $i,$data) = ($1,$2,$3);
+		    my $len = length($data);
+		    $data =~s{\\}{\\\\}g;
+		    $data =~s{\n}{\\n}g;
+		    $data =~s{\r}{\\r}g;
+		    $data =~s{\t}{\\t}g;
+		    printf STDERR "S|%s|%05d|%03d|%s\n",$ref,$i,$len,$data;
+		    $wbuf .= "HTTP/1.1 200 ok\r\nContent-length: 0\r\n\r\n";
+		    $write->($cl);
+		    return;
+		} else {
+		    warn "data have not the right format";
+		}
+	    }
 
 	    my $digest = '';
 	    if ($TRACKHDR) {
@@ -237,16 +274,6 @@ sub _install_http {
 		warn localtime()." | $ua  | $peer | $line | @via$ip_mismatch\n";
 	    }
 
-	    (my $method,$page) = $line =~m{ \A 
-		(GET|POST) [\040]+ 
-		(/\S*) [\040]+ 
-		HTTP/1\.[01] \z
-	    }x or do {
-		$wbuf .= "HTTP/1.0 204 ok\r\n\r\n";
-		$close = 1;
-		$write->($cl);
-		return;
-	    };
 	    $clen = $method eq 'POST' && $hdr =~m{^Content-length:[ \t]*(\d+)}mi && $1 || 0;
 	    if ($clen > 2**22) {
 		warn "request body too large ($clen)";

@@ -104,16 +104,17 @@ sub serve {
 	my ($path,$listen,$rqhdr,$payload,$ssl) = @_;
 	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
 
-	if ($path =~m{\A/submit_(?:(details)|results)} && $payload) {
+	if ($path =~m{\A/submit_(?:(details)|results)/([^/]+)} && $payload) {
 	    my $details = $1;
+	    my $id = $2;
 	    $rqhdr .= $payload;
 	    $rqhdr =~s{( /[=-][A-Za-z0-9_\-]+={0,2} )}{ ungarble_url($1) }eg;
 	    $rqhdr =~s{^}{ }mg;
 	    warn $rqhdr;
-	    return "HTTP/1.0 204 ok\r\n\r\n" if ! $details;
 	    my $body = "<!doctype html>"
 		."<h1>Thanks for providing us with the feedback.</h1>";
 	    return "HTTP/1.1 200 ok\r\nContent-type: text/html\r\n".
+		"X-ID: $id\r\n".
 		"Content-length: ".length($body)."\r\n"
 	}
 

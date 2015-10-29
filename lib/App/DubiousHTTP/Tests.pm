@@ -202,10 +202,12 @@ You need to have JavaScript enabled to run this tests.
 
 var time = Date.now || function() { return +new Date; };
 
-function base64_encode(input) {
+function base64_encode(input,urlsafe) {
     var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
     var output = "";
-    var chrs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var chrs = urlsafe
+	? "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_="
+	: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
     for(var i=0;i<input.length; i+=3) {
 	chr1 = input.charCodeAt(i) & 0xff;
@@ -532,6 +534,7 @@ function runtests(todo,done) {
     } else {
 	div_process.style.display = 'none';
 	add_debug("*DONE*");
+	var submit_url;
 	if (isbad) {
 	    var div;
 	    if (evasions == 0 && overblocked == 0) {
@@ -579,9 +582,53 @@ function runtests(todo,done) {
 		+ '<textarea name=product cols=80 rows=4>... please add product description here ...</textarea>'
 		+ '<br><input type=submit name=Send></form>';
 	    div.style.display = 'block';
-	    xhr('POST','/submit_results/' + reference + '/evasions=' + evasions + "/evasions_blocked=" + evasions_blocked, results, null);
+	    submit_url = '/submit_results/' + reference + '/evasions=' + evasions + "/evasions_blocked=" + evasions_blocked;
 	} else {
-	    xhr('POST','/submit_results/' + reference ,results, null);
+	    submit_url = '/submit_results/' + reference;
+	}
+
+	if (submit_url) {
+	    xhr('POST', submit_url, results, function(req) {
+		var blocked = 1;
+		try {
+		    if (req.status != 200) {
+			_log("bad status from submit: " + req.status);
+		    } else if (req.getResponseHeader("X-ID") != reference) {
+			_log("bad response x-id:'" + req.getResponseHeader("X-ID") + "' expect:'" + reference +"'");
+		    } else {
+			_log("submission ok");
+			blocked = 0
+		    }
+		}
+		catch(e) { _log(e); }
+		if (blocked) {
+		    // POST might be blocked, try as lots of GET requests
+		    var post = submit_url + "\n" + results;
+		    results = null;
+		    var i = 0;
+		    var submit_part;
+		    submit_part = function(req,status) {
+			if (!status) status = req.status;
+			if (status != 200) {
+			    _log("submitting part failed: " + status);
+			    return;
+			} else if (post == null) {
+			    return;
+			}
+
+			var buf = post.substr(0,512);
+			if (buf.length<512) {
+			    post = null;
+			} else {
+			    post = post.substr(512);
+			}
+			buf = base64_encode( reference + "\0" + i + "\0" + buf,1);
+			i++;
+			xhr('GET', '/' + buf, null, submit_part);
+		    };
+		    submit_part(null,200);
+		}
+	    });
 	}
     }
 }

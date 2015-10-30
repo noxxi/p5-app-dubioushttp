@@ -126,6 +126,7 @@ sub auto {
 	($accept = $1) =~s{(?:%([a-f\d]{2})|(\+))}{ $2 ? ' ' : chr(hex($1)) }esg;
     }
     $html .= "accept = '".quotemeta($accept)."';\n" if $accept;
+    $html .= "fast_feedback = 16384;\n" if $FAST_FEEDBACK;
 
     $html .= "expect64 = '".encode_base64($body,'')."';\n";
     $html .= 'results = "V | '.App::DubiousHTTP->VERSION.'\n";' . "\n";
@@ -529,6 +530,9 @@ function runtests(todo,done) {
 		todo.unshift({ page: test['harmless_page'], desc: test['desc'], valid: test['valid'], harmless_retry:1,
 		    retry4status:status, retry4page: test['page']});
 	    }
+	    if (fast_feedback && results.length > fast_feedback) {
+		submit_part();
+	    }
 	    runtests(todo,done+1);
 	});
     } else {
@@ -588,49 +592,60 @@ function runtests(todo,done) {
 	}
 
 	if (submit_url) {
-	    xhr('POST', submit_url, results, function(req) {
-		var blocked = 1;
-		try {
-		    if (req.status != 200) {
-			_log("bad status from submit: " + req.status);
-		    } else if (req.getResponseHeader("X-ID") != reference) {
-			_log("bad response x-id:'" + req.getResponseHeader("X-ID") + "' expect:'" + reference +"'");
-		    } else {
-			_log("submission ok");
-			blocked = 0
-		    }
-		}
-		catch(e) { _log(e); }
-		if (blocked) {
-		    // POST might be blocked, try as lots of GET requests
-		    var post = submit_url + "\n" + results;
-		    results = null;
-		    var i = 0;
-		    var submit_part;
-		    submit_part = function(req,status) {
-			if (!status) status = req.status;
-			if (status != 200) {
-			    _log("submitting part failed: " + status);
-			    return;
-			} else if (post == null) {
-			    return;
-			}
-
-			var buf = post.substr(0,512);
-			if (buf.length<512) {
-			    post = null;
-			} else {
-			    post = post.substr(512);
-			}
-			buf = base64_encode( reference + "\0" + i + "\0" + buf,1);
-			i++;
-			xhr('GET', '/' + buf, null, submit_part);
-		    };
-		    submit_part(null,200);
-		}
-	    });
+	    submit_result(submit_url,results);
+	    results = null;
 	}
     }
+}
+
+function submit_result(url,data) {
+    xhr('POST', url, data, function(req) {
+	var blocked = 1;
+	try {
+	    if (req.status != 200) {
+		_log("bad status from submit: " + req.status);
+	    } else if (req.getResponseHeader("X-ID") != url) {
+		_log("bad response x-id:'" + req.getResponseHeader("X-ID") + "' expect:'" + url +"'");
+	    } else {
+		_log("submission ok");
+		blocked = 0
+	    }
+	}
+	catch(e) { _log(e); }
+	if (blocked) {
+	    // POST might be blocked, try as lots of GET requests
+	    var post = url + "\n" + data;
+	    data = null;
+	    var i = 0;
+	    var submit_part;
+	    submit_part = function(req,status) {
+		if (!status) status = req.status;
+		if (status != 200) {
+		    _log("submitting part failed: " + status);
+		    return;
+		} else if (post == null) {
+		    return;
+		}
+
+		var buf = post.substr(0,512);
+		if (buf.length<512) {
+		    post = null;
+		} else {
+		    post = post.substr(512);
+		}
+		buf = base64_encode( reference + "\0" + i + "\0" + buf,1);
+		i++;
+		xhr('GET', '/' + buf, null, submit_part);
+	    };
+	    submit_part(null,200);
+	}
+    });
+}
+
+var partid = 0;
+function submit_part() {
+    submit_result("/submit_part/" + reference + "/" + partid++,results);
+    results = '';
 }
 
 document.getElementById('noscript').style.display = 'none';

@@ -239,12 +239,12 @@ sub _install_http {
 		    $data =~s{\n}{\\n}g;
 		    $data =~s{\r}{\\r}g;
 		    $data =~s{\t}{\\t}g;
-		    printf STDERR "S|%s|%05d|%03d|%s\n",$ref,$i,$len,$data;
+		    printf STDERR "S|%s|%s|%05d|%03d|%s\n",$peer,$ref,$i,$len,$data;
 		    $wbuf .= "HTTP/1.1 200 ok\r\nContent-length: 0\r\n\r\n";
 		    $write->($cl);
 		    return;
 		} else {
-		    warn "data have not the right format";
+		    #warn "data have not the right format";
 		}
 	    }
 

@@ -3,11 +3,16 @@ use warnings;
 package App::DubiousHTTP::Tests::Common;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
-our @EXPORT = qw(SETUP content html_escape MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID garble_url ungarble_url $NOGARBLE $CLIENTIP $TRACKHDR);
+our @EXPORT = qw(
+    MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID 
+    SETUP content html_escape garble_url ungarble_url 
+    $NOGARBLE $CLIENTIP $TRACKHDR $FAST_FEEDBACK
+);
 use Scalar::Util 'blessed';
 
 our $CLIENTIP = undef;
 our $NOGARBLE = 0;
+our $FAST_FEEDBACK = 0;
 use constant {
     SHOULDBE_VALID => 3,  # simple chunked, gzip.. - note if blocked
     MUSTBE_VALID => 2,    # no browser should fail on this

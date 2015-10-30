@@ -29,6 +29,9 @@ Options for server mode:
  --no-track-header  Disable logging of header information for requests, which
 		    are used to analyze the origin and path of the request in
 		    more detail.
+ --fast-feedback    Don't collect all results and send them at once at the end
+                    but send parts of the output earlier so that the recipient
+		    needs to collect them. This saves memory in the client too.
 
 USAGE
     exit(1);
@@ -43,6 +46,7 @@ GetOptions(
     'M|mode=s' => \$mode,
     'no-garble-url' => \$NOGARBLE,
     'track-header!' => \$TRACKHDR,
+    'fast-feedback' => \$FAST_FEEDBACK,
     'cert=s'   => \$cert,
     'key=s'    => \$key,
 );
@@ -104,17 +108,20 @@ sub serve {
 	my ($path,$listen,$rqhdr,$payload,$ssl) = @_;
 	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
 
-	if ($path =~m{\A/submit_(?:(details)|results)/([^/]+)} && $payload) {
-	    my $details = $1;
-	    my $id = $2;
+	if ($path =~m{\A/submit_(details|results|part)/([^/]+)(?:/(\d+))?} && $payload) {
+	    my ($what,$id,$part) = ($1,$2,$3);
 	    $rqhdr .= $payload;
 	    $rqhdr =~s{( /[=-][A-Za-z0-9_\-]+={0,2} )}{ ungarble_url($1) }eg;
 	    $rqhdr =~s{^}{ }mg;
-	    warn $rqhdr;
-	    my $body = "<!doctype html>"
-		."<h1>Thanks for providing us with the feedback.</h1>";
+	    my $body = '';
+	    print STDERR $rqhdr;
+	    if ($what ne 'part') {
+		print STDERR $rqhdr;
+		$body = "<!doctype html>"
+		    ."<h1>Thanks for providing us with the feedback.</h1>";
+	    }
 	    return "HTTP/1.1 200 ok\r\nContent-type: text/html\r\n".
-		"X-ID: $id\r\n".
+		"X-ID: $path\r\n".
 		"Content-length: ".length($body)."\r\n"
 	}
 

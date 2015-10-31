@@ -100,6 +100,11 @@ while (defined( $_ = $nextline->())) {
 	my ($mon,$day,$h,$m,$s,$y) = split(m{[\s:]+},$date);
 	$mon = $mon2i{lc($mon)} // die $mon;
 	$time = timelocal($s,$m,$h,$day,$mon,$y);
+	if (!$id) {
+	    $id = sprintf("%08x",$time);
+	    $prefix_line =~s{(/submit_(?:details|results))}{$1/$id} or die $prefix_line;
+	    $rqargs{_first_header} = $prefix_line =~m{\| (POST \S+ HTTP/1\.[01])} && $1;
+	}
     }
 
     if ($rqline) {
@@ -115,7 +120,7 @@ while (defined( $_ = $nextline->())) {
 	    rqline => $rqline,
 	    prefix_line => $prefix_line,
 	    time => $time,
-	    id => $id || sprintf("%08x",$time),
+	    id => $id,
 	    %rqargs,
 	    _header => '',
 
@@ -155,7 +160,7 @@ while (defined( $_ = $nextline->())) {
     s{\r?\n\z}{};
     if (defined $inside->{_header}) {
 	if ($_ ne '') {
-	    $inside->{_header} .= $_."\n";
+	    $inside->{_header} .= (delete $inside->{_first_header} || $_)."\n";
 	} else {
 	    $inside->{header} = delete $inside->{_header};
 	    if ( $inside->{header} 
@@ -168,7 +173,10 @@ while (defined( $_ = $nextline->())) {
 
     } elsif ($inside->{boundary}
 	&& m{^--\Q$inside->{boundary}\E(--)?}) {
-	goto done if $1; # end
+	if ($1) { # end
+	    $orig_line = $_ = ''; # eat
+	    goto done;
+	}
 	$inside->{_parthdr} = '';
 	$inside->{lines} = delete $inside->{_lines} if $inside->{_lines};
 
@@ -179,7 +187,7 @@ while (defined( $_ = $nextline->())) {
 	    $inside->{_partname} = $1 || $2 || $3;
 	    if ($inside->{_partname} eq 'results') {
 		$inside->{_lines} = [] 
-	    } elsif ($inside->{_partname} = 'product') {
+	    } elsif ($inside->{_partname} eq 'product') {
 		$inside->{product_parthdr} = $inside->{_parthdr};
 	    }
 	    delete $inside->{_parthdr};
@@ -286,6 +294,7 @@ sub output {
 	print $outfh "---\n".$data->{prefix_line};
 	print $outfh " $_\n" for (split(m{\r?\n},$data->{header}));
 	print $outfh " \n";
+	print $outfh " --$data->{boundary}\n";
 	print $outfh " $_\n" for (split(m{\r?\n},$data->{product_parthdr}));
 	print $outfh " \n";
 	print $outfh " $_\n" for (split(m{\r?\n},$data->{product}));
@@ -296,7 +305,7 @@ sub output {
 	print $outfh "---\n".$data->{prefix_line};
 	print $outfh " $_\n" for (split(m{\r?\n},$data->{header}));
 	print $outfh " \n";
-	print $outfh " $_\n" for (@{$data->{lines}});
+	print $outfh " ".ungarble_url($_)."\n" for (@{$data->{lines}});
 	print $outfh "\n";
     }
 }

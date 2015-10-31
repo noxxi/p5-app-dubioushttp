@@ -1,3 +1,9 @@
+2015/10/31 0.027
+- way more tests of broken responses
+- add tests for gzip compression flags and features
+- add support for lzma compression, supported by at least Opera
+- option --fast-feedback so that results  gets submitted in parts once they grow to big
+- new script bin/normalize-logs.pl to normalize log files
 2015/10/01 0.026
 - add optional SSL and IPv6 support
 - add more tests and fixed some 

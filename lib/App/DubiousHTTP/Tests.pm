@@ -582,7 +582,6 @@ function runtests(todo,done) {
 		    + "Please add as much details as you know and like to offer, i.e. model, patch level, specific configurations. ";
 	    }
 	    div.innerHTML += '<br><br><form enctype="multipart/form-data" method=POST action="/submit_details/' + reference + '/evasions=' + evasions + "/evasions_blocked=" + evasions_blocked + '">'
-		+ '<input type=hidden name=results value="' + escapeAttribute(results) + '">'
 		+ '<textarea name=product cols=80 rows=4>... please add product description here ...</textarea>'
 		+ '<br><input type=submit name=Send></form>';
 	    div.style.display = 'block';
@@ -605,14 +604,16 @@ function submit_result(url,data) {
 	    if (req.status != 200) {
 		_log("bad status from submit: " + req.status);
 	    } else if (req.getResponseHeader("X-ID") != url) {
-		_log("bad response x-id:'" + req.getResponseHeader("X-ID") + "' expect:'" + url +"'");
+	    	_log("bad response x-id:'" + req.getResponseHeader("X-ID") + "' expect:'" + url +"'");
 	    } else {
 		_log("submission ok");
 		blocked = 0
 	    }
 	}
 	catch(e) { _log(e); }
-	if (blocked) {
+
+	// disable - to much false reports. Better use --fast-feedback
+	if ( 0 && blocked) {
 	    // POST might be blocked, try as lots of GET requests
 	    var post = url + "\n" + data;
 	    data = null;

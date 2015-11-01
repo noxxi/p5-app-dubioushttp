@@ -18,6 +18,7 @@ GetOptions(
 
 sub usage {
     print STDERR <<USAGE;
+
 Normalize log files so it does not matter if the submissions were done with
 multiple POST (--fast-feedback) or with GET (if POST failed): it will always
 look like a single large POST after this normalization.
@@ -32,8 +33,14 @@ Options:
     -u|--update     only handle input file if newer than output file
     -a|include-all  include all lines, with --no-include-all only submissions
                     but not other logged lines
+Exit codes:
+ 0: all well and data were written
+ 1: all well and no data were written (--update)
+ 2: usage
+ anything else: error (die)
+
 USAGE
-    exit(1);
+    exit(2);
 }
 
 $|=1 if ! $output;
@@ -42,20 +49,16 @@ my %mon2i = qw( jan 0 feb 1 mar 2 apr 3 may 4 jun 5 jul 6 aug 7 sep 8 oct 9 nov 
 my $outfh = \*STDOUT;
 my @input_stat;
 my $nextline = do {
-    my $sub;
     if ($input && $output && $update) {
 	my @ist = stat($input);
 	my @ost = stat($output);
-	$sub = sub {()} if @ost && @ist && $ist[9]<=$ost[9];
+	exit(1) if @ost && @ist && $ist[9]<=$ost[9];
     }
-    if (!$sub) {
-	my $fh = \*STDIN;
-	die "open $input: $!" if $input && ! open($fh,'<',$input);
-	die "open $output: $!" if $output && ! open($outfh,'>',$output);
-	@input_stat = stat($fh) if $input && $output;
-	$sub = sub { scalar(<$fh>) }
-    }
-    $sub;
+    my $fh = \*STDIN;
+    die "open $input: $!" if $input && ! open($fh,'<',$input);
+    die "open $output: $!" if $output && ! open($outfh,'>',$output);
+    @input_stat = stat($fh) if $input && $output;
+    sub { scalar(<$fh>) }
 };
 
 my ($inside,%open_inside,%open_parts);

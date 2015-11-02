@@ -142,7 +142,7 @@ while (defined( $_ = $nextline->())) {
 	    for(keys %open_parts) {
 		$open_parts{$_}[-1]{time} < $time - 600 or next;
 		my $r = delete $open_parts{$_};
-		warn "EXPIRE unfinished multi-part submission $r->[-1]{id} from ".localtime($r->[-1]{time})."\n";
+		warn "EXPIRE unfinished multi-part submission $r->[-1]{id}/$r->[-1]{part} from ".localtime($r->[-1]{time})."\n";
 	    }
 	}
 	next;

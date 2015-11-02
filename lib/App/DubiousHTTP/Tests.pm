@@ -121,6 +121,12 @@ sub auto {
     my ($hdr,$body,$isbad) = content($page);
     $html .= "<script>\n";
 
+    if (my ($vendor,$msg) = vendor_notice($CLIENTIP)) {
+	warn "VENDOR_NOTICE($CLIENTIP) $vendor\n";
+	$msg =~s{(\\|")|(\r)|(\n)|(\t)}{ "\\".($1||($2?'r':$3?'n':'t'))}eg;
+	$html .= "vendor_notice(\"$msg\");\n";
+    }
+
     my ($accept) = $rqhdr =~m{^Accept:[ \t]*([^\r\n]+)}mi;
     if ($qstring =~m{(?:^|\&)accept=([^&]*)}) {
 	($accept = $1) =~s{(?:%([a-f\d]{2})|(\+))}{ $2 ? ' ' : chr(hex($1)) }esg;
@@ -170,6 +176,7 @@ sub _auto_static_html { return <<'HTML'; }
 <meta charset="utf-8">
 <style>
 body      { font-family: Verdana, sans-serif; }
+#vendor_notice  { padding: 2em; margin: 1em; background: #000000; color: #ff0000; font-size: 150%; display: none; }
 #nobad    { padding: 2em; margin: 1em; background: #ff3333; display: none; }
 #nobad div   { font-size: 150%; margin: 0.5em;  }
 #noevade  { padding: 1em; margin: 1em; background: green; display: none; }
@@ -189,6 +196,7 @@ body      { font-family: Verdana, sans-serif; }
 <div id=noscript>
 You need to have JavaScript enabled to run this tests.
 </div>
+<div id=vendor_notice> </div>
 <div id=nobad> </div>
 <div id=urlblock> </div>
 <div id=evasions></td>
@@ -202,6 +210,13 @@ You need to have JavaScript enabled to run this tests.
 <script>
 
 var time = Date.now || function() { return +new Date; };
+
+function vendor_notice(msg) {
+    var div = document.getElementById('vendor_notice');
+    if (!div) return;
+    div.innerHTML = msg;
+    div.style.display = 'block';
+}
 
 function base64_encode(input,urlsafe) {
     var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
@@ -652,6 +667,61 @@ function submit_part() {
 document.getElementById('noscript').style.display = 'none';
 </script>
 HTML
+
+{
+
+    my (%msg,@map);
+    sub vendor_notice {
+	my $srcip = shift or return;
+	$srcip =~m{:} and return; # IPv6 not handled yet here
+	@map || return;
+	my $ipn = 0;
+	$ipn = 256*$ipn + $_ for split(m{\.+},$srcip);
+	for(@map) {
+	    next if $ipn<$_->[1];
+	    next if $ipn>$_->[2];
+	    my $vendor = $_->[0];
+	    return ($vendor,$msg{$vendor});
+	}
+	return;
+    }
+
+    # load notice on startup
+    if (open(my $fh,'<','vendor_notice.txt')) {
+	my $vendor;
+	while (<$fh>) {
+	    if ($vendor) {
+		if (m{^=end\s*$}) {
+		    $vendor = undef;
+		} else {
+		    $msg{$vendor} .= $_;
+		}
+	    } elsif ( m{^=begin (\S+)}) {
+		$vendor = $1;
+		die "message for vendor $vendor already loaded"
+		    if $msg{$vendor};
+	    } elsif (my ($ip0,$net,$ip1,$vendor) =
+		m{^=map\s+([\d\.]+)(?:/(\d+)|\s*-\s*([\d\.]+))\s+(\S+)}) {
+		for my $ip ($ip0,$ip1) {
+		    defined $ip or next;
+		    my @ip = split(m{\.+},$ip);
+		    push @ip,0 while @ip<4;
+		    $ip = 0;
+		    $ip = 256*$ip + $_ for @ip;
+		}
+		$ip1 = $ip0 + (2 << (32-$net)) if defined $net;
+		push @map,[ $vendor,$ip0,$ip1 ];
+	    } elsif (do { s{#.*}{}; m{\S}}) {
+		die "invalid line $_";
+	    }
+	}
+	for my $vendor (keys %msg) {
+	    die "no source-ip for $vendor defined"
+		if !grep { $_->[0] eq $vendor } @map;
+	}
+	warn "DEBUG: vendor notice loaded for $_\n" for (sort keys %msg);
+    }
+}
 
 
 1;

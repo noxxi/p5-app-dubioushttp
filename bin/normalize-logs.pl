@@ -155,6 +155,32 @@ while (defined( $_ = $nextline->())) {
 		$open_parts{$_}[-1]{time} < $time - 600 or next;
 		my $r = delete $open_parts{$_};
 		warn "EXPIRE unfinished multi-part submission $r->[-1]{id}/$r->[-1]{part} from ".localtime($r->[-1]{time})."\n";
+
+		# if we had evasions forward it as incomplete, because it might
+		# still be an interesting report
+		my $e = my $z = 0;
+		my @lines;
+		for(@$r) {
+		    for(@{ delete $_->{lines} || delete $_->{_lines} || [] }) {
+			push @lines,$_;
+			m{^(?:(E)|Z) } or next;
+			if ($1) {
+			    $e++
+			} else {
+			    $z++
+			}
+		    }
+		}
+		if ($e || $z) {
+		    my $d = $r->[-1];
+		    $d->{lines} = \@lines;
+		    $d->{incomplete} = 1;
+		    delete $d->{part};
+		    my $url = "/submit_results/$d->{id}/evasions=$e/evasions_blocked=$z/incomplete=1";
+		    s{ /submit_part/(\S+)}{ $url}
+			for ($d->{header},$d->{prefix_line});
+		    output($d);
+		}
 	    }
 	}
 	next;

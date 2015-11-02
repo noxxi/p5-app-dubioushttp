@@ -104,6 +104,8 @@ sub make_pcaps {
 ############################ work as server
 sub serve {
     my ($addr,$sslargs) = @_;
+    my %iscat = map { $_->ID => 1 } App::DubiousHTTP::Tests->categories;
+
     App::DubiousHTTP::TestServer->run($addr, $sslargs, sub {
 	my ($path,$listen,$rqhdr,$payload,$ssl) = @_;
 	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
@@ -138,7 +140,7 @@ sub serve {
 	}
 
 	return App::DubiousHTTP::Tests->auto($cat,$page,$spec,$qstring,$rqhdr)
-	    if $auto;
+	    if $auto && ($iscat{$cat} || $cat eq 'all');
 
 	if ( $page eq 'ALL' && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {

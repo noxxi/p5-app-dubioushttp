@@ -61,7 +61,7 @@ my $nextline = do {
     sub { scalar(<$fh>) }
 };
 
-my ($inside,%open_inside,%open_parts);
+my ($inside,%open_inside,%open_parts,%recent);
 while (defined( $_ = $nextline->())) {
     my $orig_line = my $prefix_line = $_;
     my ($time,$id,$rqline,%rqargs);
@@ -111,6 +111,18 @@ while (defined( $_ = $nextline->())) {
     }
 
     if ($rqline) {
+
+	# weed out duplicate submissions
+	for (keys %recent) {
+	    delete $recent{$_} if $recent{$_} +30 < $time;
+	}
+	if ($recent{$rqline}) {
+	    warn "DUP $id $rqline\n";
+	    $recent{$rqline} = $time;
+	    next;
+	}
+	$recent{$rqline} = $time;
+
 	if (%open_inside) {
 	    # expire unfinished stuff
 	    for(keys %open_inside) {

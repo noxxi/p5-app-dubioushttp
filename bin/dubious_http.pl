@@ -118,7 +118,6 @@ sub serve {
 	    my $body = '';
 	    print STDERR $rqhdr;
 	    if ($what ne 'part') {
-		print STDERR $rqhdr;
 		$body = "<!doctype html>"
 		    ."<h1>Thanks for providing us with the feedback.</h1>";
 	    }

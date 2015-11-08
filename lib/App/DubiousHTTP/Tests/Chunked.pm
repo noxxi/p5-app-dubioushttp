@@ -160,7 +160,7 @@ DESC
 sub make_response {
     my ($self,$page,$spec) = @_;
     return make_index_page() if $page eq '';
-    my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
+    my ($hdr,$data) = content($page,$self->ID."-".$spec) or die "unknown page $page";
     my $version = 'HTTP/1.1';
     my ($te,@chunks,%chunkmod);
     my $sizefmt = '%x';

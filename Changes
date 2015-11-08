@@ -1,3 +1,6 @@
+2015/11/08 0.028
+- bulk testing of behavior regarding Javascript and Image loading (instead
+  of only XHR)
 2015/10/31 0.027
 - way more tests of broken responses
 - add tests for gzip compression flags and features

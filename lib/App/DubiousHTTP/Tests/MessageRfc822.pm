@@ -30,7 +30,7 @@ DESC
 sub make_response {
     my ($self,$page,$spec) = @_;
     return make_index_page() if $page eq '';
-    my ($hdr,$data) = content($page,$spec) or die "unknown page $page";
+    my ($hdr,$data) = content($page,$self->ID."-".$spec) or die "unknown page $page";
     my $version = '1.0';
     for (split(';',$spec)) {
 	if ( $_ eq 'ce:gzip' ) {

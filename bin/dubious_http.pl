@@ -128,7 +128,7 @@ sub serve {
 
 	local $BASE_URL = "http://$listen";
 	my ($auto,$src,$cat,$page,$spec,$qstring) = $path =~m{\A / 
-	    (?:(auto)/|((?:raw)?src)/)?
+	    (?:auto(js|img|html|xhr|)/|((?:raw)?src)/)?
 	    ([^/]+)
 	    (?: / ([^/\?]*))?
 	    (?: / ([^\?]*))?
@@ -138,8 +138,10 @@ sub serve {
 	    $_ = '' if ! defined $_;
 	}
 
-	return App::DubiousHTTP::Tests->auto($cat,$page,$spec,$qstring,$rqhdr)
-	    if $auto && ($iscat{$cat} || $cat eq 'all');
+	if (defined $auto && ($iscat{$cat} || $cat eq 'all')) {
+	    return App::DubiousHTTP::Tests->auto(
+		$auto || 'xhr',$cat,$page,$spec,$qstring,$rqhdr)
+	}
 
 	if ( $page eq 'ALL' && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {

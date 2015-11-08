@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 package App::DubiousHTTP;
-our $VERSION = '0.027_3';
+our $VERSION = '0.028';
 
 1;
 __END__

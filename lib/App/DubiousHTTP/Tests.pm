@@ -37,7 +37,7 @@ More information about bypassing firewalls using interpretation differences can
 be found <a href="http://noxxi.de/research/semantic-gap.html">here</a>.
 </p>
 
-<h2>Bulk test with virus payload</h2>
+<h2>Bulk test with virus payload (XHR)</h2>
 
 <p>
 This bulk test tries to transfer the <a
@@ -61,7 +61,7 @@ the evasion.
 </p>
 <p id=test_virus class=runtest><a href="/auto/all/eicar.txt">Run Test with <strong>EICAR test virus</strong> payload</a></p>
 
-<h2>Bulk test with innocent payload</h2>
+<h2>Bulk test with innocent payload (XHR)</h2>
 
 <p>
 This is the same bulk test as the previous one but this time the payload is
@@ -73,6 +73,24 @@ uncommon or invalid HTTP response.
 </p>
 <p id=test_novirus class=runtest><a href="/auto/all/novirus.txt">Run Test with <strong>innocent</strong> payload</a></p>
 
+<h2>Bulk test with innocent Javascript</h2>
+
+<p>
+Contrary to the previous bulk tests this one is not done with XMLHttpRequest but
+instead it analyzes which responses will successfully be interpreted as
+JavaScript by the browser.
+</p>
+<p id=test_js class=runtest><a href="/autojs/all/set_success.js">Run Test with
+innocent JavaScript payload</a></p>
+
+<h2>Bulk test with innocent Image</h2>
+
+<p>
+This bulk test will use img-Tags to download an innocent image to check which
+uncommen responses can be used to load images.
+</p>
+<p id=test_js class=runtest><a href="/autoimg/all/ok.png">Run Test with
+innocent image payload</a></p>
 
 <h2>Non-Bulk tests</h2>
 
@@ -115,6 +133,15 @@ HTML
 }
 
 sub auto {
+    my $self = shift;
+    my $type = shift;
+    return $self->auto_xhr(@_) if $type eq 'xhr';
+    return $self->auto_js(@_) if $type eq 'js';
+    return $self->auto_img(@_) if $type eq 'img';
+    die;
+}
+
+sub auto_xhr {
     my ($self,$cat,$page,$spec,$qstring,$rqhdr) = @_;
     $page ||= 'eicar.txt';
     my $html = _auto_static_html();
@@ -170,6 +197,133 @@ sub auto {
 	"\r\n".
 	$html;
 }
+
+sub auto_img {
+    my ($self,$cat) = @_;
+    _auto_imgjs($cat, 'ok.png', sub {
+	my ($test,$page,$rand) = @_;
+	my $url = $test->url($page);
+	my $xid = quotemeta(html_escape($test->LONG_ID));
+	return "<img src='$url?rand=$rand' onload='set_success(\"$xid\");' onerror='set_fail(\"$xid\");' />\n";
+    });
+}
+
+sub auto_js {
+    my ($self,$cat) = @_;
+    _auto_imgjs($cat, 'set_success.js', sub {
+	my ($test,$page,$rand) = @_;
+	my $url = $test->url($page);
+	my $xid = quotemeta(html_escape($test->LONG_ID));
+	return "<script src='$url?rand=$rand' onerror='set_fail(\"$xid\");' onload='set_done(\"$xid\");' onreadystatechange='set_done(\"$xid\");'></script>\n";
+    });
+}
+
+sub _auto_imgjs {
+    my ($cat,$page,$mkhtml) = @_;
+
+    my $jsglob = <<'JS';
+
+var fast_feedback = 0;
+var tests = [];
+var done = 0;
+var check_timer;
+var timer = 0;
+var maxwait = 20;
+
+function set_success(xid) { check_done(xid, 'success') }
+function set_fail(xid)    { check_done(xid, 'fail') }
+function set_done(xid)    { check_done(xid) }
+
+check_timer = function() {
+    timer++;
+    if (timer<maxwait) {
+	// start timer again
+	window.setTimeout(check_timer,1000);
+	div_process.innerHTML = "Progress: " + (100*done/tests.length).toFixed(1) + "% - " + "waiting(" + (maxwait-timer) + ")";
+	maxwait = 10+(tests.length-done);
+	return;
+    } else if (timer == maxwait) {
+	check_done();
+    }
+};
+
+function check_done(xid,val) {
+    if (xid) {
+	timer = 0;
+	var desc;
+	for(var i=0;i<tests.length;i++) {
+	    if (tests[i]['xid'] == xid) {
+		desc = tests[i]['desc'];
+		add_debug( val + ": " + desc, tests[i]);
+		if (!tests[i]['status']) {
+		    tests[i]['status'] = val || 'unknown';
+		    done++;
+		} else if (val) {
+		    tests[i]['status'] = val;
+		}
+		if (val) {
+		    check_status_noevil(tests[i]);
+		}
+		break;
+	    }
+	}
+
+	if (fast_feedback && results.length > fast_feedback) {
+	    submit_part();
+	}
+	if (done < tests.length) {
+	    div_process.innerHTML = "Progress: " + (100*done/tests.length).toFixed(1) + "% - " + desc;
+	    return;
+	}
+    }
+
+
+    // DONE: remove working node
+    var w = document.getElementById('work');
+    w.parentNode.removeChild(w);
+    div_process.style.display = 'none';
+    add_debug("*done*");
+    timer = maxwait + 100;
+
+    if (done < tests.length) {
+	// fill in the rest
+	for(var i=0;i<tests.length;i++) {
+	    if (!tests[i]['status']) {
+		tests[i]['status'] = 'timeout';
+		add_debug( tests[i]['status'] + ": " + tests[i]['desc'], tests[i]);
+		check_status_noevil(tests[i]);
+	    }
+	}
+    }
+
+    submit_result('/submit_results/' + reference,results);
+}
+
+check_timer();
+JS
+
+    $jsglob .= "fast_feedback = 16384;\n" if $FAST_FEEDBACK;
+    my $html_tests = '';
+    my $rand = rand();
+    for(@cat) {
+	next if $cat ne 'all' && $_->ID ne $cat;
+	for($_->TESTS) {
+	    $jsglob .= 'tests.push({ page: "' . $_->url($page)
+		. '", xid: "'.quotemeta(html_escape($_->LONG_ID))
+		. '", desc: "'.quotemeta(html_escape($_->DESCRIPTION))
+		. '", valid: '.$_->VALID ."});\n";
+	    $html_tests .= $mkhtml->($_,$page,$rand);
+	}
+    }
+
+    my $html = _auto_static_html()."<script>$jsglob</script>\n<div id=work style='display:none;'>$html_tests</div>";
+    return "HTTP/1.0 200 ok\r\n".
+	"Content-type: text/html\r\n".
+	"Content-length: ".length($html)."\r\n".
+	"\r\n".
+	$html;
+}
+
 
 sub _auto_static_html { return <<'HTML'; }
 <!doctype html>
@@ -308,8 +462,8 @@ function add_notice(m,test) {
 function add_debug(m,test) {
     div_debug.innerHTML = div_debug.innerHTML + m + (test ?
 	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
-	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
-	"<br>": "");
+	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>"
+	: "" ) + "<br>";
 }
 
 function escapeAttribute(attr) {
@@ -496,11 +650,19 @@ function check_page(req,test,status) {
 	    // add answer to results, maybe we can get the type of firewall from the error message
 	    results = results + "T | " + test['page'] + " | " + result64 + "\n";
 	}
-	return status;
-    }
 
-    // check for standard conformance
-    if (status == 'match') {
+    } else {
+	// check for standard conformance
+	check_status_noevil(test,status);
+    }
+    return status;
+}
+
+function check_status_noevil(test,status) {
+    if (!status) {
+	status = test['status'];
+    }
+    if (status == 'success' || status == 'match') {
 	if (test['valid'] == 0) {
 	    add_warning("success for bad response",test);
 	    results = results + "W | " + status + " | " + test['page'] + " | " + test['desc'] + " | success for bad response\n";
@@ -527,7 +689,6 @@ function check_page(req,test,status) {
 	    results = results + "I | " + status + " | " + test['page'] + " | " + test['desc'] + " | ok\n";
 	}
     }
-    return status;
 }
 
 var rand = Math.random();

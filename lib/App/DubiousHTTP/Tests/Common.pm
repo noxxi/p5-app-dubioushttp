@@ -122,6 +122,10 @@ function ping_back(url) {
     }
 }
 PING_JS
+    'set_success.js' => sub {
+	my $spec = shift;
+	return [ "Content-type: application/javascript\n", "set_success('$spec');" ]
+    },
     'stylesheet.css' => [
 	"Content-type: text/css\r\n".
 	"Expires: Tue, 30 Jul 2033 20:04:02 GMT\r\n",
@@ -171,7 +175,7 @@ sub content {
     $page =~s{^/+}{};
     my ($hdr,$data);
     if ( my $builtin = $builtin{$page} ) {
-	$builtin = $builtin->($spec) if ref($builtin) eq 'CODE';
+	$builtin = $builtin->($spec,"/$page") if ref($builtin) eq 'CODE';
 	return @$builtin;
     } 
     if ( $basedir && open( my $fh,'<',"$basedir/$page" )) {
@@ -219,6 +223,7 @@ sub SETUP {
     };
 
     *{$pkg.'::Test::ID'} = sub { shift->[0] };
+    *{$pkg.'::Test::LONG_ID'} = sub { "$id-" . shift->[0] };
     *{$pkg.'::Test::DESCRIPTION'} = sub { shift->[1] };
     *{$pkg.'::Test::VALID'} = sub { shift->[2] };
     *{$pkg.'::Test::url'} = sub { 
@@ -257,7 +262,7 @@ BODY
 	$body .= "<tr>";
 	$body .= "<td>". html_escape($test->DESCRIPTION) ."</td>";
 	$body .= "<td><div style='height: 2em; border-style: solid; border-width: 1px; width: 6em; text-align: center; background: $bg url(\"".$test->url("$base.png"). "\");'><span style='vertical-align: middle;'>IMAGE</span></div></td>";
-	$body .= "<td><div id='".$test->ID."' style='height: 2em; border-style: solid; border-width: 1px; width: 6em; text-align: center; background: $bg'><span style='vertical-align: middle;'>SCRIPT</span></div></td>";
+	$body .= "<td><div id='".$test->LONG_ID."' style='height: 2em; border-style: solid; border-width: 1px; width: 6em; text-align: center; background: $bg'><span style='vertical-align: middle;'>SCRIPT</span></div></td>";
 	$body .= "<td><iframe seamless=seamless scrolling=no style='border-style: solid; border-width: 1px; width: 6em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
 	$body .= "<td>&nbsp;<a class=button download='eicar.com' href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
 	# $body .= "<td>&nbsp;<a class=button download='eicar.zip' href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";

@@ -37,7 +37,19 @@ More information about bypassing firewalls using interpretation differences can
 be found <a href="http://noxxi.de/research/semantic-gap.html">here</a>.
 </p>
 
-<h2>Bulk test with virus payload (XHR)</h2>
+<ul>
+<li><a href=#xhr_eicar>Firewall evasion test - Bulk test with virus payload using XMLHttpRequest</a></li>
+<li><a href=#xhr_novirus>Bulk test with innocent payload using XMLHttpRequest</a></li>
+<li><a href=#js>Bulk test with innocent payload using script tag</a></li>
+<li><a href=#img>Bulk test with innocent payload using img tag</a></li>
+<li><a href=#other>Various non-bulk tests</a></li>
+</ul>
+
+<hr>
+
+<a name=xhr_eicar>
+<h2>Firewall evasion test - Bulk test with virus payload (XHR)</h2>
+</a>
 
 <p>
 This bulk test tries to transfer the <a
@@ -61,7 +73,9 @@ the evasion.
 </p>
 <p id=test_virus class=runtest><a href="/auto/all/eicar.txt">Run Test with <strong>EICAR test virus</strong> payload</a></p>
 
+<a name=xhr_novirus>
 <h2>Bulk test with innocent payload (XHR)</h2>
+</a>
 
 <p>
 This is the same bulk test as the previous one but this time the payload is
@@ -73,26 +87,32 @@ uncommon or invalid HTTP response.
 </p>
 <p id=test_novirus class=runtest><a href="/auto/all/novirus.txt">Run Test with <strong>innocent</strong> payload</a></p>
 
+<a name=js>
 <h2>Bulk test with innocent Javascript</h2>
+</a>
 
 <p>
 Contrary to the previous bulk tests this one is not done with XMLHttpRequest but
 instead it analyzes which responses will successfully be interpreted as
-JavaScript by the browser.
+JavaScript by the browser, i.e. by using the "script" tag.
 </p>
 <p id=test_js class=runtest><a href="/autojs/all/set_success.js">Run Test with
 innocent JavaScript payload</a></p>
 
+<a name=img>
 <h2>Bulk test with innocent Image</h2>
+</a>
 
 <p>
-This bulk test will use img-Tags to download an innocent image to check which
-uncommen responses can be used to load images.
+This bulk test will use "img" tags to download an innocent image to check which
+uncommon responses can be used to load images.
 </p>
 <p id=test_js class=runtest><a href="/autoimg/all/ok.png">Run Test with
 innocent image payload</a></p>
 
+<a name=other>
 <h2>Non-Bulk tests</h2>
+</a>
 
 <p>
 The following tests analyze the behavior of browsers in specific cases, like

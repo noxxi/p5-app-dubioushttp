@@ -251,12 +251,13 @@ sub _install_http {
 	    my $digest = '';
 	    if ($TRACKHDR) {
 		my $xhdr = $hdr;
-		$xhdr =~s{\r?\n}{\n}g;
 		$xhdr =~s{\A.*\n}{}; # remove request line
-		my %KEEPHDR = map { lc($_) => 1 } qw(Accept-Encoding Accept User-Agent Accept-Language);
+		my %KEEPVAL = map { lc($_) => 1 } qw(User-Agent Accept-Encoding Connection Accept Content-type From);
+		my %KEEPKEY = map { lc($_) => 1 } qw(Host Accept-Language Content-Length);
 		( my $dhdr = $xhdr ) =~s{^([^\s:]+)(:\s*)(.*(\n[ \t].*)*\n)}{
-		    $KEEPHDR{lc($1)} ? "$1$2$3" : "$1$2XXX\r\n"
+		    $KEEPVAL{lc($1)} ? "$1$2$3" : $KEEPKEY{lc($1)} ? "$1$2XXX\r\n" : ""
 		}emg;
+		$dhdr = $1.$dhdr if $hdr =~m{^.*(\s+HTTP/1\.[01]\s+)};
 		my $digest = substr(md5_base64($dhdr),0,8);
 		$digest =~ tr{+/}{\$%};
 		if (!$trackhdr{$digest}) {
@@ -264,8 +265,13 @@ sub _install_http {
 		    my $accept = $xhdr =~m{^Accept:\s*([^\r\n]+)}mi && $1 || '-';
 		    my $ua = $xhdr =~m{^User-Agent:\s*([^\r\n]+)}mi && $1 || 'Unknown-UA';
 		    my @via = $xhdr =~m{^Via:\s*([^\r\n]*)}mig;
+		    $xhdr = $hdr;
+		    $xhdr =~s{\\}{\\\\}g;
+		    $xhdr =~s{\t}{\\t}g;
+		    $xhdr =~s{\r}{\\r}g;
+		    $xhdr =~s{\n}{\\n\n}g;
 		    $xhdr =~s{^}{ |$digest|- }mg;
-		    warn " |$digest|-BEGIN $accept | $ua\n |$digest|- $line\n$xhdr";
+		    warn " |$digest|-BEGIN $accept | $ua\n$xhdr";
 		}
 		warn localtime()." |$digest| $peer | $line".($ssl ? " | $ssl":"")."$ip_mismatch\n";
 	    } else {

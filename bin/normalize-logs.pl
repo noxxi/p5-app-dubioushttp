@@ -172,12 +172,14 @@ while (defined( $_ = $nextline->())) {
 			}
 		    }
 		}
-		if ($e || $z) {
+		if ($e or $z or 
+		    @lines && $lines[-1] =~ m{/range,incomplete \|}) {
 		    my $d = $r->[-1];
 		    $d->{lines} = \@lines;
 		    $d->{incomplete} = 1;
 		    delete $d->{part};
-		    my $url = "/submit_results/$d->{id}/evasions=$e/evasions_blocked=$z/incomplete=1";
+		    my $ev = ($e||$z) ? "/evasions=$e/evasions_blocked=$z" : "";
+		    my $url = "/submit_results/$d->{id}$ev/incomplete=1";
 		    s{ /submit_part/(\S+)}{ $url}
 			for ($d->{header},$d->{prefix_line});
 		    output($d);

@@ -110,7 +110,8 @@ sub serve {
 	my ($path,$listen,$rqhdr,$payload,$ssl) = @_;
 	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
 
-	if ($path =~m{\A/submit_(details|results|part)/([^/]+)(?:/(\d+))?} && $payload) {
+	if ($path =~m{\A/submit_(details|results|part)/([^/]+)(?:/(\d+))?} 
+	    && defined $payload) {
 	    my ($what,$id,$part) = ($1,$2,$3);
 	    $rqhdr .= $payload;
 	    $rqhdr =~s{( /[=-][A-Za-z0-9_\-]+={0,2} )}{ ungarble_url($1) }eg;

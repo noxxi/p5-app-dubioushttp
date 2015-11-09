@@ -336,6 +336,7 @@ JS
 	}
     }
 
+    $jsglob .= sprintf("reference='%x' + Math.floor(time()/1000).toString(16);\n", rand(2**32));
     my $html = _auto_static_html()."<script>$jsglob</script>\n<div id=work style='display:none;'>$html_tests</div>";
     return "HTTP/1.0 200 ok\r\n".
 	"Content-type: text/html\r\n".

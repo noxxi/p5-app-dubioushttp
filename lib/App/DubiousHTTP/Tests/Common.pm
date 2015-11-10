@@ -124,7 +124,11 @@ function ping_back(url) {
 PING_JS
     'set_success.js' => sub {
 	my $spec = shift;
-	return [ "Content-type: application/javascript\n", "set_success('$spec');" ]
+	return [ "Content-type: application/javascript\n", "set_success('$spec','js');" ]
+    },
+    'parent_set_success.html' => sub {
+	my $spec = shift;
+	return [ "Content-type: text/html\n", "<script>parent.set_success('$spec','html');</script>" ]
     },
     'stylesheet.css' => [
 	"Content-type: text/css\r\n".

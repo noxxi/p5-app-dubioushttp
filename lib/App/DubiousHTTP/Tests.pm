@@ -42,6 +42,7 @@ be found <a href="http://noxxi.de/research/semantic-gap.html">here</a>.
 <li><a href=#xhr_novirus>Bulk test with innocent payload using XMLHttpRequest</a></li>
 <li><a href=#js>Bulk test with innocent payload using script tag</a></li>
 <li><a href=#img>Bulk test with innocent payload using img tag</a></li>
+<li><a href=#iframe>Bulk test with innocent payload using iframe tag</a></li>
 <li><a href=#other>Various non-bulk tests</a></li>
 </ul>
 
@@ -110,6 +111,17 @@ uncommon responses can be used to load images.
 <p id=test_js class=runtest><a href="/autoimg/all/ok.png">Run Test with
 innocent image payload</a></p>
 
+<a name=iframe>
+<h2>Bulk test with innocent Iframe</h2>
+</a>
+
+<p>
+This bulk test will use "iframe" tags to download an innocent HTML to check which
+uncommon responses can be used to load iframes.
+</p>
+<p id=test_iframe class=runtest><a href="/autohtml/all/parent_set_success.html">Run Test with
+innocent iframe payload</a></p>
+
 <a name=other>
 <h2>Non-Bulk tests</h2>
 </a>
@@ -158,6 +170,7 @@ sub auto {
     return $self->auto_xhr(@_) if $type eq 'xhr';
     return $self->auto_js(@_) if $type eq 'js';
     return $self->auto_img(@_) if $type eq 'img';
+    return $self->auto_html(@_) if $type eq 'html';
     die;
 }
 
@@ -220,25 +233,29 @@ sub auto_xhr {
 
 sub auto_img {
     my ($self,$cat) = @_;
-    _auto_imgjs($cat, 'ok.png', sub {
-	my ($test,$page,$rand) = @_;
-	my $url = $test->url($page);
-	my $xid = quotemeta(html_escape($test->LONG_ID));
-	return "<img src='$url?rand=$rand' onload='set_success(\"$xid\");' onerror='set_fail(\"$xid\");' />\n";
+    _auto_imgjshtml($cat, 'ok.png', sub {
+	my ($url,$id) = @_;
+	return "<img id='$id' src='$url' onload='set_success(\"$id\",\"img\");' onerror='set_fail(\"$id\",\"img\");' />\n";
     });
 }
 
 sub auto_js {
     my ($self,$cat) = @_;
-    _auto_imgjs($cat, 'set_success.js', sub {
-	my ($test,$page,$rand) = @_;
-	my $url = $test->url($page);
-	my $xid = quotemeta(html_escape($test->LONG_ID));
-	return "<script src='$url?rand=$rand' onerror='set_fail(\"$xid\");' onload='set_done(\"$xid\");' onreadystatechange='set_done(\"$xid\");'></script>\n";
+    _auto_imgjshtml($cat, 'set_success.js', sub {
+	my ($url,$id) = @_;
+	return "<script src='$url' onload='set_done(\"$id\",\"js\");' onerror='set_fail(\"$id\",\"js\");' onreadystatechange='set_done(\"$id\",\"js\");'></script>\n";
     });
 }
 
-sub _auto_imgjs {
+sub auto_html {
+    my ($self,$cat) = @_;
+    _auto_imgjshtml($cat, 'parent_set_success.html', sub {
+	my ($url,$id) = @_;
+	return "<iframe id='$id' src='$url' onload='set_done(\"$id\",\"html\");' onerror='set_fail(\"$id\",\"html\");' onreadystatechange='set_done(\"$id\",\"html\");'></iframe>\n";
+    });
+}
+
+sub _auto_imgjshtml {
     my ($cat,$page,$mkhtml) = @_;
 
     my $jsglob = <<'JS';
@@ -248,11 +265,11 @@ var tests = [];
 var done = 0;
 var check_timer;
 var timer = 0;
-var maxwait = 20;
+var maxwait = 10;
 
-function set_success(xid) { check_done(xid, 'success') }
-function set_fail(xid)    { check_done(xid, 'fail') }
-function set_done(xid)    { check_done(xid) }
+function set_success(xid,type) { check_done(xid, type, 'success') }
+function set_fail(xid,type)    { check_done(xid, type, 'fail') }
+function set_done(xid,type)    { check_done(xid, type) }
 
 check_timer = function() {
     timer++;
@@ -267,18 +284,20 @@ check_timer = function() {
     }
 };
 
-function check_done(xid,val) {
+function check_done(xid,type,val) {
+    _log( "xid:" + xid + ", type:" + type + ", val:" + val);
     if (xid) {
 	timer = 0;
 	var desc;
 	for(var i=0;i<tests.length;i++) {
 	    if (tests[i]['xid'] == xid) {
 		desc = tests[i]['desc'];
-		add_debug( val + ": " + desc, tests[i]);
 		if (!tests[i]['status']) {
+		    add_debug( val + ": " + desc, tests[i]);
 		    tests[i]['status'] = val || 'unknown';
 		    done++;
 		} else if (val) {
+		    add_debug( val + ": " + desc, tests[i]);
 		    tests[i]['status'] = val;
 		}
 		if (val) {
@@ -328,11 +347,14 @@ JS
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
-	    $jsglob .= 'tests.push({ page: "' . $_->url($page)
-		. '", xid: "'.quotemeta(html_escape($_->LONG_ID))
-		. '", desc: "'.quotemeta(html_escape($_->DESCRIPTION))
-		. '", valid: '.$_->VALID ."});\n";
-	    $html_tests .= $mkhtml->($_,$page,$rand);
+	    my $xid = quotemeta(html_escape($_->LONG_ID));
+	    my $url = $_->url($page);
+	    $jsglob .= "tests.push({ "
+		. "page: '$url', xid: '$xid', "
+		. 'desc: "'.quotemeta(html_escape($_->DESCRIPTION)) .'",'
+		. 'valid: '.$_->VALID 
+		."});\n";
+	    $html_tests .= $mkhtml->("$url?rand=$rand",$xid);
 	}
     }
 

@@ -193,12 +193,16 @@ sub auto_xhr {
     }
     $html .= "accept = '".quotemeta($accept)."';\n" if $accept;
     $html .= "fast_feedback = 16384;\n" if $FAST_FEEDBACK;
+    if ($page eq 'eicar.txt') {
+	$html .= "div_title.innerHTML = '<h1>Firewall evasion test with EICAR test virus</h1>';";
+    } else {
+	$html .= "div_title.innerHTML = '<h1>Browser behavior test with XMLHTTPRequest</h1>';";
+    }
 
     $html .= "expect64 = '".encode_base64($body,'')."';\n";
     $html .= 'results = "V | '.App::DubiousHTTP->VERSION.'\n";' . "\n";
     $isbad ||= '';
     $html .= "isbad ='$isbad';\n";
-    $html .= "var checks = [];\n";
     if ($isbad) {
 	$html .= "expect64_harmless = '".encode_base64( (content('novirus.txt'))[1],'')."';\n";
 	$html .= "checks.push({ page:'". garble_url("/clen/novirus.txt/close,clen,content").
@@ -223,7 +227,7 @@ sub auto_xhr {
 
     }
     $html .= sprintf("reference='%x' + Math.floor(time()/1000).toString(16);\n", rand(2**32));
-    $html .= "runtests(checks,0);\n</script>\n";
+    $html .= "runtests();\n</script>\n";
     return "HTTP/1.0 200 ok\r\n".
 	"Content-type: text/html\r\n".
 	"Content-length: ".length($html)."\r\n".
@@ -233,133 +237,64 @@ sub auto_xhr {
 
 sub auto_img {
     my ($self,$cat) = @_;
-    _auto_imgjshtml($cat, 'ok.png', sub {
+    _auto_imgjshtml($cat, 'Browser behavior test with img tag', 'ok.png', sub {
 	my ($url,$id) = @_;
-	return "<img id='$id' src='$url' onload='set_success(\"$id\",\"img\");' onerror='set_fail(\"$id\",\"img\");' />\n";
+	return "<img id='$id' src='$url' onload='set_success(\"$id\",\"img\");' onerror='set_fail(\"$id\",\"img\");' />";
     });
 }
 
 sub auto_js {
     my ($self,$cat) = @_;
-    _auto_imgjshtml($cat, 'set_success.js', sub {
+    _auto_imgjshtml($cat, 'Browser behavior test with script tag', 'set_success.js', sub {
 	my ($url,$id) = @_;
-	return "<script src='$url' onload='set_done(\"$id\",\"js\");' onerror='set_fail(\"$id\",\"js\");' onreadystatechange='set_done(\"$id\",\"js\");'></script>\n";
+	#return "<script id='$id' src='$url' onload='set_load(\"$id\",\"js\");' onerror='set_fail(\"$id\",\"js\");' onreadystatechange='set_load(\"$id\",\"js\");'></script>";
+	return <<"JS"
+function(div) {
+    var s = document.createElement('script');
+    s.setAttribute('src','$url');
+    s.setAttribute('id','$id');
+    s.setAttribute('onload','set_load(\"$id\",\"js\");');
+    s.setAttribute('onreadystatechange','set_load(\"$id\",\"js\");');
+    s.setAttribute('onerror','set_fail(\"$id\",\"js\");');
+    div.appendChild(s);
+}
+JS
     });
 }
 
 sub auto_html {
     my ($self,$cat) = @_;
-    _auto_imgjshtml($cat, 'parent_set_success.html', sub {
+    _auto_imgjshtml($cat, 'Browser behavior test with iframe including HTML', 'parent_set_success.html', sub {
 	my ($url,$id) = @_;
-	return "<iframe id='$id' src='$url' onload='set_done(\"$id\",\"html\");' onerror='set_fail(\"$id\",\"html\");' onreadystatechange='set_done(\"$id\",\"html\");'></iframe>\n";
+	return "<iframe id='$id' src='$url' onload='set_load(\"$id\",\"html\");' onerror='set_fail(\"$id\",\"html\");' onreadystatechange='set_load(\"$id\",\"html\");'></iframe>";
     });
 }
 
 sub _auto_imgjshtml {
-    my ($cat,$page,$mkhtml) = @_;
+    my ($cat,$title,$page,$mkhtml) = @_;
 
-    my $jsglob = <<'JS';
-
-var fast_feedback = 0;
-var tests = [];
-var done = 0;
-var check_timer;
-var timer = 0;
-var maxwait = 10;
-
-function set_success(xid,type) { check_done(xid, type, 'success') }
-function set_fail(xid,type)    { check_done(xid, type, 'fail') }
-function set_done(xid,type)    { check_done(xid, type) }
-
-check_timer = function() {
-    timer++;
-    if (timer<maxwait) {
-	// start timer again
-	window.setTimeout(check_timer,1000);
-	div_process.innerHTML = "Progress: " + (100*done/tests.length).toFixed(1) + "% - " + "waiting(" + (maxwait-timer) + ")";
-	maxwait = 10+(tests.length-done);
-	return;
-    } else if (timer == maxwait) {
-	check_done();
-    }
-};
-
-function check_done(xid,type,val) {
-    _log( "xid:" + xid + ", type:" + type + ", val:" + val);
-    if (xid) {
-	timer = 0;
-	var desc;
-	for(var i=0;i<tests.length;i++) {
-	    if (tests[i]['xid'] == xid) {
-		desc = tests[i]['desc'];
-		if (!tests[i]['status']) {
-		    add_debug( val + ": " + desc, tests[i]);
-		    tests[i]['status'] = val || 'unknown';
-		    done++;
-		} else if (val) {
-		    add_debug( val + ": " + desc, tests[i]);
-		    tests[i]['status'] = val;
-		}
-		if (val) {
-		    check_status_noevil(tests[i]);
-		}
-		break;
-	    }
-	}
-
-	if (fast_feedback && results.length > fast_feedback) {
-	    submit_part();
-	}
-	if (done < tests.length) {
-	    div_process.innerHTML = "Progress: " + (100*done/tests.length).toFixed(1) + "% - " + desc;
-	    return;
-	}
-    }
-
-
-    // DONE: remove working node
-    var w = document.getElementById('work');
-    w.parentNode.removeChild(w);
-    div_process.style.display = 'none';
-    add_debug("*done*");
-    timer = maxwait + 100;
-
-    if (done < tests.length) {
-	// fill in the rest
-	for(var i=0;i<tests.length;i++) {
-	    if (!tests[i]['status']) {
-		tests[i]['status'] = 'timeout';
-		add_debug( tests[i]['status'] + ": " + tests[i]['desc'], tests[i]);
-		check_status_noevil(tests[i]);
-	    }
-	}
-    }
-
-    submit_result('/submit_results/' + reference,results);
-}
-
-check_timer();
-JS
-
+    my $jsglob = '';
+    $jsglob .= sprintf("reference='%x' + Math.floor(time()/1000).toString(16);\n", rand(2**32));
     $jsglob .= "fast_feedback = 16384;\n" if $FAST_FEEDBACK;
-    my $html_tests = '';
     my $rand = rand();
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
 	    my $xid = quotemeta(html_escape($_->LONG_ID));
 	    my $url = $_->url($page);
-	    $jsglob .= "tests.push({ "
+	    my $html = $mkhtml->("$url?rand=$rand",$xid);
+	    $jsglob .= "checks.push({ "
 		. "page: '$url', xid: '$xid', "
 		. 'desc: "'.quotemeta(html_escape($_->DESCRIPTION)) .'",'
-		. 'valid: '.$_->VALID 
+		. 'valid: '.$_->VALID .','
+		. 'html: '.($html =~m{^function} ? $html : '"'.quotemeta($html).'"')
 		."});\n";
-	    $html_tests .= $mkhtml->("$url?rand=$rand",$xid);
 	}
     }
+    $jsglob .= "div_title.innerHTML = '<h1>".html_escape($title)."</h1>';";
+    $jsglob .= "runtests()\n";
 
-    $jsglob .= sprintf("reference='%x' + Math.floor(time()/1000).toString(16);\n", rand(2**32));
-    my $html = _auto_static_html()."<script>$jsglob</script>\n<div id=work style='display:none;'>$html_tests</div>";
+    my $html = _auto_static_html()."<script>$jsglob</script>\n";
     return "HTTP/1.0 200 ok\r\n".
 	"Content-type: text/html\r\n".
 	"Content-length: ".length($html)."\r\n".
@@ -373,6 +308,8 @@ sub _auto_static_html { return <<'HTML'; }
 <meta charset="utf-8">
 <style>
 body      { font-family: Verdana, sans-serif; }
+#title    { padding: 1em; margin: 1em; border: 1px; border-style: solid; color: #000; background: #eee;  }
+#title h1 { font-size: 190%; }
 #vendor_notice  { padding: 2em; margin: 1em; background: #000000; color: #ff0000; font-size: 150%; display: none; }
 #nobad    { padding: 2em; margin: 1em; background: #ff3333; display: none; }
 #nobad div   { font-size: 150%; margin: 0.5em;  }
@@ -393,6 +330,7 @@ body      { font-family: Verdana, sans-serif; }
 <div id=noscript>
 You need to have JavaScript enabled to run this tests.
 </div>
+<div id=title></div>
 <div id=vendor_notice> </div>
 <div id=nobad> </div>
 <div id=urlblock> </div>
@@ -404,6 +342,7 @@ You need to have JavaScript enabled to run this tests.
 <div id=warnings><h1>Serious Problems</h1><ol id=ol_warnings></ol></div>
 <div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
 <div id=debug><h1>Debug</h1></div>
+<div id=work style='display:none;'></div>
 <script>
 
 var time = Date.now || function() { return +new Date; };
@@ -479,12 +418,28 @@ var div_ol_warnings = document.getElementById('ol_warnings');
 var div_nobad = document.getElementById('nobad');
 var div_evasions = document.getElementById('evasions');
 var div_process = document.getElementById('process');
+var div_work = document.getElementById('work');
+var div_title = document.getElementById('title');
+
+var fast_feedback = 0;
+var checks = [];
+var current_test = null;
+var results = '';
+var done = 0;
+var reference;
+
 var expect64;
 var expect64_harmless;
 var isbad;
-var results = '';
-var reference;
 var accept = null;
+
+var evasions = 0;
+var evasions_blocked = 0;
+var overblocked = 0;
+var maybe_overblocked = 0;
+var browser_invalid = 0;
+
+var rand = Math.random();
 
 function add_warning(m,test) {
     div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <span class=desc>" + test['desc'] + "</span>" +
@@ -523,11 +478,7 @@ function _log(m) {
     catch(e) {}
 }
 
-var evasions = 0;
-var evasions_blocked = 0;
-var overblocked = 0;
-var maybe_overblocked = 0;
-var browser_invalid = 0;
+
 function xhr(method,page,payload,callback) {
     var req = null;
     try { req = new XMLHttpRequest(); } 
@@ -574,7 +525,7 @@ function xhr(method,page,payload,callback) {
     return req;
 }
 
-function check_page(req,test,status) {
+function check_xhr_result(req,test,status) {
     if (!status) {
 	status = req.status;
     }
@@ -734,26 +685,137 @@ function check_status_noevil(test,status) {
     }
 }
 
-var rand = Math.random();
-function runtests(todo,done) {
-    var test = todo.shift();
-    if (test) {
-	var total = todo.length + done;
-	div_process.innerHTML = "Progress: " + (100*done/total).toFixed(1) + "% - " + test['desc'];
-	xhr('GET',test['page'] + '?rand=' + rand,null,function(req,status) {
-	    status = check_page(req,test,status);
-	    if (isbad && test['harmless_page'] && status != 'match') {
-		// malware not found, either because the firewall filtered it
-		// or because the browser did not understand the response.
-		// check for the last by trying with novirus.txt
-		todo.unshift({ page: test['harmless_page'], desc: test['desc'], valid: test['valid'], harmless_retry:1,
-		    retry4status:status, retry4page: test['page']});
+
+function set_success(xid,type) { check_nonxhr_result(xid, type, 'success') }
+function set_fail(xid,type)    { check_nonxhr_result(xid, type, 'fail') }
+function set_load(xid,type)    { check_nonxhr_result(xid, type) }
+
+var nonxhr_timer;
+var open_checks = {};
+function check_nonxhr_result(xid,type,val) {
+    _log( "xid:" + xid + ", type:" + type + ", val:" + val);
+    if (!xid) {
+	// final timeout done - mark remaining tests as timeout
+	window.clearTimeout(nonxhr_timer);
+	add_debug('*final timeout*');
+	for(var k in open_checks) {
+	    if (open_checks.hasOwnProperty(k)) {
+		var test = open_checks[k];
+		test['status'] = 'timeout';
+		add_debug( "timeout: " + test['desc'], test);
+		check_status_noevil(test);
 	    }
+	}
+	runtests(); // submits final result
+	return;
+    }
+
+    if (current_test && current_test['xid'] == xid) {
+	window.clearTimeout(nonxhr_timer);
+	test = current_test;
+	if (!val && !test['status'] && event && event.type == 'error') {
+	    val = 'fail';
+	}
+	if (val) {
+	    add_debug( val + ": " + test['desc'], test);
+	    test['status'] = val;
+	    _removeElement(xid);
+	    check_status_noevil(test);
 	    if (fast_feedback && results.length > fast_feedback) {
 		submit_part();
 	    }
-	    runtests(todo,done+1);
-	});
+	} else if (!test['status']) {
+	    // no final result, wait some more time
+	    // _log(event);
+	    _log("defer " + xid);
+	    open_checks[xid] = test;
+	}
+	done++;
+
+	if (checks.length) {
+	    runtests();
+	    return;
+	}
+
+	var open = 0;
+	for(var k in open_checks) {
+	    if (open_checks.hasOwnProperty(k)) {
+		open = 1;
+		break;
+	    }
+	}
+	if (!open) {
+	    runtests();
+	    return;
+	}
+
+	// final timeout to wait for open_checks
+	nonxhr_timer = window.setTimeout(
+	    function() { check_nonxhr_result(); },
+	    5000
+	);
+	return;
+    }
+
+    if (open_checks[xid]) {
+	test = open_checks[xid];
+	if (!val && !test['status'] && event && event.type == 'error') {
+	    val = 'fail';
+	}
+	if (val) {
+	    delete open_checks[xid];
+	    add_debug( "delayed " + val + ": " + test['desc'], test);
+	    _removeElement(xid);
+	    test['status'] = val;
+	    check_status_noevil(test);
+	    if (fast_feedback && results.length > fast_feedback) {
+		submit_part();
+	    }
+	}
+    }
+}
+
+function _removeElement(id) {
+    var e = document.getElementById(id);
+    if (e && e.parent) {
+	e.parent.removeChild(e);
+    }
+}
+
+function runtests() {
+    current_test = checks.shift();
+    if (current_test) {
+	var total = checks.length + done;
+	div_process.innerHTML = "Progress: " + (100*done/total).toFixed(1) + "% - " + current_test['desc'];
+	if (current_test['html']) {
+	    var html = current_test['html'];
+	    if (typeof html == 'function') {
+		html(div_work);
+	    } else {
+		div_work.innerHTML = html;
+	    }
+	    nonxhr_timer = window.setTimeout(
+		function() { check_nonxhr_result(current_test['xid'],current_test['type'],'timeout'); },
+		5000
+	    );
+
+	} else {
+	    xhr('GET',current_test['page'] + '?rand=' + rand,null,function(req,status) {
+		status = check_xhr_result(req,current_test,status);
+		if (isbad && current_test['harmless_page'] && status != 'match') {
+		    // malware not found, either because the firewall filtered it
+		    // or because the browser did not understand the response.
+		    // check for the last by trying with novirus.txt
+		    checks.unshift({ page: current_test['harmless_page'], desc: current_test['desc'], valid: current_test['valid'], harmless_retry:1,
+			retry4status:status, retry4page: current_test['page']});
+		}
+		if (fast_feedback && results.length > fast_feedback) {
+		    submit_part();
+		}
+		done++;
+		runtests();
+	    });
+	}
     } else {
 	div_process.style.display = 'none';
 	add_debug("*DONE*");

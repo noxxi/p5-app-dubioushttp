@@ -117,7 +117,9 @@ innocent image payload</a></p>
 
 <p>
 This bulk test will use "iframe" tags to download an innocent HTML to check which
-uncommon responses can be used to load iframes.
+uncommon responses can be used to load iframes. <b>Warning!</b>: IE and Edge seem
+to have serious problems with some test cases here and will render the page
+unresponsive.
 </p>
 <p id=test_iframe class=runtest><a href="/autohtml/all/parent_set_success.html">Run Test with
 innocent iframe payload</a></p>
@@ -713,9 +715,6 @@ function check_nonxhr_result(xid,type,val) {
     if (current_test && current_test['xid'] == xid) {
 	window.clearTimeout(nonxhr_timer);
 	test = current_test;
-	if (!val && !test['status'] && event && event.type == 'error') {
-	    val = 'fail';
-	}
 	if (val) {
 	    add_debug( val + ": " + test['desc'], test);
 	    test['status'] = val;
@@ -726,7 +725,6 @@ function check_nonxhr_result(xid,type,val) {
 	    }
 	} else if (!test['status']) {
 	    // no final result, wait some more time
-	    // _log(event);
 	    _log("defer " + xid);
 	    open_checks[xid] = test;
 	}
@@ -759,9 +757,6 @@ function check_nonxhr_result(xid,type,val) {
 
     if (open_checks[xid]) {
 	test = open_checks[xid];
-	if (!val && !test['status'] && event && event.type == 'error') {
-	    val = 'fail';
-	}
 	if (val) {
 	    delete open_checks[xid];
 	    add_debug( "delayed " + val + ": " + test['desc'], test);

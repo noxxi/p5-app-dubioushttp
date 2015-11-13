@@ -165,8 +165,10 @@ DESC
     [ UNCOMMON_INVALID, 'ce-colon-colon-gzip' => '"Content-Encoding:: gzip", served not with gzip' ],
 
     [ INVALID, 'cronly-deflate;deflate' => 'Content-Encoding with only <CR> as line delimiter before, served deflate' ],
+    [ INVALID, 'crxonly-deflate;deflate' => 'Only <CR> as line delimiter followed by "xContent-Encoding", served deflate' ],
     [ UNCOMMON_INVALID, 'cronly-deflate' => 'Content-Encoding with only <CR> as line delimiter before, not served deflate' ],
     [ INVALID, 'cronly-gzip;gzip' => 'Content-Encoding with only <CR> as line delimiter before, served gzip' ],
+    [ INVALID, 'crxonly-gzip;gzip' => 'Only <CR> as line delimiter followed by "xContent-Encoding", served gzip' ],
     [ UNCOMMON_INVALID, 'cronly-gzip' => 'Content-Encoding with only <CR> as line delimiter before, not served gzip' ],
 
     [ UNCOMMON_INVALID, 'lfonly-deflate;deflate' => 'Content-Encoding with only <LF> as line delimiter before, served deflate' ],
@@ -233,6 +235,9 @@ DESC
     [ INVALID,'ce-space-colon-gzip;gzip;replace:-4,1^ff', 'invalidate length (hide gzip with "content-encoding : gzip")'],
     [ INVALID,'ce-space-colon-gzip;gzip;replace:-4,4=', 'remove length (hide gzip with "content-encoding : gzip")'],
     [ INVALID,'ce-space-colon-gzip;gzip;replace:-8,8=', 'remove checksum and length (hide gzip with "content-encoding : gzip")'],
+
+    # data before gzip
+    [ INVALID,'ce:gzip;gzip;\012-before-body','new line at start of gzip body' ],
 );
 
 sub make_response {
@@ -241,6 +246,7 @@ sub make_response {
     my ($hdr,$data) = content($page,$self->ID."-".$spec) or die "unknown page $page";
     my $version = '1.1';
     my $clen_extend;
+    my $body_prefix = '';
     for (split(';',$spec)) {
 	if ($_ eq 'ce:rfc2047-deflate') {
 	    $hdr .= "Content-Encoding: =?UTF-8?B?ZGVmbGF0ZQo=?=\r\n";
@@ -255,7 +261,7 @@ sub make_response {
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "$v\r\n";
-	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?(?:,(sync|partial|block|full))?$} ) {
+	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?(?:,(sync|partial|block|full|finish))?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
 		-AppendOutput => 1,
@@ -298,10 +304,11 @@ sub make_response {
 	    $hdr .= "Content-Encoding : $1\r\n";
 	} elsif (m{^ce-colon-colon-(.*)}) {
 	    $hdr .= "Content-Encoding:: $1\r\n";
-	} elsif ( my ($crlf,$encoding) = m{^(lf|cr)only-(.*)}) {
+	} elsif ( my ($crlf,$encoding) = m{^((?:lf|cr|x)+)only-(.*)}) {
 	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
-	    $hdr .= ($crlf eq 'lf') ? "\n":"\r";
-	    $hdr .= "Content-Encoding: $encoding\r\n";
+	    $crlf =~s{cr}{\r}g;
+	    $crlf =~s{lf}{\n}g;
+	    $hdr .= $crlf . "Content-Encoding: $encoding\r\n";
 	} elsif ( my ($off,$len,$op,$replacement) = m{replace:(-?\d+),(\d+)([=|^])(.*)}) {
 	    $replacement = pack('C*',map { hex($_) } $replacement=~m{(..)}g);
 	    if ($op eq '=') {
@@ -318,11 +325,15 @@ sub make_response {
 	    $clen_extend = $1
 	} elsif ($_ eq 'noclen') {
 	    $clen_extend = -1;
+	} elsif (m{(.+)-before-body$}) {
+	    ( my $d = $1 ) =~s{\\([0-7]{3})}{ chr(oct($1)) }esg;
+	    $body_prefix .= $d;
 	} else {
 	    die $_
 	}
     }
 
+    $data = $body_prefix . $data;
     my $len = length($data);
     if (!$clen_extend) {
 	$hdr = "Content-length: ".length($data)."\r\n".$hdr;

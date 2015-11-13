@@ -5,7 +5,7 @@ use MIME::Base64 'decode_base64';
 use Exporter 'import';
 our @EXPORT = qw(
     MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID 
-    SETUP content html_escape garble_url ungarble_url 
+    SETUP content html_escape url_encode garble_url ungarble_url
     $NOGARBLE $CLIENTIP $TRACKHDR $FAST_FEEDBACK
 );
 use Scalar::Util 'blessed';
@@ -201,6 +201,12 @@ sub html_escape {
     s{<}{&lt;}g;
     s{>}{&gt;}g;
     return $_
+}
+
+sub url_encode {
+    local $_ = shift;
+    s{([^\w\-&/?=!$~.,;])}{ sprintf("%%%02X",ord($1)) }esg;
+    return $_;
 }
 
 sub SETUP {

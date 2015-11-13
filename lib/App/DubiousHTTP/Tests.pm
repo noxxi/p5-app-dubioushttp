@@ -220,10 +220,10 @@ sub auto_xhr {
 	for($_->TESTS) {
 	    if ($isbad) {
 		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, harmless_page: '%s', file: '%s'  });\n",
-		    $_->url($page), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, $_->url('novirus.txt'),'novirus.txt')
+		    url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, $_->url('novirus.txt'),'novirus.txt')
 	    } else {
 		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, file:'%s' });\n",
-		    $_->url($page), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID,$page)
+		    url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID,$page)
 	    }
 	}
 
@@ -336,7 +336,7 @@ You need to have JavaScript enabled to run this tests.
 <div id=vendor_notice> </div>
 <div id=nobad> </div>
 <div id=urlblock> </div>
-<div id=evasions></td>
+<div id=evasions></div>
 <div id=process></div>
 <div id=evadable> </div>
 <div id=overblock> </div>

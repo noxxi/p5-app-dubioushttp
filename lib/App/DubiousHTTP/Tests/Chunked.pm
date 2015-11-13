@@ -138,6 +138,7 @@ DESC
     [ INVALID, 'colon-colon-chunked,do_chunked' => '"Transfer-Encoding::", served chunked' ],
     [ UNCOMMON_INVALID, 'colon-colon-chunked,do_clen' => '"Transfer-Encoding::", not served chunked' ],
     [ INVALID, 'cronly-chunked,do_chunked' => 'Transfer-Encoding with only <CR> as line delimiter before, served chunked' ],
+    [ INVALID, 'crxonly-chunked,do_chunked' => 'Only <CR> as line delimiter followed by "xTransfer-Encoding", served chunked' ],
     [ UNCOMMON_INVALID, 'cronly-chunked,do_clen' => 'Transfer-Encoding with only <CR> as line delimiter before, not served chunked' ],
     [ UNCOMMON_INVALID, 'lfonly-chunked,do_chunked' => 'Transfer-Encoding with only <LF> as line delimiter before, served chunked' ],
     [ INVALID, 'lfonly-chunked,do_clen' => 'Transfer-Encoding with only <LF> as line delimiter before, not served chunked' ],
@@ -181,11 +182,12 @@ sub make_response {
 	    $c =~s{cr}{\r}g;
 	    $te = 'chunked';
 	    $hdr .= "Connection: close\r\nTransfer-Encoding$c: chunked\r\n"
-	} elsif ( my ($crlf) = m {^(lf|cr)only-chunked$} ) {
+	} elsif ( my ($crlf) = m {^((?:lf|cr|x)+)only-chunked$} ) {
 	    $te = 'chunked';
 	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
-	    $hdr .= ($crlf eq 'lf') ? "\n":"\r";
-	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    $crlf =~s{lf}{\n}g;
+	    $crlf =~s{cr}{\r}g;
+	    $hdr .= $crlf . "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	} elsif ( $_ eq '1chunk' ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	    @chunks = $data;

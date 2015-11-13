@@ -38,6 +38,8 @@ DESC
     [ INVALID, 'colon;chunked;do_clen' => 'line with empty field name (single colon on line), followed by TE chunked, not served chunked'],
     [ INVALID, '177;chunked' => 'line \177\r\n, followed by TE chunked, served chunked' ],
     [ INVALID, '177;chunked;do_clen' => 'line \177\r\n, followed by TE chunked, not served chunked' ],
+    [ INVALID, 'data:\000;chunked' => 'line \000\r\n, followed by TE chunked, served chunked' ],
+    [ INVALID, 'data:\000;chunked;do_clen' => 'line \000\r\n, followed by TE chunked, not served chunked' ],
     [ INVALID, 'junkline;chunked' => 'ASCII junk line w/o colon, followed by TE chunked, served chunked'],
     [ INVALID, 'junkline;chunked;do_clen' => 'ASCII junk line w/o colon, followed by TE chunked, not served chunked'],
     [ INVALID, 'spacehdr;chunked' => 'header containing space, followed by TE chunked, served chunked'],
@@ -56,11 +58,21 @@ DESC
     [ INVALID, 'lf-lfonly;chunked;do_clen' => 'TE chunked prefixed with <LF><space><LF>, not served chunked' ],
     [ INVALID, 'crlf-crlfonly;chunked' => 'TE chunked prefixed with <CR><LF><space><CR><LF>, served chunked' ],
     [ INVALID, 'crlf-crlfonly;chunked;do_clen' => 'TE chunked prefixed with <CR><LF><space><CR><LF>, not served chunked' ],
+    [ INVALID, 'te\000:chunked;do_chunked' => '"Transfer-Encoding\000:chunked", served chunked' ],
+    [ INVALID, 'te:\000chunked;do_chunked' => '"Transfer-Encoding:\000chunked", served chunked' ],
+    [ INVALID, 'te:chunked\000;do_chunked' => '"Transfer-Encoding:chunked\000", served chunked' ],
+    [ INVALID, 'te:chu\000nked;do_chunked' => '"Transfer-Encoding:chu\000nked", served chunked' ],
+    [ INVALID, 'data:Transfer\000-encoding:chunked\015\012;do_chunked' => '"Transfer\000-Encoding:chunked", served chunked' ],
+    [ INVALID, 'te:\013chunked;do_chunked' => '"Transfer-Encoding:\013chunked", served chunked' ],
+    [ INVALID, 'te:\177chunked;do_chunked' => '"Transfer-Encoding:\177chunked", served chunked' ],
+    [ INVALID, 'te:chunked\177;do_chunked' => '"Transfer-Encoding:chunked\177", served chunked' ],
+    [ INVALID, 'te:chu\177nked;do_chunked' => '"Transfer-Encoding:chu\177nked", served chunked' ],
 
     [ 'INVALID: various broken responses' ],
     [ INVALID, 'emptycont' => 'empty continuation line'],
     [ INVALID, '8bitkey' => 'line using 8bit field name'],
     [ INVALID, 'colon' => 'line with empty field name (single colon on line)'],
+    [ INVALID, 'data:\000' => 'line \000\r\n' ],
     [ INVALID, '177' => 'line \177\r\n' ],
     [ INVALID, '177;only' => 'line \177\r\n and then the body, no other header after status line' ],
     [ INVALID, 'junkline' => 'ASCII junk line w/o colon'],
@@ -102,6 +114,12 @@ DESC
     [ INVALID, 'status:HTTP/1.1(space)200(space)ok(cr)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1 200 ok\rTransfer-Encoding:chunked, served chunked'],
     [ INVALID, 'status:HTTP/1.1(space)200(space)ok(lf)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1 200 ok\nTransfer-Encoding:chunked, not served chunked'],
     [ INVALID, 'status:HTTP/1.1(space)200(space)ok(lf)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1 200 ok\nTransfer-Encoding:chunked, served chunked'],
+    [ INVALID, 'status:\000HTTP/1.1(space)200(space)ok(crlf);chunked' => '\000HTTP/1.1 200 ok\r\n and chunked'],
+    [ INVALID, 'status:HTT\000P/1.1(space)200(space)ok(crlf);chunked' => 'HTT\000P/1.1 200 ok\r\n and chunked'],
+    [ INVALID, 'status:HTTP/1\000.1(space)200(space)ok(crlf);chunked' => 'HTTP/1\000.1 200 ok\r\n and chunked'],
+    [ INVALID, 'status:HTTP/1.1\000(space)200(space)ok(crlf);chunked' => 'HTTP/1.1\000 200 ok\r\n and chunked'],
+    [ INVALID, 'status:HTTP/1.1(space)2\00000(space)ok(crlf);chunked' => 'HTTP/1.1 2\00000 ok\r\n and chunked'],
+    [ INVALID, 'status:HTTP/1.1(space)200\000(space)ok(crlf);chunked' => 'HTTP/1.1 200\000 ok\r\n and chunked'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
     [ INVALID, 'lf-no-crlf' => 'single \n instead of \r\n' ],
     [ INVALID, 'crcr-no-crlf' => '\r\r instead of \r\n' ],
@@ -251,6 +269,7 @@ sub make_response {
 	    $line =~s{\Q(tab)}{\t}g;
 	    $line =~s{\Q(lf)}{\n}g;
 	    $line =~s{\Q(space)}{ }g;
+	    $line =~s{\\([0-7]{3})}{ chr(oct($1)) }esg;
 	    $statusline = "$line\r\n";
 	} elsif ( $_ eq 'ok' ) {
 	} elsif ( m{^(.*)-header$}) {
@@ -260,6 +279,12 @@ sub make_response {
 	    $prefix =~s{space}{ }g;
 	    $prefix =~s{tab}{\t}g;
 	    $prefix =~s{-}{}g;
+	} elsif (m{^te(.*:.*)}) {
+	    (my $d = $1) =~s{\\([0-7]{3})}{ chr(oct($1)) }esg;
+	    $hdr .= "Transfer-Encoding$d\r\n";
+	} elsif (s{^data:}{}) {
+	    s{\\([0-7]{3})}{ chr(oct($1)) }esg;
+	    $hdr .= $_;
 	} else {
 	    die $_
 	}

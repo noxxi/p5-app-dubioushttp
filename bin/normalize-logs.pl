@@ -150,42 +150,7 @@ while (defined( $_ = $nextline->())) {
 	    # product_parthdr: header when product details are sent
 	    # product: contents of product details part
 	};
-	if (%open_parts) {
-	    # expire submission in parts which was never finished
-	    for(keys %open_parts) {
-		$open_parts{$_}[-1]{time} < $time - 600 or next;
-		my $r = delete $open_parts{$_};
-		warn "EXPIRE unfinished multi-part submission $r->[-1]{id}/$r->[-1]{part} from ".localtime($r->[-1]{time})."\n";
-
-		# if we had evasions forward it as incomplete, because it might
-		# still be an interesting report
-		my $e = my $z = 0;
-		my @lines;
-		for(@$r) {
-		    for(@{ delete $_->{lines} || delete $_->{_lines} || [] }) {
-			push @lines,$_;
-			m{^(?:(E)|Z) } or next;
-			if ($1) {
-			    $e++
-			} else {
-			    $z++
-			}
-		    }
-		}
-		if ($e or $z or 
-		    @lines && $lines[-1] =~ m{/range,incomplete \|}) {
-		    my $d = $r->[-1];
-		    $d->{lines} = \@lines;
-		    $d->{incomplete} = 1;
-		    delete $d->{part};
-		    my $ev = ($e||$z) ? "/evasions=$e/evasions_blocked=$z" : "";
-		    my $url = "/submit_results/$d->{id}$ev/incomplete=1";
-		    s{ /submit_part/(\S+)}{ $url}
-			for ($d->{header},$d->{prefix_line});
-		    output($d);
-		}
-	    }
-	}
+	_expire_unfinished($time) if %open_parts;
 	next;
     }
 
@@ -278,6 +243,7 @@ while (defined( $_ = $nextline->())) {
 }
 
 output($inside) if $inside;
+_expire_unfinished();
 
 if (@input_stat) {
     close($outfh);
@@ -285,6 +251,45 @@ if (@input_stat) {
     utime($input_stat[9],$input_stat[9],$output);
 }
 
+sub _expire_unfinished {
+    my $time = shift || time();
+    if (%open_parts) {
+	# expire submission in parts which was never finished
+	for(keys %open_parts) {
+	    $open_parts{$_}[-1]{time} < $time - 600 or next;
+	    my $r = delete $open_parts{$_};
+	    warn "EXPIRE unfinished multi-part submission $r->[-1]{id}/$r->[-1]{part} from ".localtime($r->[-1]{time})."\n";
+
+	    # if we had evasions forward it as incomplete, because it might
+	    # still be an interesting report
+	    my $e = my $z = 0;
+	    my @lines;
+	    for(@$r) {
+		for(@{ delete $_->{lines} || delete $_->{_lines} || [] }) {
+		    push @lines,$_;
+		    m{^(?:(E)|Z) } or next;
+		    if ($1) {
+			$e++
+		    } else {
+			$z++
+		    }
+		}
+	    }
+	    if ($e or $z or
+		@lines && $lines[-1] =~ m{/range,incomplete \|}) {
+		my $d = $r->[-1];
+		$d->{lines} = \@lines;
+		$d->{incomplete} = 1;
+		delete $d->{part};
+		my $ev = ($e||$z) ? "/evasions=$e/evasions_blocked=$z" : "";
+		my $url = "/submit_results/$d->{id}$ev/incomplete=1";
+		s{ /submit_part/(\S+)}{ $url}
+		    for ($d->{header},$d->{prefix_line});
+		output($d);
+	    }
+	}
+    }
+}
 
 my %done;
 sub output {

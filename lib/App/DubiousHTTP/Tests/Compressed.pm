@@ -27,11 +27,22 @@ DESC
     # these should be fine
     [ 'VALID: correct compressed requests' ],
     [ SHOULDBE_VALID, 'ce:gzip;gzip' => 'content-encoding gzip, served gzipped'],
-    [ VALID, 'ce:gzip;gzip2p' => 'content-encoding gzip, served gzipped with 2 compressed blocks'],
     [ UNCOMMON_VALID, 'ce:x-gzip;gzip' => 'content-encoding "x-gzip", served gzipped'], # not IE11
     [ SHOULDBE_VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
-    [ VALID, 'ce:deflate;deflate2p' => 'content-encoding deflate, served with deflate with 2 compressed blocks'],
     [ VALID, 'ce:deFLaTe;deflate' => 'content-encoding deflate mixed case, served with deflate'],
+
+    # various kinds of flush between compression parts
+    [ 'UNCOMMON_VALID: various kinds of flush between compression parts' ],
+    [ UNCOMMON_VALID, 'ce:gzip;gzip2p,partial' => 'content-encoding gzip, served gzipped with 2 compressed blocks with partial flush in between'],
+    [ UNCOMMON_VALID, 'ce:deflate;deflate2p,partial' => 'content-encoding deflate, served with deflate with 2 compressed blocks with partial flush in between'],
+    [ UNCOMMON_VALID, 'ce:gzip;gzip2p,block' => 'content-encoding gzip, served gzipped with 2 compressed blocks with block flush in between'],
+    [ UNCOMMON_VALID, 'ce:deflate;deflate2p,block' => 'content-encoding deflate, served with deflate with 2 compressed blocks with block flush in between'],
+    [ UNCOMMON_VALID, 'ce:gzip;gzip2p,sync' => 'content-encoding gzip, served gzipped with 2 compressed blocks with sync flush in between'],
+    [ UNCOMMON_VALID, 'ce:deflate;deflate2p,sync' => 'content-encoding deflate, served with deflate with 2 compressed blocks with sync flush in between'],
+    [ UNCOMMON_VALID, 'ce:gzip;gzip2p' => 'content-encoding gzip, served gzipped with 2 compressed blocks with full flush in between'],
+    [ UNCOMMON_VALID, 'ce:deflate;deflate2p' => 'content-encoding deflate, served with deflate with 2 compressed blocks with full flush in between'],
+    [ INVALID, 'ce:gzip;gzip2p,finish' => 'content-encoding gzip, served gzipped with 2 compressed blocks with finish in between'],
+    [ INVALID, 'ce:deflate;deflate2p,finish' => 'content-encoding deflate, served with deflate with 2 compressed blocks with finish in between'],
 
     [ 'VALID: lzma (supported by at least Opera)' ],
     [ UNCOMMON_VALID, 'ce:lzma;lzma1' => 'content-encoding lzma, lzma1 (lzma_alone) encoded'],
@@ -126,7 +137,6 @@ DESC
     [ INVALID, 'ce:x_gzip;gzip' => 'content-encoding "x gzip", served with gzip' ],
     [ INVALID, 'ce:deflate;gzip' => 'content-encoding deflate but served with gzip'],
     [ INVALID, 'ce:gzip;deflate' => 'content-encoding gzip but served with decode'],
-    [ INVALID, 'ce:gzip;gzip-split' => 'content-encoding gzip, content split into 2 gzip parts concatenated'],
     [ INVALID, 'ce:deflate' => 'content-encoding "deflate", not encoded'],
     [ INVALID, 'ce:deflate,' => 'content-encoding "deflate,", not encoded'],
     [ INVALID, 'ce:deflate-nl-,' => 'content-encoding "deflate<nl> ,", not encoded'],
@@ -232,7 +242,9 @@ sub make_response {
     my $version = '1.1';
     my $clen_extend;
     for (split(';',$spec)) {
-	if ( my ($field,$v) = m{^(ce|te):(.*)$}i ) {
+	if ($_ eq 'ce:rfc2047-deflate') {
+	    $hdr .= "Content-Encoding: =?UTF-8?B?ZGVmbGF0ZQo=?=\r\n";
+	} elsif ( my ($field,$v) = m{^(ce|te):(.*)$}i ) {
 	    my $changed;
 	    $changed++ if $v =~s{(?<=cr|lf|nl)-}{ }g;
 	    $changed++ if $v =~s{cr}{\r}g;
@@ -243,36 +255,34 @@ sub make_response {
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "$v\r\n";
-	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?$} ) {
+	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?(?:,(sync|partial|block|full))?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
 		-AppendOutput => 1,
 	    );
 	    my $size = int(length($data)/($3||1)) || 1;
-	    my $newdata = '';
+	    my @chunks;
 	    while ($data ne '') {
-		my $out = '';
-		$zlib->deflate(substr($data,0,$size,''), $out);
-		$zlib->flush($out,Z_FULL_FLUSH);
-		$newdata .= $out;
+		push @chunks,substr($data,0,$size,'')
+	    }
+	    my $flush =
+		! $4 ? Z_FULL_FLUSH :
+		$4 eq 'partial' ? Z_PARTIAL_FLUSH :
+		$4 eq 'sync'    ? Z_SYNC_FLUSH :
+		$4 eq 'full'    ? Z_FULL_FLUSH :
+		$4 eq 'block'   ? Z_BLOCK :
+		$4 eq 'finish'  ? Z_FINISH :
+		die $4;
+	    my $newdata = '';
+	    while (@chunks) {
+		$zlib->deflate( shift(@chunks), $newdata);
+		if (defined $flush && @chunks) {
+		    $zlib->flush($newdata,$flush);
+		    $zlib->deflateReset if $flush == Z_FINISH;
+		}
 	    }
 	    $zlib->flush($newdata,Z_FINISH);
 	    $data = $newdata;
-	} elsif ( $_ =~m{^gzip-split(\d+)?$} ) {
-	    my $size = int(length($data)/($1||2)) || 1;
-	    my $newdata = '';
-	    while ($data ne '') {
-		my $zlib = Compress::Raw::Zlib::Deflate->new(
-		    -WindowBits => WANT_GZIP,
-		    -AppendOutput => 1,
-		);
-		my $out = '';
-		$zlib->deflate(substr($data,0,$size,''), $out);
-		$zlib->flush($out,Z_FINISH);
-		$newdata .= $out;
-	    }
-	    $data = $newdata;
-
 	} elsif (m{^(lzma[12]|xz)$}) {
 	    my ($lzma,$status) = 
 		$_ eq 'xz'    ? Compress::Raw::Lzma::EasyEncoder->new(AppendOutput => 1)  :
@@ -292,8 +302,6 @@ sub make_response {
 	    $hdr = "X-Foo: bar" if $hdr !~s{\r\n\z}{};
 	    $hdr .= ($crlf eq 'lf') ? "\n":"\r";
 	    $hdr .= "Content-Encoding: $encoding\r\n";
-	} elsif ($_ eq 'ce:rfc2047-deflate') {
-	    $hdr .= "Content-Encoding: =?UTF-8?B?ZGVmbGF0ZQo=?=\r\n";
 	} elsif ( my ($off,$len,$op,$replacement) = m{replace:(-?\d+),(\d+)([=|^])(.*)}) {
 	    $replacement = pack('C*',map { hex($_) } $replacement=~m{(..)}g);
 	    if ($op eq '=') {

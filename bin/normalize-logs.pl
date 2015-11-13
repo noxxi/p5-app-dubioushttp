@@ -99,7 +99,7 @@ while (defined( $_ = $nextline->())) {
     } elsif ( (my $date,$rqline,my $what,my $rqargs) 
 	= m{^\w+ (.*)\| [a-f0-9:\.]+ \| (POST /submit_(results|details|part)(/\S+)? HTTP/1\.[01])}) {
 	$rqargs{part} = $1 if $what eq 'part' && ($rqargs||'') =~m{/(\d{1,5})(/|$)};
-	next if $rqargs =~ m{^/undefined};
+	next if ($rqargs||'') =~ m{^/undefined};
 	$id = $1 if ($rqargs||'') =~m{^/([a-f0-9]{8,})};
 	my ($mon,$day,$h,$m,$s,$y) = split(m{[\s:]+},$date);
 	$mon = $mon2i{lc($mon)} // die $mon;

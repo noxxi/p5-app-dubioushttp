@@ -220,7 +220,7 @@ sub auto_xhr {
 	for($_->TESTS) {
 	    if ($isbad) {
 		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, harmless_page: '%s', file: '%s'  });\n",
-		    url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, $_->url('novirus.txt'),'novirus.txt')
+		    url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, url_encode($_->url('novirus.txt')),'novirus.txt')
 	    } else {
 		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, file:'%s' });\n",
 		    url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID,$page)
@@ -284,7 +284,7 @@ sub _auto_imgjshtml {
 	for($_->TESTS) {
 	    my $xid = quotemeta(html_escape($_->LONG_ID));
 	    my $url = $_->url($page);
-	    my $html = $mkhtml->("$url?rand=$rand",$xid);
+	    my $html = $mkhtml->(url_encode("$url?rand=$rand"),$xid);
 	    $jsglob .= "checks.push({ "
 		. "page: '$url', xid: '$xid', "
 		. 'desc: "'.quotemeta(html_escape($_->DESCRIPTION)) .'",'

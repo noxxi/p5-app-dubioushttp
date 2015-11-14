@@ -2,6 +2,7 @@ use strict;
 use warnings;
 package App::DubiousHTTP::Tests::Broken;
 use App::DubiousHTTP::Tests::Common;
+use Compress::Raw::Zlib;
 
 SETUP( 
     'broken',
@@ -121,9 +122,35 @@ DESC
     [ INVALID, 'status:HTTP/1.1(space)2\00000(space)ok(crlf);chunked' => 'HTTP/1.1 2\00000 ok\r\n and chunked'],
     [ INVALID, 'status:HTTP/1.1(space)200\000(space)ok(crlf);chunked' => 'HTTP/1.1 200\000 ok\r\n and chunked'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
+    [ INVALID, 'cr-no-crlf;end-crlflf' => 'single \r instead of \r\n, but end \r\n\n' ],
+    [ INVALID, 'cr-no-crlf;end-crlfcrlf' => 'single \r instead of \r\n, but end \r\n\r\n' ],
     [ INVALID, 'lf-no-crlf' => 'single \n instead of \r\n' ],
     [ INVALID, 'crcr-no-crlf' => '\r\r instead of \r\n' ],
     [ INVALID, 'lfcr-no-crlf' => '\n\r instead of \r\n' ],
+    [ INVALID, 'cr\000lf-no-crlf' => '\r\000\n instead of \r\n' ],
+    [ INVALID, 'chunked;cr-no-crlf' => 'single \r instead of \r\n and chunked' ],
+    [ INVALID, 'chunked;cr-no-crlf;end-crlflf' => 'single \r instead of \r\n, but end \r\n\n and chunked' ],
+    [ INVALID, 'chunked;cr-no-crlf;end-crlfcrlf' => 'single \r instead of \r\n, but end \r\n\r\n and chunked' ],
+    [ INVALID, 'chunked;lf-no-crlf' => 'single \n instead of \r\n and chunked' ],
+    [ INVALID, 'chunked;crcr-no-crlf' => '\r\r instead of \r\n and chunked' ],
+    [ INVALID, 'chunked;lfcr-no-crlf' => '\n\r instead of \r\n and chunked' ],
+    [ INVALID, 'chunked;cr\000lf-no-crlf' => '\r\000\n instead of \r\n and chunked' ],
+    [ INVALID, 'end-crcr' => 'header end \r\r' ],
+    [ INVALID, 'end-lflf' => 'header end \n\n' ],
+    [ INVALID, 'end-lfcrlf' => 'header end \n\r\n' ],
+    [ INVALID, 'end-lfcrcrlf' => 'header end \n\r\r\n' ],
+    [ INVALID, 'end-lf\040lf' => 'header end \n\040\n' ],
+    [ INVALID, 'end-lf\011lf' => 'header end \n\011\n' ],
+    [ INVALID, 'chunked;end-lf\040lf' => 'header end \n\040\n and chunked' ],
+    [ INVALID, 'chunked;end-lf\011lf' => 'header end \n\011\n and chunked' ],
+    [ INVALID, 'gzip;end-lf\040lf' => 'header end \n\040\n and gzip' ],
+    [ INVALID, 'gzip;end-lf\011lf' => 'header end \n\011\n and gzip' ],
+    [ INVALID, 'chunked;end-lf\040lflf' => 'header end \n\040\n\n and chunked' ],
+    [ INVALID, 'chunked;end-lf\011lflf' => 'header end \n\011\n\n and chunked' ],
+    [ INVALID, 'gzip;end-lf\040lflf' => 'header end \n\040\n\n and gzip' ],
+    [ INVALID, 'gzip;end-lf\011lflf' => 'header end \n\011\n\n and gzip' ],
+    [ INVALID, 'end-crlf\000crlf' => 'header end \r\n\000\r\n' ],
+    [ INVALID, 'end-cr\000crlf' => 'header end \r\000\r\n' ],
 
     [ 'INVALID: redirect without location' ],
     [ INVALID, '300' => 'code 300 without location header'],
@@ -230,6 +257,16 @@ sub make_response {
 	} elsif ( $_ eq 'chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
+	} elsif ( $_ eq 'gzip' ) {
+	    my $zlib = Compress::Raw::Zlib::Deflate->new(
+		-WindowBits => WANT_GZIP,
+		-AppendOutput => 1,
+	    );
+	    my $newdata = '';
+	    $zlib->deflate( $data, $newdata);
+	    $zlib->flush($newdata,Z_FINISH);
+	    $data = $newdata;
+	    $hdr .= "Content-Encoding: gzip\r\n";
 	} elsif ( $_ eq 'do_clen') {
 	    $te = 'clen';
 	} elsif ( $_ eq 'do_chunked') {
@@ -250,11 +287,18 @@ sub make_response {
 	    $statusline = "HTTP/$version $code\r\n";
 	} elsif ( $_ eq 'http-lower' ) {
 	    $statusline = "http/$version $code ok\r\n";
-	} elsif ( $_ =~ m{^((?:cr|lf)+)-no-crlf$} ) {
+	} elsif ( $_ =~ m{^((?:cr|lf|\\[0-7]{3})+)-no-crlf$} ) {
 	    my $w = $1;
 	    $w =~s{cr}{\r}g;
 	    $w =~s{lf}{\n}g;
+	    $w =~s{\\([0-7]{3})}{ chr(oct($1)) }eg;
 	    push @transform, sub { $_[0] =~ s{\r?\n}{$w}g }
+	} elsif ( $_ =~ m{^end-((?:cr|lf|\\[0-7]{3})+)} ) {
+	    my $w = $1;
+	    $w =~s{cr}{\r}g;
+	    $w =~s{lf}{\n}g;
+	    $w =~s{\\([0-7]{3})}{ chr(oct($1)) }eg;
+	    push @transform, sub { $_[0] =~ s{(\r|\n|\r\n)\1}{$w} or die }
 	} elsif ( m{^proto:(.*)} ) {
 	    my $proto = $1;
 	    $proto =~s{cr|\\r}{\r}g;

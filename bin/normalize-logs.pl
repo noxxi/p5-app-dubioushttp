@@ -115,7 +115,7 @@ while (defined( $_ = $nextline->())) {
 
 	# weed out duplicate submissions
 	for (keys %recent) {
-	    delete $recent{$_} if $recent{$_} +30 < $time;
+	    delete $recent{$_} if $recent{$_} +120 < $time;
 	}
 	if ($recent{$rqline}) {
 	    warn "DUP $id $rqline\n";
@@ -127,7 +127,7 @@ while (defined( $_ = $nextline->())) {
 	if (%open_inside) {
 	    # expire unfinished stuff
 	    for(keys %open_inside) {
-		$open_inside{$_}{time} < $time - 600 or next;
+		$open_inside{$_}{time} < $time - 7200 or next;
 		my $r = delete $open_inside{$_};
 		warn "EXPIRE unfinished submission $r->{id} from ".localtime($r->{time})."\n";
 	    }
@@ -256,44 +256,18 @@ sub _expire_unfinished {
     if (%open_parts) {
 	# expire submission in parts which was never finished
 	for(keys %open_parts) {
-	    $open_parts{$_}[-1]{time} < $time - 600 or next;
-	    my $r = delete $open_parts{$_};
-	    warn "EXPIRE unfinished multi-part submission $r->[-1]{id}/$r->[-1]{part} from ".localtime($r->[-1]{time})."\n";
-
-	    # if we had evasions forward it as incomplete, because it might
-	    # still be an interesting report
-	    my $e = my $z = 0;
-	    my @lines;
-	    for(@$r) {
-		for(@{ delete $_->{lines} || delete $_->{_lines} || [] }) {
-		    push @lines,$_;
-		    m{^(?:(E)|Z) } or next;
-		    if ($1) {
-			$e++
-		    } else {
-			$z++
-		    }
-		}
-	    }
-	    if ($e or $z or
-		@lines && $lines[-1] =~ m{/range,incomplete \|}) {
-		my $d = $r->[-1];
-		$d->{lines} = \@lines;
-		$d->{incomplete} = 1;
-		delete $d->{part};
-		my $ev = ($e||$z) ? "/evasions=$e/evasions_blocked=$z" : "";
-		my $url = "/submit_results/$d->{id}$ev/incomplete=1";
-		s{ /submit_part/(\S+)}{ $url}
-		    for ($d->{header},$d->{prefix_line});
-		output($d);
-	    }
+	    my $d = $open_parts{$_}[-1];
+	    $d->{time} < $time - 7200 or next;
+	    warn "EXPIRE unfinished multi-part submission $d->{id}/$d->{part} from ".localtime($d->{time})."\n";
+	    delete $open_parts{$_}[-1];
+	    output($d,'E');
 	}
     }
 }
 
 my %done;
 sub output {
-    my $data = shift;
+    my ($data,@missing) = @_;
     if (0 && $done{$data->{id}} && ! $data->{product}) {
 	# we have this already - skip
 	# warn "XXXX skip duplicate $data->{id}\n";
@@ -302,7 +276,7 @@ sub output {
     }
 
     # add new part
-    if (exists $data->{part}) {
+    if (!@missing && exists $data->{part}) {
 	# warn "XXXX new part $data->{id}/$data->{part}\n";
 	$open_parts{$data->{id}}[$data->{part}] = $data;
 	return;
@@ -318,7 +292,9 @@ sub output {
 	    my $l = $_ && (delete($_->{lines}) || delete($_->{_lines}));
 	    if (!$l) {
 		warn "MISSING PART $data->{id}/$lp\n";
-		return;
+		push @missing,$lp;
+		$lp++;
+		next;
 	    }
 	    $lp++;
 	    push @lines,@$l;
@@ -330,9 +306,37 @@ sub output {
     }
 
     for (keys %done) {
-	delete $done{$_} if $done{$_}<$data->{time}+600;
+	delete $done{$_} if $done{$_}<$data->{time}+7200;
     }
     $done{$data->{id}} = $data->{time};
+
+    if (@missing) {
+	# if we had evasions forward it as incomplete, because it might
+	# still be an interesting report
+	my $e = my $z = 0;
+	return if ! $data->{lines} || ! @{$data->{lines}};
+	for(@{$data->{lines}}) {
+	    m{^(?:(E)|Z) } or next;
+	    if ($1) {
+		$e++
+	    } else {
+		$z++
+	    }
+	}
+	return if !$e && !$z 
+	    && $data->{prefix_line} !~ m{/evasions=}
+	    && $data->{lines}[-1] !~ m{/range,incomplete \|};
+	$data->{incomplete} = join(",",@missing);
+	if ($missing[0] eq 'E') {
+	    my $ev = ($e||$z) ? "/evasions=$e/evasions_blocked=$z" : "";
+	    my $url = "/submit_results/$data->{id}$ev/incomplete=$data->{incomplete}";
+	    s{ /submit_part/\S+}{ $url}
+		for ($data->{header},$data->{prefix_line});
+	} else {
+	    s{( /submit_results/\S+)}{$1/incomplete=$data->{incomplete}}
+		for ($data->{header},$data->{prefix_line});
+	}
+    }
 
     if (defined $data->{boundary}) {
 	# show only product details and omit lines since these were already sent

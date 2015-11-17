@@ -68,6 +68,8 @@ DESC
     [ INVALID, 'te:\177chunked;do_chunked' => '"Transfer-Encoding:\177chunked", served chunked' ],
     [ INVALID, 'te:chunked\177;do_chunked' => '"Transfer-Encoding:chunked\177", served chunked' ],
     [ INVALID, 'te:chu\177nked;do_chunked' => '"Transfer-Encoding:chu\177nked", served chunked' ],
+    [ INVALID, 'te:\357\273\277chunked;do_chunked' => '"Transfer-Encoding:<UTF8-BOM>chunked", served chunked' ],
+    [ INVALID, 'te:\302\204chunked;do_chunked' => '"Transfer-Encoding:<UTF8-NBSP>chunked", served chunked' ],
 
     [ 'INVALID: various broken responses' ],
     [ INVALID, 'emptycont' => 'empty continuation line'],
@@ -153,6 +155,7 @@ DESC
     [ INVALID, 'gzip;end-lf\040lf' => 'header end \n\040\n and gzip' ],
     [ UNCOMMON_INVALID, 'gzip;end-lf\040lflf' => 'header end \n\040\n\n and gzip' ],
     [ UNCOMMON_VALID, 'gzip;end-crlf\040crlfcrlf' => 'header end \r\n\040\r\n\r\n and gzip' ],
+    [ INVALID, 'end-lf\040.lf' => 'header end \n\040.\n' ],
 
     [ INVALID, 'end-lf\011lf' => 'header end \n\011\n' ],
     [ UNCOMMON_INVALID, 'end-lf\011lflf' => 'header end \n\011\n\n' ],
@@ -163,6 +166,16 @@ DESC
     [ INVALID, 'gzip;end-lf\011lf' => 'header end \n\011\n and gzip' ],
     [ UNCOMMON_INVALID, 'gzip;end-lf\011lflf' => 'header end \n\011\n\n and gzip' ],
     [ UNCOMMON_VALID, 'gzip;end-crlf\011crlfcrlf' => 'header end \r\n\011\r\n\r\n and gzip' ],
+
+    [ INVALID, 'end-lf\013lf' => 'header end \n\013\n' ],
+    [ UNCOMMON_INVALID, 'end-lf\013lflf' => 'header end \n\013\n\n' ],
+    [ UNCOMMON_VALID, 'end-crlf\013crlfcrlf' => 'header end \r\n\013\r\n\r\n' ],
+    [ INVALID, 'chunked;end-lf\013lf' => 'header end \n\013\n and chunked' ],
+    [ UNCOMMON_INVALID, 'chunked;end-lf\013lflf' => 'header end \n\013\n\n and chunked' ],
+    [ UNCOMMON_VALID, 'chunked;end-crlf\013crlfcrlf' => 'header end \r\n\013\r\n\r\n and chunked' ],
+    [ INVALID, 'gzip;end-lf\013lf' => 'header end \n\013\n and gzip' ],
+    [ UNCOMMON_INVALID, 'gzip;end-lf\013lflf' => 'header end \n\013\n\n and gzip' ],
+    [ UNCOMMON_VALID, 'gzip;end-crlf\013crlfcrlf' => 'header end \r\n\013\r\n\r\n and gzip' ],
 
     [ 'INVALID: redirect without location' ],
     [ INVALID, '300' => 'code 300 without location header'],

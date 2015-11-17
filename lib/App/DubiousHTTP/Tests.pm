@@ -233,6 +233,7 @@ sub auto_xhr {
     return "HTTP/1.0 200 ok\r\n".
 	"Content-type: text/html\r\n".
 	"Content-length: ".length($html)."\r\n".
+	"ETag: ".App::DubiousHTTP->VERSION."\r\n".
 	"\r\n".
 	$html;
 }
@@ -300,6 +301,7 @@ sub _auto_imgjshtml {
     return "HTTP/1.0 200 ok\r\n".
 	"Content-type: text/html\r\n".
 	"Content-length: ".length($html)."\r\n".
+	"ETag: ".App::DubiousHTTP->VERSION."\r\n".
 	"\r\n".
 	$html;
 }

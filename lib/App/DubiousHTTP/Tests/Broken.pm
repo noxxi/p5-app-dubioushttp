@@ -59,18 +59,64 @@ DESC
     [ INVALID, 'lf-lfonly;chunked;do_clen' => 'TE chunked prefixed with <LF><space><LF>, not served chunked' ],
     [ INVALID, 'crlf-crlfonly;chunked' => 'TE chunked prefixed with <CR><LF><space><CR><LF>, served chunked' ],
     [ INVALID, 'crlf-crlfonly;chunked;do_clen' => 'TE chunked prefixed with <CR><LF><space><CR><LF>, not served chunked' ],
-    [ INVALID, 'te\000:chunked;do_chunked' => '"Transfer-Encoding\000:chunked", served chunked' ],
-    [ INVALID, 'te:\000chunked;do_chunked' => '"Transfer-Encoding:\000chunked", served chunked' ],
-    [ INVALID, 'te:chunked\000;do_chunked' => '"Transfer-Encoding:chunked\000", served chunked' ],
+
     [ INVALID, 'te:chu\000nked;do_chunked' => '"Transfer-Encoding:chu\000nked", served chunked' ],
     [ INVALID, 'data:Transfer\000-encoding:chunked\015\012;do_chunked' => '"Transfer\000-Encoding:chunked", served chunked' ],
     [ INVALID, 'data:Transfer\000-encoding:chun\000ked\015\012;do_chunked' => '"Transfer\000-Encoding:chun\000ked", served chunked' ],
-    [ INVALID, 'te:\013chunked;do_chunked' => '"Transfer-Encoding:\013chunked", served chunked' ],
+    [ INVALID, 'te\000:chunked;do_chunked' => '"Transfer-Encoding\000:chunked", served chunked' ],
+    [ INVALID, 'te\013:chunked;do_chunked' => '"Transfer-Encoding\v:chunked", served chunked' ],
+    [ INVALID, 'te\014:chunked;do_chunked' => '"Transfer-Encoding\f:chunked", served chunked' ],
+    [ INVALID, 'te:,chunked;do_chunked' => '"Transfer-Encoding:,chunked", served chunked' ],
+    [ INVALID, 'te:\073chunked;do_chunked' => '"Transfer-Encoding:;chunked", served chunked' ],
+    [ INVALID, 'te:\000chunked;do_chunked' => '"Transfer-Encoding:\000chunked", served chunked' ],
+    [ INVALID, 'te:\013chunked;do_chunked' => '"Transfer-Encoding:\vchunked", served chunked' ],
+    [ INVALID, 'te:\014chunked;do_chunked' => '"Transfer-Encoding:\fchunked", served chunked' ],
+    [ INVALID, 'te:\240chunked;do_chunked' => '"Transfer-Encoding:\240chunked", served chunked' ],
+    [ INVALID, 'te:chunked,;do_chunked' => '"Transfer-Encoding:chunked,", served chunked' ],
+    [ INVALID, 'te:chunked\073;do_chunked' => '"Transfer-Encoding:chunked;", served chunked' ],
+    [ INVALID, 'te:chunked\000;do_chunked' => '"Transfer-Encoding:chunked\000", served chunked' ],
+
     [ INVALID, 'te:\177chunked;do_chunked' => '"Transfer-Encoding:\177chunked", served chunked' ],
     [ INVALID, 'te:chunked\177;do_chunked' => '"Transfer-Encoding:chunked\177", served chunked' ],
     [ INVALID, 'te:chu\177nked;do_chunked' => '"Transfer-Encoding:chu\177nked", served chunked' ],
     [ INVALID, 'te:\357\273\277chunked;do_chunked' => '"Transfer-Encoding:<UTF8-BOM>chunked", served chunked' ],
     [ INVALID, 'te:\302\204chunked;do_chunked' => '"Transfer-Encoding:<UTF8-NBSP>chunked", served chunked' ],
+
+    [ INVALID, 'ce:gz\000ip;do_gzip' => '"Content-Encoding:gz\000ip", served gzipped' ],
+    [ INVALID, 'data:Content\000-encoding:gzip\015\012;do_gzip' => '"Content\000-Encoding:gzip", served gzipped' ],
+    [ INVALID, 'ce\000:gzip;do_gzip' => '"Content-Encoding\000:gzip", served gzipped' ],
+    [ INVALID, 'ce\013:gzip;do_gzip' => '"Content-Encoding\v:gzip", served gzipped' ],
+    [ INVALID, 'ce\014:gzip;do_gzip' => '"Content-Encoding\f:gzip", served gzipped' ],
+    [ INVALID, 'ce:,gzip;do_gzip' => '"Content-Encoding:,gzip", served gzipped' ],
+    [ INVALID, 'ce:\073gzip;do_gzip' => '"Content-Encoding:;gzip", served gzipped' ],
+    [ INVALID, 'ce:\000;do_gzip' => '"Content-Encoding:\000gzip", served gzipped' ],
+    [ INVALID, 'ce:\013gzip;do_gzip' => '"Content-Encoding:\vgzip", served gzipped' ],
+    [ INVALID, 'ce:\014gzip;do_gzip' => '"Content-Encoding:\fgzip", served gzipped' ],
+    [ INVALID, 'ce:\240gzip;do_gzip' => '"Content-Encoding:\240gzip", served gzipped' ],
+    [ INVALID, 'ce:gzip,;do_gzip' => '"Content-Encoding:gzip,", served gzipped' ],
+    [ INVALID, 'ce:gzip\073;do_gzip' => '"Content-Encoding:gzip;", served gzipped' ],
+    [ INVALID, 'ce:gzip\000;do_gzip' => '"Content-Encoding:gzip\000", served gzipped' ],
+    [ INVALID, 'ce:gzip\013;do_gzip' => '"Content-Encoding:gzip\v", served gzipped' ],
+    [ INVALID, 'ce:gzip\014;do_gzip' => '"Content-Encoding:gzip\f", served gzipped' ],
+    [ INVALID, 'ce:gzip\240;do_gzip' => '"Content-Encoding:gzip\240", served gzipped' ],
+
+    [ INVALID, 'ce:def\000late;do_deflate' => '"Content-Encoding:def\000late", served with deflate' ],
+    [ INVALID, 'data:Content\000-encoding:deflate\015\012;do_deflate' => '"Content\000-Encoding:deflate", served with deflate' ],
+    [ INVALID, 'ce\000:deflate;do_deflate' => '"Content-Encoding\000:deflate", served with deflate' ],
+    [ INVALID, 'ce\013:deflate;do_deflate' => '"Content-Encoding\v:deflate", served with deflate' ],
+    [ INVALID, 'ce\014:deflate;do_deflate' => '"Content-Encoding\f:deflate", served with deflate' ],
+    [ INVALID, 'ce:,deflate;do_deflate' => '"Content-Encoding:,deflate", served with deflate' ],
+    [ INVALID, 'ce:\073deflate;do_deflate' => '"Content-Encoding:;deflate", served with deflate' ],
+    [ INVALID, 'ce:\000;do_deflate' => '"Content-Encoding:\000deflate", served with deflate' ],
+    [ INVALID, 'ce:\013deflate;do_deflate' => '"Content-Encoding:\vdeflate", served with deflate' ],
+    [ INVALID, 'ce:\014deflate;do_deflate' => '"Content-Encoding:\fdeflate", served with deflate' ],
+    [ INVALID, 'ce:\240deflate;do_deflate' => '"Content-Encoding:\240deflate", served with deflate' ],
+    [ INVALID, 'ce:deflate,;do_deflate' => '"Content-Encoding:deflate,", served with deflate' ],
+    [ INVALID, 'ce:deflate\073;do_deflate' => '"Content-Encoding:deflate;", served with deflate' ],
+    [ INVALID, 'ce:deflate\000;do_deflate' => '"Content-Encoding:deflate\000", served with deflate' ],
+    [ INVALID, 'ce:deflate\013;do_deflate' => '"Content-Encoding:deflate\v", served with deflate' ],
+    [ INVALID, 'ce:deflate\014;do_deflate' => '"Content-Encoding:deflate\f", served with deflate' ],
+    [ INVALID, 'ce:deflate\240;do_deflate' => '"Content-Encoding:deflate\240", served with deflate' ],
 
     [ 'INVALID: various broken responses' ],
     [ INVALID, 'emptycont' => 'empty continuation line'],
@@ -292,16 +338,11 @@ sub make_response {
 	} elsif ( $_ eq 'chunked' ) {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
-	} elsif ( $_ eq 'gzip' ) {
-	    my $zlib = Compress::Raw::Zlib::Deflate->new(
-		-WindowBits => WANT_GZIP,
-		-AppendOutput => 1,
-	    );
-	    my $newdata = '';
-	    $zlib->deflate( $data, $newdata);
-	    $zlib->flush($newdata,Z_FINISH);
-	    $data = $newdata;
-	    $hdr .= "Content-Encoding: gzip\r\n";
+	} elsif ( m{^do_(gzip|deflate)} ) {
+	    $data = _compress($data,$1);
+	} elsif ( m{^(gzip|deflate)$} ) {
+	    $data = _compress($data,$1);
+	    $hdr .= "Content-Encoding: $1\r\n";
 	} elsif ( $_ eq 'do_clen') {
 	    $te = 'clen';
 	} elsif ( $_ eq 'do_chunked') {
@@ -361,6 +402,9 @@ sub make_response {
 	} elsif (m{^te(.*:.*)}) {
 	    (my $d = $1) =~s{\\([0-7]{3})}{ chr(oct($1)) }esg;
 	    $hdr .= "Transfer-Encoding$d\r\n";
+	} elsif (m{^ce(.*:.*)}) {
+	    (my $d = $1) =~s{\\([0-7]{3})}{ chr(oct($1)) }esg;
+	    $hdr .= "Content-Encoding$d\r\n";
 	} elsif (s{^data:}{}) {
 	    s{\\([0-7]{3})}{ chr(oct($1)) }esg;
 	    $hdr .= $_;
@@ -388,4 +432,16 @@ sub make_response {
     return $hdr . $data;
 }
 
+
+sub _compress {
+    my ($data,$w) = @_;
+    my $zlib = Compress::Raw::Zlib::Deflate->new(
+	-WindowBits => $w eq 'gzip' ? WANT_GZIP : -MAX_WBITS(),
+	-AppendOutput => 1,
+    );
+    my $newdata = '';
+    $zlib->deflate( $data, $newdata);
+    $zlib->flush($newdata,Z_FINISH);
+    return $newdata;
+}
 1;

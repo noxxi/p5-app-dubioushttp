@@ -284,8 +284,8 @@ sub _auto_imgjshtml {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
 	    my $xid = quotemeta(html_escape($_->LONG_ID));
-	    my $url = $_->url($page);
-	    my $html = $mkhtml->(url_encode("$url?rand=$rand"),$xid);
+	    my $url = url_encode($_->url($page));
+	    my $html = $mkhtml->("$url?rand=$rand",$xid);
 	    $jsglob .= "checks.push({ "
 		. "page: '$url', xid: '$xid', "
 		. 'desc: "'.quotemeta(html_escape($_->DESCRIPTION)) .'",'

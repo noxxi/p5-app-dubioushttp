@@ -71,7 +71,9 @@ sub add_client {
     $DEBUG && _debug("new client from $addr");
 
     $clients{fileno($cl)}{time} = time();
-    weaken($clients{fileno($cl)}{fd} = $cl);
+    weaken( my $wcl = $cl );
+    $clients{fileno($cl)}{fd} = $wcl;
+    $SELECT->timeout($cl,5,sub { delete_client($wcl) if $wcl });
 
     return _install_check_https($cl,$response,$sslctx) if $sslctx;
     return _install_http($cl,$response);
@@ -360,8 +362,11 @@ use Scalar::Util 'weaken';
 
 my $maxfn = 0;
 my @handler;
+my @didit;
+my @timeout;
 my @mask = ('','');
 my @tmpmask;
+my $now = time();
 *_debug = \&App::DubiousHTTP::TestServer::_debug;
 
 sub new { bless {},shift }
@@ -371,7 +376,7 @@ sub delete {
     $DEBUG && _debug("remove fd $fn");
     vec($mask[0],$fn,1) = vec($mask[1],$fn,1) = 0;
     vec($tmpmask[0],$fn,1) = vec($tmpmask[1],$fn,1) = 0 if @tmpmask;
-    $handler[$fn] = undef;
+    $handler[$fn] = $didit[$fn] = $timeout[$fn] = undef;
     if ($maxfn == $fn) {
 	$maxfn-- while ($maxfn>=0 && !$handler[$maxfn]);
     }
@@ -390,26 +395,59 @@ sub handler {
     }
 }
 
+sub timeout {
+    my ($self,$cl,$to,$cb) = @_;
+    defined( my $fn = fileno($cl) ) or die "invalid fd";
+    if ($to) {
+	($cb, my @arg) = ref($cb) eq 'CODE' ? ($cb):@$cb;
+	$timeout[$fn] = [ $to,$cb,@arg ];
+    } else {
+	$timeout[$fn] = undef;
+    }
+}
+
 sub mask {
     my ($self,$cl,%val) = @_;
     defined( my $fn = fileno($cl) ) or die "invalid fd";
     while (my ($rw,$val) = each %val) {
 	$DEBUG && _debug("set mask($fn,$rw) to $val");
 	vec($mask[$rw],$fn,1) = $val;
+	$didit[$fn] = $now if $val;
     }
 }
 
 sub loop {
+    my $to;
     loop:
+    $to = undef;
+    for( my $fn=0;$fn<=$maxfn;$fn++ ) {
+	defined $timeout[$fn] or next;
+	vec($mask[0],$fn,1) or vec($mask[1],$fn,1) or next;
+	my ($expire,$cb,@arg) = @{ $timeout[$fn] };
+	my $diff = $didit[$fn] + $expire - $now;
+	if ($diff>0) {
+	    $to = $diff if !defined $to || $diff<$to;
+	} else {
+	    $DEBUG && _debug("timeout($fn)");
+	    $cb->(@arg);
+	}
+    }
+
     @tmpmask = @mask;
-    my $rv = select($tmpmask[0],$tmpmask[1],undef,undef);
-    $DEBUG && _debug("select -> $rv");
-    die "loop failed: $!" if $rv <= 0;
+    $DEBUG && _debug("enter select timeout=".(defined($to) ? $to:'none'));
+    my $rv = select($tmpmask[0],$tmpmask[1],undef,$to);
+    $DEBUG && _debug("leave select result=$rv");
+
+    $now = time();
+    die "loop failed: $!" if $rv < 0;
+    goto loop if !$rv;
+
     for my $rw (0,1) {
 	for( my $fn=0; $fn<=$maxfn; $fn++) {
 	    vec($tmpmask[$rw],$fn,1) or next;
 	    $DEBUG && _debug("selected($fn,$rw)");
 	    my $sub = $handler[$fn][$rw] or die "no handler";
+	    $didit[$fn] = $now;
 	    $sub->[0](@{$sub}[1..$#$sub]);
 	}
     }

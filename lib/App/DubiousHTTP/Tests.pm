@@ -17,6 +17,8 @@ sub make_response {
     my $page = <<'HTML';
 <!doctype html><html><body>
 <link rel="stylesheet" href="/stylesheet.css">
+<link rel="stylesheet" href="/stylesheet.css">
+<link rel="icon" href="/favicon.ico" type="image/vnd.microsoft.icon">
 <h1>HTTP standard conformance tests - HTTP evader</h1>
 
 <p>

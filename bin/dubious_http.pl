@@ -108,7 +108,6 @@ sub serve {
 
     App::DubiousHTTP::TestServer->run($addr, $sslargs, sub {
 	my ($path,$listen,$rqhdr,$payload,$ssl) = @_;
-	return "HTTP/1.0 404 not found\r\n\r\n" if $path eq '/favicon.ico';
 
 	if ($path =~m{\A/submit_(details|results|part)/([^/]+)(?:/(\d+))?} 
 	    && defined $payload) {

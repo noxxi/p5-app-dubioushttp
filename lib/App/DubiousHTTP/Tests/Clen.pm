@@ -47,6 +47,21 @@ DESC
     [ INVALID, 'close,clen100-(200),content,junk' => 'content-length full and double on same line, but double as MIME comment, close after real content+junk' ],
     [ INVALID, 'close,clen200-folding100,content,junk' => 'content-length double but full after line folding, close after real content+junk' ],
     [ INVALID, 'close,clen(200)-100,content,junk' => 'content-length double and full on same line, but double as MIME comment, close after real content+junk' ],
+
+    [ INVALID, 'close,\073(clen),content,junk' => '"Content-length: ;len", body content+junk' ],
+    [ INVALID, 'close,(clen)\073,content,junk' => '"Content-length: len;", body content+junk' ],
+    [ INVALID, 'close,\054(clen),content,junk' => '"Content-length: ,len", body content+junk' ],
+    [ INVALID, 'close,(clen)\054,content,junk' => '"Content-length: len,", body content+junk' ],
+    [ INVALID, 'close,(clen)\054(clen),content,junk' => '"Content-length: len,len", body content+junk' ],
+    [ INVALID, 'close,\042(clen)\042,content,junk' => "'Content-length: \"len\"', body content+junk" ],
+    [ INVALID, 'close,(clen)A,content,junk' => '"Content-length: lenA", body content+junk' ],
+    [ INVALID, 'close,A(clen),content,junk' => '"Content-length: Alen", body content+junk' ],
+    [ INVALID, 'close,(clen) A,content,junk' => '"Content-length: len A", body content+junk' ],
+    [ INVALID, 'close,A (clen),content,junk' => '"Content-length: A len", body content+junk' ],
+    [ INVALID, 'close,\240(clen),content,junk' => '"Content-length: \240len", body content+junk' ],
+    [ INVALID, 'close,(clen)\240,content,junk' => '"Content-length: len\240", body content+junk' ],
+    [ INVALID, 'close,(clen).0,content,junk' => '"Content-length: len.0", body content+junk' ],
+    [ INVALID, 'close,(clen).9,content,junk' => '"Content-length: len.9", body content+junk' ],
 );
 
 
@@ -72,6 +87,11 @@ sub make_response {
 		$hdr .= $4;
 	    }
 	    $hdr .= "\r\n";
+	} elsif ( m{\(clen\)}) {
+	    s{\\([0-7]{3})}{ chr(oct($1)) }esg;
+	    s{\(clen\)}{ length($data) }esg;
+	    $hdr .= "Content-length: $_\r\n";
+	    $body = $data;
 	} elsif ( $_ eq 'content' ) {
 	    $body = $data;
 	} elsif ( $_ eq 'junk' ) {

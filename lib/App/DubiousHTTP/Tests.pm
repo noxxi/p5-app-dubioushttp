@@ -988,5 +988,22 @@ HTML
     }
 }
 
+sub manifest {
+    my ($self,$cat,$page,$spec) = @_;
+    my $data = '';
+    for(@cat) {
+	next if $cat ne 'all' && $_->ID ne $cat;
+	for($_->TESTS) {
+	    $data .= sprintf("%s | %s | %s | %s\n",
+		$_->LONG_ID, $_->url($page), $_->VALID, $_->DESCRIPTION);
+	}
+    }
+    return "HTTP/1.0 200 ok\r\n".
+	"Content-type: text/plain\r\n".
+	"Content-length: ".length($data)."\r\n".
+	"\r\n".
+	$data;
+}
+
 
 1;

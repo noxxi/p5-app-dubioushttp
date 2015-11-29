@@ -308,6 +308,12 @@ DESC
     [ INVALID, 'space-200' => 'invalid status code, SPACE+200)'],
     [ INVALID, 'tab-200' => 'invalid status code, TAB+200)'],
 
+    [ 'INVALID: more variations with status codes' ],
+    [ UNCOMMON_VALID, '299' => 'code 299'],
+    [ INVALID, '204;chunked' => 'code 204 with chunked body'],
+    [ INVALID, '0204' => 'code 0204 with body'],
+    [ INVALID, '2040' => 'code 2040 with body'],
+
     [ 'VALID: new lines before HTTP header' ],
     [ UNCOMMON_VALID, 'crlf-header;chunked' => 'single <CR><LF> before header, chunked'],
     [ UNCOMMON_VALID, 'crlf-crlf-header;chunked' => 'double <CR><LF> before header, chunked'],
@@ -404,7 +410,7 @@ sub make_response {
 	    $w =~s{cr}{\r}g;
 	    $w =~s{lf}{\n}g;
 	    $w =~s{\\([0-7]{3})}{ chr(oct($1)) }eg;
-	    push @transform, sub { $_[0] =~ s{(\r|\n|\r\n)\1}{$w} or die }
+	    push @transform, sub { $_[0] =~ s{(\r|\n|\r\n|\n\r)\1}{$w} or die }
 	} elsif ( m{^proto:(.*)} ) {
 	    my $proto = $1;
 	    $proto =~s{cr|\\r}{\r}g;

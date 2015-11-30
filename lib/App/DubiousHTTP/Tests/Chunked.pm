@@ -32,15 +32,36 @@ DESC
     [ INVALID, 'size-cr' => "size followed by <CR>" ],
     [ INVALID, 'size-lf' => "size followed by <LF>" ],
     [ INVALID, 'size-x' => "size followed by char 'x'" ],
+    [ INVALID, 'size-\054' => "size followed by char ','" ],
+    [ INVALID, 'size-\000' => "size followed by char \\000" ],
+    [ INVALID, 'size-\013' => "size followed by char \\v" ],
+    [ INVALID, 'size-\014' => "size followed by char \\f" ],
     [ INVALID, 'size-spacex' => "size followed by space and char 'x'" ],
     [ INVALID, 'space-size' => "size prefixed by space" ],
     [ INVALID, 'tab-size' => "size prefixed by tab" ],
     [ INVALID, 'cr-size' => "size prefixed by cr" ],
+    [ INVALID, 'lf-size' => "size prefixed by lf" ],
+    [ INVALID, 'crlf-size' => 'size prefixed by "\r\n"' ],
+    [ INVALID, 'crlf-crlf-size' => 'size prefixed by "\r\n\r\n"' ],
+    [ INVALID, 'crlf-x-crlf-size' => 'size prefixed by "\r\nx\r\n"' ],
     [ INVALID, 'x-size' => "size prefixed by char 'x'" ],
+    [ INVALID, '\054-size' => "size prefixed by char ','" ],
+    [ INVALID, '\073-size' => "size prefixed by char ';'" ],
+    [ INVALID, '\000-size' => "size prefixed by char \\000" ],
+    [ INVALID, '\013-size' => "size prefixed by char \\v" ],
+    [ INVALID, '\014-size' => "size prefixed by char \\f" ],
     [ INVALID, 'xspace-size' => "size prefixed by char 'x' and space" ],
     [ UNCOMMON_VALID, 'final=00' => 'final chunk size "00"' ],
     [ UNCOMMON_VALID, 'final=00000000000000000000' => 'final chunk size "00000000000000000000"' ],
     [ INVALID, 'final=0x' => 'final chunk size "0x"' ],
+    [ INVALID, 'finalchunk=0\012' => 'final chunk just "0\n"' ],
+    [ INVALID, 'finalchunk=0\015' => 'final chunk just "0\r"' ],
+    [ INVALID, 'finalchunk=0' => 'final chunk just "0"' ],
+    [ INVALID, 'finalchunk=0\012\012' => 'final chunk "0\n\n"' ],
+    [ INVALID, 'finalchunk=0\012\040\012' => 'final chunk "0\n<space>\n"' ],
+    [ INVALID, 'finalchunk=0\012\015\012' => 'final chunk "0\n\r\n"' ],
+    [ INVALID, 'finalchunk=0\012\015\015\012' => 'final chunk "0\n\r\r\n"' ],
+    [ INVALID, 'finalchunk=0\015\012foobar\015\012' => 'final chunk "0\r\nfoobar\r\n"' ],
 
     [ 'VALID: (but uncommon) use of extensions in chunked header' ],
     [ UNCOMMON_VALID, 'chunk-ext-junk' => "chunked with some junk chunk extension" ],
@@ -167,6 +188,7 @@ sub make_response {
     my $sizefmt = '%x';
     my $before_chunks = '';
     my $final = '0';
+    my $finalchunk;
     for (split(',',$spec)) {
 	if ( m{^(x|-|nl|lf|cr)*chunked(x|-|nl|lf|cr)*$}i ) {
 	    s{-}{ }g;
@@ -219,7 +241,7 @@ sub make_response {
 	    $eol =~s{cr}{\r}g;
 	    $eol =~s{lf}{\n}g;
 	    $chunkmod{lineend} = $eol;
-	} elsif ( m{^(-|space|cr|lf|tab|x)*(0*)(uc)?size(-|space|cr|lf|tab|x)*$}) {
+	} elsif ( m{^(-|space|cr|lf|tab|x|\\[0-7]{3})*(0*)(uc)?size(-|space|cr|lf|tab|x|\\[0-7]{3})*$}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	    @chunks = ( $data =~m{(.{1,15})}smg,'') if ! @chunks;
 	    s{ucsize}{%X};
@@ -231,6 +253,7 @@ sub make_response {
 	    s{tab}{\t}g;
 	    s{cr}{\r}g;
 	    s{lf}{\n}g;
+	    s{\\([0-7]{3})}{ chr(oct($1)) }eg;
 	    $sizefmt = $_;
 	} elsif (m{((?:space|tab|cr|lf)*)-before-chunks}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
@@ -242,6 +265,10 @@ sub make_response {
 	} elsif (m{^final=(.*)$}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	    $final = $1;
+	} elsif (m{^finalchunk=(.*)$}) {
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    (my $d = $1 ) =~ s{\\([0-7]{3})}{ chr(oct($1)) }eg;
+	    $finalchunk = $d;
 	} else {
 	    die $_
 	}
@@ -266,6 +293,7 @@ sub make_response {
 	    $end = sprintf("%x%s%s%s",$last->[0]+10,$last->[2]||'',$nl,$last->[1]);
 	}
 
+	$finalchunk //= "$final$nl$nl";
 	$data = join("",map { 
 	    $_->[0] ? sprintf("$sizefmt%s%s%s%s",
 		$_->[0],          # size
@@ -273,7 +301,7 @@ sub make_response {
 		$nl,
 		$_->[1],
 		$nl
-	    ) : "$final$nl$nl"
+	    ) : $finalchunk
 	} @chunks).$end;
     }
     return "$hdr\r\n$before_chunks$data";

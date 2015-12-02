@@ -47,6 +47,9 @@ DESC
     [ 'VALID: lzma (supported by at least Opera)' ],
     [ UNCOMMON_VALID, 'ce:lzma;lzma1' => 'content-encoding lzma, lzma1 (lzma_alone) encoded'],
 
+    [ 'INVALID: gzip header combined with zlib (RFC1952) instead of deflate (RFC1951)' ],
+    [ INVALID, 'ce:gzip;gzip-zlib' => 'content-encoding gzip, encoded with zlib prefixed by gzip header'],
+
     # these might be strange/unsupported
     [ 'VALID: less common but valid requests' ],
     [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw' => 'content-encoding deflate, served with RFC1950 style deflate (zlib)'],
@@ -299,6 +302,18 @@ sub make_response {
 	    $lzma->code($data,$newdata) == LZMA_OK or die "failed to lzma encode data";
 	    $lzma->flush($newdata,LZMA_FINISH) == LZMA_STREAM_END or die "failed to close lzma stream";
 	    $data = $newdata;
+
+	} elsif ($_ eq 'gzip-zlib') {
+	    my $zlib = Compress::Raw::Zlib::Deflate->new(
+		-WindowBits => +MAX_WBITS(),
+		-AppendOutput => 1,
+	    );
+	    my $gzip_hdr = pack("CCCCVCC",0x1f,0x8b,0x8,0,0,2,0);
+	    my $gzip_trailer = pack("VV",Compress::Raw::Zlib::crc32($data),length($data));
+	    my $newdata = '';
+	    $zlib->deflate($data,$newdata);
+	    $zlib->flush($newdata,Z_FINISH);
+	    $data = $gzip_hdr.$newdata.$gzip_trailer;
 
 	} elsif (m{^ce-space-colon-(.*)}) {
 	    $hdr .= "Content-Encoding : $1\r\n";

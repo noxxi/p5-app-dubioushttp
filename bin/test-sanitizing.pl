@@ -191,7 +191,7 @@ BEGIN {
 	eval { require IO::Socket::IP; 'IO::Socket::IP' } ||
 	eval { require IO::Socket::INET6; 'IO::Socket::INET6' } ||
 	'IO::Socket::INET';
-    $host46port = qr{(?:([^:]+)|\[([^\]]+)\])(?::(\w+))};
+    $host46port = qr{(?:([\w\-\.]+)|\[([^\]]+)\])(?::(\w+))?};
 }
 
 sub new {
@@ -261,7 +261,7 @@ sub _connect {
     my ($self,$dst) = @_;
     return $IOCLASS->new(
 	PeerAddr => $dst->[0],
-	PeerPort => $dst->[1],
+	PeerPort => $dst->[1] || 80,
     ) || die "failed to connect to @$dst: $@";
 }
 

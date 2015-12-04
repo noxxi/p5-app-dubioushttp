@@ -52,8 +52,8 @@ DESC
 
     # these might be strange/unsupported
     [ 'VALID: less common but valid requests' ],
-    [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw' => 'content-encoding deflate, served with RFC1950 style deflate (zlib)'],
-    [ UNCOMMON_INVALID, 'ce:deflate;deflate-raw2p' => 'content-encoding deflate, served with RFC1950 style deflate (zlib) with 2 compressed blocks'],
+    [ UNCOMMON_VALID, 'ce:deflate;zlib' => 'content-encoding deflate, served with RFC1950 style deflate (zlib)'],
+    [ UNCOMMON_VALID, 'ce:deflate;zlib' => 'content-encoding deflate, served with RFC1950 style deflate (zlib) with 2 compressed blocks'],
     [ UNCOMMON_VALID, 'ce:nl-gzip;gzip' => 'content-encoding gzip but with continuation line, served gzipped'],
     [ UNCOMMON_VALID, 'ce:nl-deflate;deflate' => 'content-encoding deflate but with continuation line, served with deflate'],
     [ UNCOMMON_VALID, 'ce:nl-nl-deflate;deflate' => 'content-encoding deflate but with double continuation line, served with deflate'],
@@ -133,7 +133,7 @@ DESC
     # and the bad ones
     [ 'INVALID: incorrect compressed response, should not succeed' ],
     [ INVALID, 'ce:x-deflate;deflate' => 'content-encoding x-deflate, served with deflate'],
-    [ INVALID, 'ce:x-deflate;deflate-raw' => 'content-encoding x-deflate, served with RFC1950 style deflate'],
+    [ INVALID, 'ce:x-deflate;zlib' => 'content-encoding x-deflate, served with RFC1950 style deflate (zlib)'],
     [ INVALID, 'ce:gzipx;gzip' => 'content-encoding "gzipx", served with gzip' ],
     [ INVALID, 'ce:xgzip;gzip' => 'content-encoding "xgzip", served with gzip' ],
     [ INVALID, 'ce:gzip_x;gzip' => 'content-encoding "gzip x", served with gzip' ],
@@ -264,7 +264,7 @@ sub make_response {
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "$v\r\n";
-	} elsif ( m{^(?:(gzip)|deflate(-raw)?)(?:(\d+)p)?(?:,(sync|partial|block|full|finish))?$} ) {
+	} elsif ( m{^(?:(gzip)|deflate|(zlib))(?:(\d+)p)?(?:,(sync|partial|block|full|finish))?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
 		-AppendOutput => 1,

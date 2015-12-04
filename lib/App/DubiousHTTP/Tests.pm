@@ -990,7 +990,7 @@ HTML
 
 sub manifest {
     my ($self,$cat,$page,$spec) = @_;
-    my $data = '';
+    my $data = "trivial | /clen/$page/close,clen,content | 3 | trivial response for retrieving body\n";
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {

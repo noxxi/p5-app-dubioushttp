@@ -47,6 +47,9 @@ DESC
     [ 'VALID: lzma (supported by at least Opera)' ],
     [ UNCOMMON_VALID, 'ce:lzma;lzma1' => 'content-encoding lzma, lzma1 (lzma_alone) encoded'],
 
+    [ 'VALID: brotli (supported by at least Firefox when used with https)' ],
+    [ UNCOMMON_VALID, 'ce:br;brotli' => 'content-encoding br, encoded with brotli'],
+
     [ 'INVALID: gzip header combined with zlib (RFC1952) instead of deflate (RFC1951)' ],
     [ INVALID, 'ce:gzip;gzip-zlib' => 'content-encoding gzip, encoded with zlib prefixed by gzip header'],
 
@@ -303,6 +306,11 @@ sub make_response {
 	    $lzma->flush($newdata,LZMA_FINISH) == LZMA_STREAM_END or die "failed to close lzma stream";
 	    $data = $newdata;
 
+	} elsif ($_ eq 'brotli') {
+	    $data = bro_compress($data) or do {
+		# no brotli for this content
+		return "HTTP/$version 500 no brotli\r\nContent-length:0\r\n\r\n";
+	    };
 	} elsif ($_ eq 'gzip-zlib') {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => +MAX_WBITS(),

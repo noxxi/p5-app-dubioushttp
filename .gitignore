@@ -4,4 +4,7 @@ Makefile.old
 blib/
 generated_pcaps/
 pm_to_blib
+*.bak
+*.rej
+*.orig
 

@@ -5,7 +5,7 @@ use MIME::Base64 'decode_base64';
 use Exporter 'import';
 our @EXPORT = qw(
     MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID 
-    SETUP content html_escape url_encode garble_url ungarble_url
+    SETUP content html_escape url_encode garble_url ungarble_url bro_compress
     $NOGARBLE $CLIENTIP $TRACKHDR $FAST_FEEDBACK
 );
 use Scalar::Util 'blessed';
@@ -24,6 +24,16 @@ use constant {
 
 my $basedir = 'static/';
 sub basedir { $basedir = pop }
+
+{
+    my %bro = (
+	"Don't be afraid to look at this message. It is completely harmless. Really!"
+	    => decode_base64('G0oAAIyUq+1oRZSkJ0v1kiZ2hk1hs4NDDti/XVogkErgISv5M41kDrdKRMH7fRK8YAmyXwFNYppR3EBMbVhyBA=='),
+	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
+	    => decode_base64('G0MAABQhyezgvJQnNVXciUrtsAEHrvlk0bTzGSRPqOdwPRhITMNtn+G6LB8+EYrC/LjqijSZFRhTlo5XllmqeTHxsABuVSsB'),
+    );
+    sub bro_compress { return $bro{shift()} }
+}
 
 my %builtin = (
     'novirus.txt' => [ 

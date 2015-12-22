@@ -56,7 +56,7 @@ DESC
     # these might be strange/unsupported
     [ 'VALID: less common but valid requests' ],
     [ UNCOMMON_VALID, 'ce:deflate;zlib' => 'content-encoding deflate, served with RFC1950 style deflate (zlib)'],
-    [ UNCOMMON_VALID, 'ce:deflate;zlib' => 'content-encoding deflate, served with RFC1950 style deflate (zlib) with 2 compressed blocks'],
+    [ UNCOMMON_VALID, 'ce:deflate;zlib2p' => 'content-encoding deflate, served with RFC1950 style deflate (zlib) with 2 compressed blocks'],
     [ UNCOMMON_VALID, 'ce:nl-gzip;gzip' => 'content-encoding gzip but with continuation line, served gzipped'],
     [ UNCOMMON_VALID, 'ce:nl-deflate;deflate' => 'content-encoding deflate but with continuation line, served with deflate'],
     [ UNCOMMON_VALID, 'ce:nl-nl-deflate;deflate' => 'content-encoding deflate but with double continuation line, served with deflate'],

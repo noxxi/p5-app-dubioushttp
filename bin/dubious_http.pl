@@ -16,10 +16,11 @@ See --mode doc for details about the tests.
 
 Help:               $0 -h|--help
 Test descriptions:  $0 -M|--mode doc
-Export Pcaps:       $0 -M|--mode pcap target-dir
+Export Pcaps:       $0 -M|--mode pcap [options]
 Use as HTTP server: $0 -M|--mode server [options] ip:port
 
 Options for server mode:
+
  --cert cert.pem    SSL certificate if SSL should be used. It will listen for
 		    SSL and plain requests on the same address.
  --key  key.pem     Key for SSL certificate
@@ -33,35 +34,50 @@ Options for server mode:
                     but send parts of the output earlier so that the recipient
 		    needs to collect them. This saves memory in the client too.
 
+Options for pcap mode:
+
+ --file F          write all TCP streams to single pcap file F
+ --prefix P        one stream per pcap file, files prefixed with P
+ --manifest M      write mapping between source port and URL to M
+ --filter-any      filter based on existing reports from server mode.
+		   All remaining args are considered reports and a stream will
+		   be included if at least one report shows a match.
+		   This is the default if arguments are given.
+ --filter-all      Like --filter-any, but include stream only if all reports
+		   show a match.
+
 USAGE
     exit(1);
 }
 
 our $BASE_URL="http://foo";
 $TRACKHDR=1;
-my $mode = 'doc';
-my ($cert,$key);
 GetOptions(
-    'h|help'   => sub { usage() },
-    'M|mode=s' => \$mode,
-    'no-garble-url' => \$NOGARBLE,
-    'track-header!' => \$TRACKHDR,
-    'fast-feedback' => \$FAST_FEEDBACK,
-    'cert=s'   => \$cert,
-    'key=s'    => \$key,
-);
+    'h|help' => sub { usage() },
+    'M|mode' => sub { 1 },
+) or usage();
+my $mode = shift(@ARGV) || 'doc';
 
 if ( $mode eq 'server' ) {
+    my ($cert,$key);
+    GetOptions(
+	'no-garble-url' => \$NOGARBLE,
+	'track-header!' => \$TRACKHDR,
+	'fast-feedback' => \$FAST_FEEDBACK,
+	'cert=s'   => \$cert,
+	'key=s'    => \$key,
+    ) or usage();
+
     my $addr = shift(@ARGV) or usage('no listen address given');
     serve($addr, $cert
 	? { SSL_cert_file => $cert, SSL_key_file => $key||$cert }
 	: ()
     );
+
 } elsif ( $mode eq 'doc' ) {
     print make_doc();
 } elsif ( $mode eq 'pcap' ) {
-    my $dir = shift(@ARGV) or usage('no target dir for pcap');
-    make_pcaps($dir);
+    make_pcaps();
 } else {
     usage('unknown mode '.$mode);
 }
@@ -81,22 +97,85 @@ sub make_doc {
 
 ############################ create pcap files
 sub make_pcaps {
-    my $base = shift;
-    $NOGARBLE = 1;
     eval { require Net::PcapWriter }
 	or die "cannot load Net::PcapWriter\n";
-    -d $base or die "$base does not exist";
+
+    my $filter_any = 1;
+    my ($pcap_prefix,$pcap_file,$manifest);
+    GetOptions(
+	'prefix=s' => \$pcap_prefix,
+	'file=s'   => \$pcap_file,
+	'manifest=s' => \$manifest,
+	'filter-any' => sub { $filter_any = 1; },
+	'filter-all' => sub { $filter_any = 0; },
+    ) or usage();
+
+    my %include;
+    for (@ARGV) {
+	open( my $fh,'<',$_ ) or die "open $_: $!";
+	while (<$fh>) {
+	    my ($code,$string,$page) = m{^ ([INW]) \| (\S+) \| (/\S+) } or next;
+	    $page =~s{^(/\w+)/[^/]+/(.*)}{$1/eicar.txt/$2} or next;
+	    my $v = $string =~m{match|success} ? 1:0;
+	    if (!exists $include{$page}) {
+		$include{$page} = $v;
+	    } elsif ($filter_any) {
+		$include{$page} = 1 if $v;
+	    } else {
+		$include{$page} = 0 if !$v;
+	    }
+	}
+    }
+
+    my $pcap;
+    if ($pcap_file) {
+	$pcap = Net::PcapWriter->new($pcap_file)
+	    or die "failed to create $pcap_file: $!";
+    } elsif ($pcap_prefix) {
+    } else {
+	usage('no target file/prefix for pcap');
+    }
+
+    if ($manifest) {
+	open(my $fh,'>',$manifest) or die "create $manifest: $!";
+	$manifest = $fh;
+    }
+
+    $NOGARBLE = 1;
+    my $base = 0;
     for my $cat ( App::DubiousHTTP::Tests->categories ) {
 	$cat->TESTS or next;
-	( my $id = $cat->ID ) =~s{[^\w\-.,;+=]+}{_}g;
-	my $dir = "$base/$id";
-	-d $dir or mkdir($dir) or die "cannot create $dir: $!";
+	$base += 5000;
+	my $pc = $pcap;
+	my $port = $base;
 	for my $tst ( $cat->TESTS ) {
-	    ( my $id = $tst->ID ) =~s{[^\w\-.,;+=]+}{_}g;
-	    my $pc = Net::PcapWriter->new( "$dir/$id.pcap" );
-	    my $conn = $pc->tcp_conn('1.1.1.1',1111,'8.8.8.8',80);
-	    $conn->write(0, "GET ".$tst->url('eicar.txt')." HTTP/1.1\r\nHost: foo.bar\r\n\r\n" );
+	    my $valid = $tst->VALID;
+	    $port = 10*int($port/10+1);
+	    $port += $valid>0 ? $valid : $valid<0 ? 4-$valid : 9;
+
+	    my $xurl = $tst->url('eicar.txt');
+	    my $url = url_encode($xurl);
+	    if (!%include) {
+	    } elsif (!exists $include{$url}) {
+		warn "$url not in existing reports - including anyway\n";
+	    } elsif (!$include{$url}) {
+		warn "skip $url\n";
+		next;
+	    }
+
+	    if (!$pc) {
+		( my $id = $cat->ID ) =~s{[^\w\-.,;+=]+}{_}g;
+		my $file = "$pcap_prefix$id.pcap";
+		$pc = Net::PcapWriter->new($file)
+		    or die "failed to create $file: $!";
+	    }
+
+	    my $conn = $pc->tcp_conn('1.1.1.1',$port,'8.8.8.8',80);
+	    $conn->write(0, "GET $url HTTP/1.1\r\nHost: evader.example.com\r\n\r\n" );
 	    $conn->write(1, $tst->make_response('eicar.txt') );
+
+	    print $manifest "$port | $xurl | ".$tst->DESCRIPTION."\n" if $manifest;
+	    undef $pc if !$pcap;
 	}
     }
 }

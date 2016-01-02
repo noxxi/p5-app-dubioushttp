@@ -75,6 +75,7 @@ DESC
     # safari does not like it, so mark it as uncommon
     [ UNCOMMON_VALID, 'chunked,clen200' => 'chunking and content-length header with double length, served chunked'],
     [ UNCOMMON_VALID, 'chunked,clen50'  => 'chunking and content-length header with half length, served chunked'],
+    [ INVALID, 'addjunk,chunked,clen50'  => 'content+junk, chunked, content-length header includes content only' ],
 
     [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
     [ INVALID, 'chunked,http10' => 'Chunked Header and HTTP/1.0. Served chunked.'],
@@ -269,6 +270,8 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	    (my $d = $1 ) =~ s{\\([0-7]{3})}{ chr(oct($1)) }eg;
 	    $finalchunk = $d;
+	} elsif ( $_ eq 'addjunk' ) {
+	    $data .= "x" x length($data);
 	} else {
 	    die $_
 	}

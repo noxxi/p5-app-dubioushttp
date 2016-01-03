@@ -2,6 +2,7 @@ use strict;
 use warnings;
 package App::DubiousHTTP::Tests::Chunked;
 use App::DubiousHTTP::Tests::Common;
+use Compress::Raw::Zlib;
 
 SETUP(
     'chunked',
@@ -81,11 +82,17 @@ DESC
     [ INVALID, 'chunked,http10' => 'Chunked Header and HTTP/1.0. Served chunked.'],
     [ INVALID, 'chunked,clen,http10' => 'Chunked Header and Content-length and HTTP/1.0. Served chunked.'],
     [ INVALID, 'clen,chunked,http10' => 'Content-length Header and Chunked and HTTP/1.0. Served chunked.'],
+    [ INVALID, 'chunked,http10,gzip' => 'Chunked Header and HTTP/1.0. Served chunked with gzip.'],
+    [ INVALID, 'chunked,clen,http10,gzip' => 'Chunked Header and Content-length and HTTP/1.0. Served chunked with gzip.'],
+    [ INVALID, 'clen,chunked,http10,gzip' => 'Content-length Header and Chunked and HTTP/1.0. Served chunked with gzip.'],
 
     [ 'VALID: chunked header should be ignored with HTTP/1.0' ],
     [ UNCOMMON_VALID, 'chunked,http10,do_clen' => 'Chunked Header and HTTP/1.0. Not served chunked.'],
     [ UNCOMMON_VALID, 'chunked,clen,http10,do_clen' => 'Chunked Header and Content-length and HTTP/1.0. Not served chunked.'],
     [ UNCOMMON_VALID, 'clen,chunked,http10,do_clen' => 'Content-length Header and Chunked and HTTP/1.0. Not served chunked.'],
+    [ UNCOMMON_VALID, 'chunked,http10,do_clen,gzip' => 'Chunked Header and HTTP/1.0. Not served chunked. Compressed with gzip.'],
+    [ UNCOMMON_VALID, 'chunked,clen,http10,do_clen,gzip' => 'Chunked Header and Content-length and HTTP/1.0. Not served chunked. Compressed with gzip.'],
+    [ UNCOMMON_VALID, 'clen,chunked,http10,do_clen,gzip' => 'Content-length Header and Chunked and HTTP/1.0. Not served chunked. Compressed with gzip.'],
 
     [ 'INVALID: chunking with invalid HTTP versions' ],
     [ INVALID, 'chunked,HTTP/1.2' => 'Chunked Header and HTTP/1.2. Served chunked.'],
@@ -137,9 +144,11 @@ DESC
     [ INVALID,'chunkedcr-,do_clen' => "Transfer-Encoding:chunked<CR><space>. Not served chunked."],
     [ INVALID,'ce-chunked,do_chunked' => "Content-encoding chunked instead of Transfer-encoding. Served chunked."],
 
-    [ 'INVALID: hiding with another Transfer-Encoding' ],
+    [ 'INVALID: hiding with another Transfer-Encoding header' ],
     [ INVALID, 'xte,chunked,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Served chunked." ],
+    [ INVALID, 'xte,chunked,do_chunked,gzip' => "double Transfer-Encoding: first junk, last chunked. Served chunked and gzipped." ],
     [ INVALID, 'chunked,xte,do_chunked' => "double Transfer-Encoding: first chunked, last junk. Served chunked." ],
+    [ INVALID, 'chunked,xte,do_chunked,gzip' => "double Transfer-Encoding: first chunked, last junk. Served chunked and gzipped." ],
     [ INVALID, 'xte,chunked,xte,do_chunked' => "triple Transfer-Encoding: first junk, then chunked, then junk again. Served chunked." ],
     [ INVALID, 'xte,chunked,do_clen' => "double Transfer-Encoding: first junk, last chunked. Not served chunked." ],
     [ INVALID, 'chunked,xte,do_clen' => "double Transfer-Encoding: first chunked, last junk. Not served chunked." ],
@@ -147,8 +156,11 @@ DESC
     [ INVALID, 'xte,chunked,clen,do_chunked' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Served chunked." ],
     [ INVALID, 'xte,chunked,xte,clen,do_chunked' => "triple Transfer-Encoding: first junk, then chunked, then junk again. Also Content-length header. Served chunked." ],
     [ INVALID, 'chunked,xte,clen,do_clen' => "double Transfer-Encoding: first chunked, last junk. Also Content-length header. Not served chunked." ],
+    [ INVALID, 'chunked,xte,clen,do_clen,gzip' => "double Transfer-Encoding: first chunked, last junk. Also Content-length header. Not served chunked. Compressed with gzip." ],
     [ INVALID, 'xte,chunked,clen,do_clen' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Not served chunked." ],
+    [ INVALID, 'xte,chunked,clen,do_clen,gzip' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Not served chunked. Compressed with gzip." ],
     [ INVALID, 'chunked,clen,do_clen' => 'chunking and content-length, not served chunked'],
+    [ INVALID, 'chunked,clen,do_clen,gzip' => 'chunking and content-length, not served chunked. Compressed with gzip.'],
 
     [ 'INVALID: hiding the Transfer-Encoding header' ],
     [ INVALID, 'space-colon-chunked,do_chunked' => '"Transfer-Encoding<space>:", served chunked' ],
@@ -185,7 +197,7 @@ sub make_response {
     return make_index_page() if $page eq '';
     my ($hdr,$data) = content($page,$self->ID."-".$spec) or die "unknown page $page";
     my $version = 'HTTP/1.1';
-    my ($te,@chunks,%chunkmod);
+    my ($te,@chunks,%chunkmod,$clen);
     my $sizefmt = '%x';
     my $before_chunks = '';
     my $final = '0';
@@ -219,7 +231,7 @@ sub make_response {
 	} elsif ( $_ eq 'ce-chunked' ) {
 	    $hdr .= "Content-Encoding: chunked\r\nConnection: close\r\n"
 	} elsif ( $_ =~ m{^clen(\d+)?$} ) {
-	    $hdr .= "Content-length: ". int(($1||100)/100*length($data)) ."\r\n"
+	    $clen = $1 || 100;
 	} elsif ( $_ eq 'http10' ) {
 	    $version = "HTTP/1.0";
 	} elsif ( $_ =~m{^HTTP/\S+}i ) {
@@ -272,10 +284,15 @@ sub make_response {
 	    $finalchunk = $d;
 	} elsif ( $_ eq 'addjunk' ) {
 	    $data .= "x" x length($data);
+	} elsif ( $_ eq 'gzip' ) {
+	    $data = _compress($data,'gzip');
+	    $hdr .= "Content-Encoding: gzip\r\n";
 	} else {
 	    die $_
 	}
     }
+    $hdr .= "Content-length: ". int($clen/100*length($data)) ."\r\n" 
+	if defined $clen;
     $hdr = "$version 200 ok\r\n$hdr";
     $te ||= $hdr =~m{^Transfer-Encoding:}im ? 'chunked':'clen';
     @chunks = ( $data =~m{(.{1,5})}smg,'') if $te eq 'chunked' && ! @chunks;
@@ -310,5 +327,16 @@ sub make_response {
     return "$hdr\r\n$before_chunks$data";
 }
 
+sub _compress {
+    my ($data,$w) = @_;
+    my $zlib = Compress::Raw::Zlib::Deflate->new(
+	-WindowBits => $w eq 'gzip' ? WANT_GZIP : -MAX_WBITS(),
+	-AppendOutput => 1,
+    );
+    my $newdata = '';
+    $zlib->deflate( $data, $newdata);
+    $zlib->flush($newdata,Z_FINISH);
+    return $newdata;
+}
 
 1;

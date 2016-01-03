@@ -1,3 +1,52 @@
+2016/01/03 0.030
+- Extend pcap mode to write single file and to filter based on reports
+    - Extend pcap export mode: all streams into one file, filter...
+    - new test for chunking with junk at the end, but content-length with
+      the size of the good content. Edge will ignore the junk
+- tool bin/test-sanitizing.pl to look how good a proxy will sanitize the traffic
+  against strange requests typically understood by browsers but not by
+  firewalls, /manifest/ URL to just get a listing of possible tests as plain
+  text
+- More tests:
+  - combining chunked and gzip
+  - tests with brotli (Firefox 44, https)
+  - combine gzip header with RFC1950 (zlib) instead of RC1951 (deflate)
+  - HTTP header containing TE chunked without a status line
+  - chunked body:
+    - chunking with junk and content-length limited to good data
+    - Various browsers accept data after the chunk size
+    - Especially Firefox accepts lots of data before the chunk size, even "\r\n\r\n"
+    - Various browsers accept junk at the end, like "0\r\nfoobar\r\n"
+  - status codes:
+    - Variations on 204: 0204, 2040, 204 with chunked encoding. IE and Edge
+      continue to accept 204 with body. 2040 is usually accepted but download
+      not necessarily works.
+    - Code 299: usually treated the same as 200
+  - Content-length:
+    - Chrome/Opera accept "," before length
+    - all browsers accept "," after length
+    - most browser accept anything after length, even something like "68A","68.9"...
+  - tricky ends of HTTP header:
+     - \n\r\r\n - Safari, IE, Edge
+     - \n\r\r\n\r\n - others
+     - IE and Edge accept "\n<space>\n" or "\n\t\n"
+  - line folding after key and before colon, i.e. Transfer-Encoding\n\t:chunked
+    This will be accepted by Safari.
+  - broken "white-space" and line folding:
+    Chrome treats \n\000chunked as proper line folding, while the others don't
+  - characters before and after the field or the colon
+    - While Safari accepts anything before and after "chunked" (tested in
+      Chunked.pm) it only accepts some characters before/after gzip and deflate.
+      Among these are \v,\f,";" and \240 (latin1 non-breaking space)
+    - FF, Chrome accept "," before and after chunked|gzip|deflate
+  - \000 is nearly everywhere in the header ignored by Chrome (inside, before
+    and after key and value...)
+  - broken status lines
+    - "HTTP/1.1foobar" (no status code etc) gets accepted by Chrome, Opera and
+      Firefox.
+  - various tests with invalid characters or UTF-8
+  - extend compression tests with various kinds of sync between deflated parts
+
 2015/11/12 0.029
 - bulk testing of iframe tags with HTML inside
 2015/11/08 0.028

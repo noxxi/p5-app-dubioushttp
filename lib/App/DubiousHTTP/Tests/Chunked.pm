@@ -313,7 +313,7 @@ sub make_response {
 	    $end = sprintf("%x%s%s%s",$last->[0]+10,$last->[2]||'',$nl,$last->[1]);
 	}
 
-	$finalchunk //= "$final$nl$nl";
+	$finalchunk = "$final$nl$nl" if ! defined $finalchunk;
 	$data = join("",map { 
 	    $_->[0] ? sprintf("$sizefmt%s%s%s%s",
 		$_->[0],          # size

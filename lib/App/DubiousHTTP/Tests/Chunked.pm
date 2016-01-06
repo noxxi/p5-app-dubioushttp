@@ -112,6 +112,17 @@ DESC
     [ INVALID, 'chunked,http/1.0' => 'Chunked Header and http/1.0. Served chunked.'],
     [ INVALID, 'chunked,clen,http/1.0,do_clen' => 'Chunked Header and http/1.0. Not served chunked.'],
 
+    [ INVALID, 'chunked,HTTP/0.1,gzip' => 'Chunked Header and HTTP/0.1. Served chunked and with gzip.'],
+    [ INVALID, 'chunked,clen,HTTP/0.1,gzip,do_clen' => 'Chunked Header and HTTP/0.1. Not served chunked but with gzip.'],
+    [ INVALID, 'chunked,HTTP/01.1,gzip' => 'Chunked Header and HTTP/01.1. Served chunked and with gzip.'],
+    [ INVALID, 'chunked,clen,HTTP/01.1,gzip,do_clen' => 'Chunked Header and HTTP/01.1. Not served chunked but with gzip.'],
+    [ INVALID, 'chunked,HTTP/11.01,gzip' => 'Chunked Header and HTTP/11.01. Served chunked and with gzip.'],
+    [ INVALID, 'chunked,clen,HTTP/11.01,gzip,do_clen' => 'Chunked Header and HTTP/11.01. Not served chunked but with gzip.'],
+    [ INVALID, 'chunked,HTTP/11.10,gzip' => 'Chunked Header and HTTP/11.10. Served chunked and with gzip.'],
+    [ INVALID, 'chunked,clen,HTTP/11.10,gzip,do_clen' => 'Chunked Header and HTTP/11.10. Not served chunked but with gzip.'],
+    [ INVALID, 'chunked,HTTP/9.9,gzip' => 'Chunked Header and HTTP/9.9. Served chunked and with gzip.'],
+    [ INVALID, 'chunked,clen,HTTP/9.9,gzip,do_clen' => 'Chunked Header and HTTP/9.9. Not served chunked but with gzip.'],
+
     [ 'VALID: valid variations on "chunked" value' ],
     [ VALID, 'chUnked' => 'mixed case "chUnked", served chunked'],
     [ UNCOMMON_VALID,'nl-chunked' => "chunked header with continuation line, served chunked"],

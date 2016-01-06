@@ -64,6 +64,7 @@ DESC
     [ INVALID, 'data:Transfer\000-encoding:chunked\015\012;do_chunked' => '"Transfer\000-Encoding:chunked", served chunked' ],
     [ INVALID, 'data:Transfer\000-encoding:chun\000ked\015\012;do_chunked' => '"Transfer\000-Encoding:chun\000ked", served chunked' ],
     [ INVALID, 'te\000:chunked;do_chunked' => '"Transfer-Encoding\000:chunked", served chunked' ],
+    [ INVALID, 'te\040\011\040\011\040:chunked;do_chunked' => '"Transfer-Encoding \t \t :chunked", served chunked' ],
     [ INVALID, 'te\013:chunked;do_chunked' => '"Transfer-Encoding\v:chunked", served chunked' ],
     [ INVALID, 'te\014:chunked;do_chunked' => '"Transfer-Encoding\f:chunked", served chunked' ],
     [ INVALID, 'te\012\040:chunked;do_chunked' => '"Transfer-Encoding\n :chunked", served chunked' ],
@@ -201,6 +202,10 @@ DESC
     [ INVALID, 'status:HTTP/foobar;chunked' => 'HTTP/foobar\r\n and chunked'],
     [ INVALID, 'status:HTTP/;chunked' => 'HTTP/\r\n and chunked'],
     [ INVALID, 'status:HTTP;chunked' => 'HTTP\r\n and chunked'],
+    [ INVALID, 'status:HTTP/1.1\011204(space)ok;chunked' => 'HTTP/1.1\t204 ok with chunked content'],
+    [ INVALID, 'status:HTTP/1.1\011304(space)ok;chunked' => 'HTTP/1.1\t304 ok with chunked content'],
+    [ INVALID, 'status:HTTP/1.1\040\040\040\040204(space)ok;chunked' => 'HTTP/1.1    204 ok with chunked content'],
+    [ INVALID, 'status:HTTP/1.1\040\040\040\040304(space)ok;chunked' => 'HTTP/1.1    304 ok with chunked content'],
     [ INVALID, 'status:Transfer-Encoding:chunked;do_clen' => 'no status line but Transfer-Encoding:chunked, not served chunked'],
     [ INVALID, 'status:Transfer-Encoding:chunked;do_chunked' => 'no status line but Transfer-Encoding:chunked, served chunked'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
@@ -219,6 +224,7 @@ DESC
     [ INVALID, 'chunked;lfcr-no-crlf' => '\n\r instead of \r\n and chunked' ],
     [ INVALID, 'chunked;lfcr-no-crlf;end-crlfcrlf' => '\n\r instead of \r\n, but end \r\n\r\n and chunked' ],
     [ INVALID, 'chunked;cr\000lf-no-crlf' => '\r\000\n instead of \r\n and chunked' ],
+    [ INVALID, 'chunked;lfcrcrlf-no-crlf;end-crlfcrlf' => '\n\r\r\n instead of \r\n as line delimiter, but end \r\n\r\n and chunked' ],
     [ INVALID, 'end-crcr' => 'header end \r\r' ],
     [ INVALID, 'end-lflf' => 'header end \n\n' ],
     [ INVALID, 'end-crlf\000crlf' => 'header end \r\n\000\r\n' ],
@@ -315,10 +321,14 @@ DESC
     [ INVALID, '204;chunked' => 'code 204 with chunked body'],
     [ INVALID, '0204' => 'code 0204 with body'],
     [ INVALID, '2040' => 'code 2040 with body'],
+    [ INVALID, '304;chunked' => 'code 304 with chunked body'],
+    [ INVALID, '0304' => 'code 0304 with body'],
+    [ INVALID, '3040' => 'code 3040 with body'],
 
     [ 'VALID: new lines before HTTP header' ],
     [ UNCOMMON_VALID, 'crlf-header;chunked' => 'single <CR><LF> before header, chunked'],
     [ UNCOMMON_VALID, 'crlf-crlf-header;chunked' => 'double <CR><LF> before header, chunked'],
+    [ 'INVALID: other stuff before HTTP header' ],
     [ INVALID, 'space-crlf-header;chunked' => 'space followed by single <CR><LF> before header, chunked'],
     [ INVALID, 'space-tab-crlf-header;chunked' => 'space+TAB followed by single <CR><LF> before header, chunked'],
     [ INVALID, 'space-crlf-tab-crlf-header;chunked' => 'space+CRLF+TAB+CRLF before header, chunked'],
@@ -334,6 +344,12 @@ DESC
     [ INVALID, 'lf-lf-header;chunked' => 'double <LF> before header, chunked'],
     [ INVALID, 'space-lf-header;chunked' => 'space followed by single <LF> before header, chunked'],
     [ INVALID, 'lfcr-header;chunked' => 'single <LF><CR> before header, chunked'],
+    # chrome accepts up to 4 bytes garbage before HTTP/
+    [ INVALID, 'H-header;chunked' => '"H"  before header, chunked'],
+    [ INVALID, 'HT-header;chunked' => '"HT"  before header, chunked'],
+    [ INVALID, 'HTT-header;chunked' => '"HTT"  before header, chunked'],
+    [ INVALID, 'HTTX-header;chunked' => '"HTTX"  before header, chunked'],
+    [ INVALID, 'HTTXY-header;chunked' => '"HTTXY"  before header, chunked'],
 );
 
 sub make_response {
@@ -412,7 +428,7 @@ sub make_response {
 	    $w =~s{cr}{\r}g;
 	    $w =~s{lf}{\n}g;
 	    $w =~s{\\([0-7]{3})}{ chr(oct($1)) }eg;
-	    push @transform, sub { $_[0] =~ s{(\r|\n|\r\n|\n\r)\1}{$w} or die }
+	    push @transform, sub { $_[0] =~ s{[\r\n]+\z}{$w} or die }
 	} elsif ( m{^proto:(.*)} ) {
 	    my $proto = $1;
 	    $proto =~s{cr|\\r}{\r}g;

@@ -44,6 +44,11 @@ DESC
     [ INVALID, 'ce:gzip;gzip2p,finish' => 'content-encoding gzip, served gzipped with 2 compressed blocks with finish in between'],
     [ INVALID, 'ce:deflate;deflate2p,finish' => 'content-encoding deflate, served with deflate with 2 compressed blocks with finish in between'],
 
+    [ 'INVALID: only part of data compressed, followed by uncompressed data' ],
+    [ INVALID, 'ce:gzip;gzip2s' => 'content-encoding gzip, first segment compressed with gzip, next uncompressed' ],
+    [ INVALID, 'ce:deflate;deflate2s' => 'content-encoding deflate, first segment compressed with deflate, next uncompressed' ],
+    [ INVALID, 'ce:deflate;zlib2s' => 'content-encoding deflate, first segment compressed with zlib, next uncompressed' ],
+
     [ 'VALID: lzma (supported by at least Opera)' ],
     [ UNCOMMON_VALID, 'ce:lzma;lzma1' => 'content-encoding lzma, lzma1 (lzma_alone) encoded'],
 
@@ -267,7 +272,7 @@ sub make_response {
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "$v\r\n";
-	} elsif ( m{^(?:(gzip)|deflate|(zlib))(?:(\d+)p)?(?:,(sync|partial|block|full|finish))?$} ) {
+	} elsif ( m{^(?:(gzip)|deflate|(zlib))(?:(\d+)([ps]))?(?:,(sync|partial|block|full|finish))?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
 		-AppendOutput => 1,
@@ -277,14 +282,17 @@ sub make_response {
 	    while ($data ne '') {
 		push @chunks,substr($data,0,$size,'')
 	    }
+	    my $plain_chunk = '';
+	    $plain_chunk = join('',splice(@chunks,1)) if $4 eq 's';
+
 	    my $flush =
-		! $4 ? Z_FULL_FLUSH :
-		$4 eq 'partial' ? Z_PARTIAL_FLUSH :
-		$4 eq 'sync'    ? Z_SYNC_FLUSH :
-		$4 eq 'full'    ? Z_FULL_FLUSH :
-		$4 eq 'block'   ? Z_BLOCK :
-		$4 eq 'finish'  ? Z_FINISH :
-		die $4;
+		! $5 ? Z_FULL_FLUSH :
+		$5 eq 'partial' ? Z_PARTIAL_FLUSH :
+		$5 eq 'sync'    ? Z_SYNC_FLUSH :
+		$5 eq 'full'    ? Z_FULL_FLUSH :
+		$5 eq 'block'   ? Z_BLOCK :
+		$5 eq 'finish'  ? Z_FINISH :
+		die $5;
 	    my $newdata = '';
 	    while (@chunks) {
 		$zlib->deflate( shift(@chunks), $newdata);
@@ -294,7 +302,7 @@ sub make_response {
 		}
 	    }
 	    $zlib->flush($newdata,Z_FINISH);
-	    $data = $newdata;
+	    $data = $newdata . $plain_chunk;
 	} elsif (m{^(lzma[12]|xz)$}) {
 	    my ($lzma,$status) = 
 		$_ eq 'xz'    ? Compress::Raw::Lzma::EasyEncoder->new(AppendOutput => 1)  :

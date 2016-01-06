@@ -52,6 +52,8 @@ DESC
     [ INVALID, '\013-size' => "size prefixed by char \\v" ],
     [ INVALID, '\014-size' => "size prefixed by char \\f" ],
     [ INVALID, 'xspace-size' => "size prefixed by char 'x' and space" ],
+    [ INVALID, '\053-size' => "size prefixed by char '+'" ],
+    [ INVALID, '\060\170-size' => "size prefixed by '0x'" ],
     [ UNCOMMON_VALID, 'final=00' => 'final chunk size "00"' ],
     [ UNCOMMON_VALID, 'final=00000000000000000000' => 'final chunk size "00000000000000000000"' ],
     [ INVALID, 'final=0x' => 'final chunk size "0x"' ],

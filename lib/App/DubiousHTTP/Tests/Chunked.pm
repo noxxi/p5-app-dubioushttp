@@ -28,6 +28,8 @@ DESC
     [ UNCOMMON_VALID, '00size' => "chunks size prefixed with 00" ],
     [ UNCOMMON_VALID, 'ucsize' => "upper case size" ],
     [ UNCOMMON_VALID, '0ucsize' => "upper case size prefix with 0" ],
+    [ INVALID, '32-size' => "negative size for 32bit uint" ],
+    [ INVALID, '64-size' => "negative size for 64bit uint" ],
     [ INVALID, 'size-space' => "size followed by space" ],
     [ INVALID, 'size-tab' => "size followed by tab" ],
     [ INVALID, 'size-cr' => "size followed by <CR>" ],
@@ -57,6 +59,7 @@ DESC
     [ UNCOMMON_VALID, 'final=00' => 'final chunk size "00"' ],
     [ UNCOMMON_VALID, 'final=00000000000000000000' => 'final chunk size "00000000000000000000"' ],
     [ INVALID, 'final=0x' => 'final chunk size "0x"' ],
+    [ INVALID, 'final=Foo' => 'final chunk size "Foo"' ],
     [ INVALID, 'finalchunk=0\012' => 'final chunk just "0\n"' ],
     [ INVALID, 'finalchunk=0\015' => 'final chunk just "0\r"' ],
     [ INVALID, 'finalchunk=0' => 'final chunk just "0"' ],
@@ -267,6 +270,10 @@ sub make_response {
 	    $eol =~s{cr}{\r}g;
 	    $eol =~s{lf}{\n}g;
 	    $chunkmod{lineend} = $eol;
+	} elsif (m{^(32|64)-size\z}) {
+	    my $o = ($1 == 64) ? 'ffffffff':'';
+	    $sizefmt = sub { sprintf("-$o%08x", 0xffffffff & ~shift()) };
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	} elsif ( m{^(-|space|cr|lf|tab|x|\\[0-7]{3})*(0*)(uc)?size(-|space|cr|lf|tab|x|\\[0-7]{3})*$}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	    @chunks = ( $data =~m{(.{1,15})}smg,'') if ! @chunks;
@@ -328,8 +335,8 @@ sub make_response {
 
 	$finalchunk = "$final$nl$nl" if ! defined $finalchunk;
 	$data = join("",map { 
-	    $_->[0] ? sprintf("$sizefmt%s%s%s%s",
-		$_->[0],          # size
+	    $_->[0] ? sprintf("%s%s%s%s%s",
+		ref($sizefmt) ? $sizefmt->($_->[0]): sprintf($sizefmt,$_->[0]), # size
 		$_->[2] || '',    # ext
 		$nl,
 		$_->[1],

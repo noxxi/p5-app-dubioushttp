@@ -20,6 +20,18 @@ DESC
 
     [ MUSTBE_VALID,  'ok' => 'VALID: simple request with content-length'],
     [ UNCOMMON_VALID, 'http09' => 'HTTP 0.9 response (no header)'],
+    [ INVALID, '\012http09' => 'HTTP 0.9 response (no header) prefix with \n'],
+    [ INVALID, '\012\012http09' => 'HTTP 0.9 response (no header) prefix with \n\n'],
+    [ INVALID, 'HTT\012\012http09' => 'response prefixed with HTT\n\n'],
+    [ INVALID, 'HTTP\012\012http09' => 'response prefixed with HTTP\n\n'],
+    [ INVALID, 'hTtp\012\012http09' => 'response prefixed with hTtp\n\n'],
+    [ INVALID, 'HTTP\012http09' => 'response prefixed with HTTP\n'],
+    [ INVALID, 'hTtp\012http09' => 'response prefixed with hTtp\n'],
+    [ INVALID, 'HTTP/\012\012http09' => 'response prefixed with HTTP/\n\n'],
+    [ INVALID, 'HTTP.\012\012http09' => 'response prefixed with HTTP.\n\n'],
+    [ INVALID, 'HTTPx\012\012http09' => 'response prefixed with HTTPx\n\n'],
+    [ INVALID, 'HTTP/1.1\040100\040ok\012\012http09' => 'response prefixed with HTTP/1.1 100 ok\n\n'],
+    [ INVALID, 'HTTP/1.1\040\053100\040ok\012\012http09' => 'response prefixed with HTTP/1.1 +100 ok\n\n'],
 
     [ 'INVALID: junk data around transfer-encoding' ],
     [ INVALID, 'chunked;177' => 'Transfer-Encoding: chunked\r\n\177\r\n, served chunked' ],
@@ -168,6 +180,20 @@ DESC
     [ INVALID, 'proto:HTTP/1.1-lf' => 'HTTP/1.1+LF: \n after version in status line'],
     [ INVALID, "proto:space-HTTP/1.1" => 'version prefixed with space: SPACE+HTTP/1.1'],
     [ INVALID, 'proto:FTP/1.1' => 'version FTP/1.1 instead of HTTP/1.1'],
+    [ INVALID, 'proto:ICY' => 'version ICY instead of HTTP/1.0'],
+    [ INVALID, 'proto:ICY;gzip' => 'version ICY instead of HTTP/1.0 compressed with gzip'],
+    [ INVALID, 'proto:HTTP\1.1' => 'version HTTP\1.1 instead of HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/+1.+1;chunked' => 'version HTTP/+1.+1 instead of HTTP/1.1 and chunked'],
+    [ INVALID, 'proto:HTTP/+1.+1;chunked;do_clen' => 'version HTTP/+1.+1 instead of HTTP/1.1 and TE chunked but not served chunked'],
+    [ INVALID, 'proto:HTTP/1A.1B;chunked' => 'version HTTP/1A.1B instead of HTTP/1.1 and chunked'],
+    [ INVALID, 'proto:HTTP/1A.1B;chunked;do_clen' => 'version HTTP/1A.1B instead of HTTP/1.1 and TE chunked but not served chunked'],
+    [ INVALID, 'proto:HTTP/2.B;chunked' => 'version HTTP/2.B instead of HTTP/1.1 and chunked'],
+    [ INVALID, 'proto:HTTP/2.B;chunked;do_clen' => 'version HTTP/2.B instead of HTTP/1.1 and TE chunked but not served chunked'],
+    [ INVALID, 'proto:HTTP/9.-1;chunked' => 'version HTTP/9.-1 instead of HTTP/1.1 and chunked'],
+    [ INVALID, 'proto:HTTP/9.-1;chunked;do_clen' => 'version HTTP/9.-1 instead of HTTP/1.1 and TE chunked but not served chunked'],
+    [ INVALID, 'proto:HTTP/1\040.1;chunked' => 'version HTTP/1<space>.1 instead of HTTP/1.1 and chunked'],
+    [ INVALID, 'proto:HTTP/1\040.1;chunked;do_clen' => 'version HTTP/1<space>.1 instead of HTTP/1.1 and TE chunked but not served chunked'],
+    [ INVALID, 'proto:HTTP/A.B;gzip' => 'version HTTP/A.B instead of HTTP/1.0 and gzipped'],
     [ INVALID, 'status:HTTP/1.1' => 'HTTP/1.1 without code'],
     [ INVALID, 'status:HTTP/1.1(cr)Transfer-Encoding:chunked;do_clen' => 'HTTP/1.1\rTransfer-Encoding:chunked, not served chunked'],
     [ INVALID, 'status:HTTP/1.1(cr)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1\rTransfer-Encoding:chunked, served chunked'],
@@ -206,6 +232,7 @@ DESC
     [ INVALID, 'status:HTTP/1.1\011304(space)ok;chunked' => 'HTTP/1.1\t304 ok with chunked content'],
     [ INVALID, 'status:HTTP/1.1\040\040\040\040204(space)ok;chunked' => 'HTTP/1.1    204 ok with chunked content'],
     [ INVALID, 'status:HTTP/1.1\040\040\040\040304(space)ok;chunked' => 'HTTP/1.1    304 ok with chunked content'],
+    [ INVALID, 'status:HTTP\1.1(space)200(space)ok;chunked' => 'HTTP\1.1 instead of HTTP/1.1 with chunked content'],
     [ INVALID, 'status:Transfer-Encoding:chunked;do_clen' => 'no status line but Transfer-Encoding:chunked, not served chunked'],
     [ INVALID, 'status:Transfer-Encoding:chunked;do_chunked' => 'no status line but Transfer-Encoding:chunked, served chunked'],
     [ INVALID, 'cr-no-crlf' => 'single \r instead of \r\n' ],
@@ -298,6 +325,8 @@ DESC
     [ UNCOMMON_VALID, '406' => 'code 406 with body'],
     [ UNCOMMON_VALID, '500' => 'code 500 with body'],
     [ UNCOMMON_VALID, '502' => 'code 502 with body'],
+    [ UNCOMMON_INVALID, '100+' => 'code 100 followed by real response'],
+    [ INVALID, '100+b' => 'code 100 with body followed by real response'],
 
     [ 'VALID: non-existing status codes' ],
     [ INVALID, '000' => 'code 000 with body'],
@@ -407,8 +436,20 @@ sub make_response {
 	    $hdr .= "\177\r\n";
 	} elsif ( $_ eq 'only' ) {
 	    $only = 1;
-	} elsif ( $_ eq 'http09' ) {
-	    return $data;
+	} elsif ( m{\A((?:[\w/.]+|\\[0-7]{3})*)http09\z} ) {
+	    my $prefix = $1 or return $data;
+	    $prefix =~s{\\([0-7]{3})}{ chr(oct($1)) }eg;
+	    return $prefix . $data;
+	} elsif ( m{^(\d+)\+(b?)\z}) { # 100+
+	    $prefix = "HTTP/1.1 $1 whatever\r\n";
+	    if ($2) {
+		my $body = "fooo";
+		$prefix .= "Content-length: ".length($body)."\r\n";
+		$prefix .= "\r\n";
+		$prefix .= $body;
+	    } else {
+		$prefix .= "\r\n";
+	    }
 	} elsif ( m{^(space-|tab-)*(\d.*)$} ) {    
 	    s{space-}{ }g;
 	    s{tab-}{\t}g;
@@ -435,6 +476,7 @@ sub make_response {
 	    $proto =~s{tab|\\t}{\t}g;
 	    $proto =~s{lf|\\n}{\n}g;
 	    $proto =~s{space}{ }g;
+	    $proto =~s{\\([0-7]{3})}{ chr(oct($1)) }esg;
 	    $proto =~s{-}{}g;
 	    $statusline = "$proto $code ok\r\n";
 	} elsif ( m{^status:(.*)} ) {

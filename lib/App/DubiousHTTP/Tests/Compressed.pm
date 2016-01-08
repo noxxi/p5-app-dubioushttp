@@ -283,7 +283,7 @@ sub make_response {
 		push @chunks,substr($data,0,$size,'')
 	    }
 	    my $plain_chunk = '';
-	    $plain_chunk = join('',splice(@chunks,1)) if $4 eq 's';
+	    $plain_chunk = join('',splice(@chunks,1)) if $4 && $4 eq 's';
 
 	    my $flush =
 		! $5 ? Z_FULL_FLUSH :

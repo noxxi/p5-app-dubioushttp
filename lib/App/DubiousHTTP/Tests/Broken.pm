@@ -183,6 +183,8 @@ DESC
     [ INVALID, 'proto:ICY' => 'version ICY instead of HTTP/1.0'],
     [ INVALID, 'proto:ICY;gzip' => 'version ICY instead of HTTP/1.0 compressed with gzip'],
     [ INVALID, 'proto:HTTP\1.1' => 'version HTTP\1.1 instead of HTTP/1.1'],
+    [ INVALID, 'proto:HTTP/1.010;chunked' => 'version HTTP/1.010 instead of HTTP/1.1 and chunked'],
+    [ INVALID, 'proto:HTTP/1.010;chunked;do_clen' => 'version HTTP/0.010 instead of HTTP/1.1 and TE chunked but not served chunked'],
     [ INVALID, 'proto:HTTP/+1.+1;chunked' => 'version HTTP/+1.+1 instead of HTTP/1.1 and chunked'],
     [ INVALID, 'proto:HTTP/+1.+1;chunked;do_clen' => 'version HTTP/+1.+1 instead of HTTP/1.1 and TE chunked but not served chunked'],
     [ INVALID, 'proto:HTTP/1A.1B;chunked' => 'version HTTP/1A.1B instead of HTTP/1.1 and chunked'],
@@ -221,6 +223,7 @@ DESC
     [ INVALID, 'status:HTTP/1.1(space)200\000(space)ok;chunked' => 'HTTP/1.1 200\000 ok\r\n and chunked'],
     [ INVALID, 'status:HTTP/1.1\000200\000ok;chunked' => 'HTTP/1.1\000200\000ok\r\n and chunked'],
     [ INVALID, 'status:HTTP/1.1\013200\013ok;chunked' => 'HTTP/1.1\013200\013ok\r\n and chunked'],
+    [ INVALID, 'status:HTTP/1.1(space)-65336(space);chunked' => 'HTTP/1.1 -65336 ok\r\n and chunked'], # uint_16 -> 200
     [ INVALID, 'status:HTTP/1.1foobar;chunked' => 'HTTP/1.1foobar\r\n and chunked'],
     [ INVALID, 'status:HTTP/1.1foobar(cr)Transfer-Encoding:chunked;do_chunked' => 'HTTP/1.1foobar\r and chunked'],
     [ INVALID, 'status:HTTP/1.foobar;chunked' => 'HTTP/1.foobar\r\n and chunked'],
@@ -327,6 +330,8 @@ DESC
     [ UNCOMMON_VALID, '502' => 'code 502 with body'],
     [ UNCOMMON_INVALID, '100+' => 'code 100 followed by real response'],
     [ INVALID, '100+b' => 'code 100 with body followed by real response'],
+    [ INVALID, '16-100+' => 'code -65436(100) followed by real response'],
+    [ INVALID, '16-100+b' => 'code -65436(100) with body followed by real response'],
 
     [ 'VALID: non-existing status codes' ],
     [ INVALID, '000' => 'code 000 with body'],
@@ -436,13 +441,17 @@ sub make_response {
 	    $hdr .= "\177\r\n";
 	} elsif ( $_ eq 'only' ) {
 	    $only = 1;
+	} elsif ( s{\Aprefix:((?:\w+|\\[0-7]{3})+)\z}{$1} ) {
+	    s{\\([0-7]{3})}{ chr(oct($1)) }eg;
+	    $prefix = $_;
 	} elsif ( m{\A((?:[\w/.]+|\\[0-7]{3})*)http09\z} ) {
 	    my $prefix = $1 or return $data;
 	    $prefix =~s{\\([0-7]{3})}{ chr(oct($1)) }eg;
 	    return $prefix . $data;
-	} elsif ( m{^(\d+)\+(b?)\z}) { # 100+
-	    $prefix = "HTTP/1.1 $1 whatever\r\n";
-	    if ($2) {
+	} elsif ( m{^(16-)?(\d+)\+(b?)\z}) { # 100+
+	    my $code = $1 ? "-".(65536-$2):$2;
+	    $prefix = "HTTP/1.1 $code whatever\r\n";
+	    if ($3) {
 		my $body = "fooo";
 		$prefix .= "Content-length: ".length($body)."\r\n";
 		$prefix .= "\r\n";

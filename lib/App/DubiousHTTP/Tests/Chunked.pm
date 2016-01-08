@@ -272,7 +272,7 @@ sub make_response {
 	    $chunkmod{lineend} = $eol;
 	} elsif (m{^(32|64)-size\z}) {
 	    my $o = ($1 == 64) ? 'ffffffff':'';
-	    $sizefmt = sub { sprintf("-$o%08x", 0xffffffff & ~shift()) };
+	    $sizefmt = sub { sprintf("-$o%08x", 1+(0xffffffff & ~shift())) };
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	} elsif ( m{^(-|space|cr|lf|tab|x|\\[0-7]{3})*(0*)(uc)?size(-|space|cr|lf|tab|x|\\[0-7]{3})*$}) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";

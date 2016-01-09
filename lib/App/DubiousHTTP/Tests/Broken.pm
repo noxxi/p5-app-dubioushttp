@@ -2,7 +2,6 @@ use strict;
 use warnings;
 package App::DubiousHTTP::Tests::Broken;
 use App::DubiousHTTP::Tests::Common;
-use Compress::Raw::Zlib;
 
 SETUP( 
     'broken',
@@ -427,9 +426,9 @@ sub make_response {
 	    $te = 'chunked';
 	    $hdr .= "Transfer-Encoding: chunked\r\n";
 	} elsif ( m{^do_(gzip|deflate)} ) {
-	    $data = _compress($data,$1);
+	    $data = zlib_compress($data,$1);
 	} elsif ( m{^(gzip|deflate)$} ) {
-	    $data = _compress($data,$1);
+	    $data = zlib_compress($data,$1);
 	    $hdr .= "Content-Encoding: $1\r\n";
 	} elsif ( $_ eq 'do_clen') {
 	    $te = 'clen';
@@ -538,15 +537,4 @@ sub make_response {
 }
 
 
-sub _compress {
-    my ($data,$w) = @_;
-    my $zlib = Compress::Raw::Zlib::Deflate->new(
-	-WindowBits => $w eq 'gzip' ? WANT_GZIP : -MAX_WBITS(),
-	-AppendOutput => 1,
-    );
-    my $newdata = '';
-    $zlib->deflate( $data, $newdata);
-    $zlib->flush($newdata,Z_FINISH);
-    return $newdata;
-}
 1;

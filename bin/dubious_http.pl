@@ -172,7 +172,9 @@ sub make_pcaps {
 
 	    my $conn = $pc->tcp_conn('1.1.1.1',$port,'8.8.8.8',80);
 	    $conn->write(0, "GET $url HTTP/1.1\r\nHost: evader.example.com\r\n\r\n" );
-	    $conn->write(1, $tst->make_response('eicar.txt') );
+	    for( $tst->make_response('eicar.txt') ) {
+		$conn->write(1, $_ );
+	    }
 
 	    print $manifest "$port | $xurl | ".$tst->DESCRIPTION."\n" if $manifest;
 	    undef $pc if !$pcap;
@@ -239,33 +241,36 @@ sub serve {
 	if ( $page && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
 		$_->ID eq $cat or next;
-		my $content = '';
+		my @content;
 		for ( $_->TESTS ) {
 		    $_->ID eq $spec or next;
-		    $content = $_->make_response($page,undef,$rqhdr);
+		    @content = $_->make_response($page,undef,$rqhdr);
 		    last;
 		}
-		$content ||= $_->make_response($page,$spec,$rqhdr);
+		@content = $_->make_response($page,$spec,$rqhdr) if ! @content;
 		if (!$src) {
-		    return $content;
+		    return @content;
 		} elsif ($src eq 'rawsrc') {
+		    my $content = join('',@content);
 		    return "HTTP/1.0 200 ok\r\n".
 			"Content-type: application/octet-stream\r\n".
 			"Content-Disposition: attachment; filename=\"$cat+$page+$spec\"\r\n".
 			"Content-length: ".length($content)."\r\n\r\n".$content;
 		} else {
-		    $content =~s{([\x00-\x1f\\<>\x7f-\xff])}{
-			$1 eq "\\" ? "\\\\" :
-			$1 eq "\r" ? "\\r" :
-			$1 eq "\t" ? "\\t" :
-			$1 eq "\n" ? "\\n\n" :
-			$1 eq "<" ? "&lt;" :
-			$1 eq ">" ? "&gt;" :
-			sprintf("\\x%02x",ord($1))
-		    }esg;
+		    for (@content) {
+			s{([\x00-\x1f\\<>\x7f-\xff])}{
+			    $1 eq "\\" ? "\\\\" :
+			    $1 eq "\r" ? "\\r" :
+			    $1 eq "\t" ? "\\t" :
+			    $1 eq "\n" ? "\\n\n" :
+			    $1 eq "<" ? "&lt;" :
+			    $1 eq ">" ? "&gt;" :
+			    sprintf("\\x%02x",ord($1))
+			}esg;
+		    }
 
 		    (my $raw = $path) =~s{/src/}{/rawsrc/};
-		    $content = "<pre>$content</pre><hr>".
+		    my $content = "<pre>".join("<----PACKET-BOUNDARY---->",@content)."</pre><hr>".
 			"<a class=srclink href=".garble_url($raw).">raw source</a>";
 
 		    return "HTTP/1.0 200 ok\r\n".

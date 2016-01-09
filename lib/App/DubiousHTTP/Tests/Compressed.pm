@@ -48,6 +48,8 @@ DESC
     [ INVALID, 'ce:gzip;gzip2s' => 'content-encoding gzip, first segment compressed with gzip, next uncompressed' ],
     [ INVALID, 'ce:deflate;deflate2s' => 'content-encoding deflate, first segment compressed with deflate, next uncompressed' ],
     [ INVALID, 'ce:deflate;zlib2s' => 'content-encoding deflate, first segment compressed with zlib, next uncompressed' ],
+    [ INVALID, 'ce:deflate;pkt:zlib+deflate' => 'content-encoding deflate, first segment compressed with zlib but ADLER32 removed, next with deflate in new TCP packet' ],
+    [ INVALID, 'ce:deflate;chk:zlib+deflate' => 'content-encoding deflate, first segment compressed with zlib but ADLER32 removed, next with deflate in new chunk with chunked encoding' ],
 
     [ 'VALID: lzma (supported by at least Opera)' ],
     [ UNCOMMON_VALID, 'ce:lzma;lzma1' => 'content-encoding lzma, lzma1 (lzma_alone) encoded'],
@@ -258,6 +260,8 @@ sub make_response {
     my $version = '1.1';
     my $clen_extend;
     my $body_prefix = '';
+    my $te = 'clen';
+    my @data; # preferred against $data if given
     for (split(';',$spec)) {
 	if ($_ eq 'ce:rfc2047-deflate') {
 	    $hdr .= "Content-Encoding: =?UTF-8?B?ZGVmbGF0ZQo=?=\r\n";
@@ -272,6 +276,21 @@ sub make_response {
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "$v\r\n";
+	} elsif ( m{^(pkt|chk):zlib\+deflate\z} ) {
+	    my $enc = $1;
+	    my @chunks = substr($data,0,int(length($data)/2),'');
+	    push @chunks,$data;
+	    @data = (
+		"\x78\x9c".zlib_compress($chunks[0],'deflate'), # ZLIB header + deflate data
+		zlib_compress($chunks[1],'deflate')             # missing ADLER32, instead deflate data
+	    );
+	    if ($enc eq 'chk') {
+		$te = 'chunked';
+		$data = join("", map {
+		    sprintf("%x\r\n%s\r\n",length($_),$_)
+		} (@data,''));
+		@data = ();
+	    }
 	} elsif ( m{^(?:(gzip)|deflate|(zlib))(?:(\d+)([ps]))?(?:,(sync|partial|block|full|finish))?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
@@ -365,15 +384,25 @@ sub make_response {
     }
 
     $data = $body_prefix . $data;
+    if (! @data) {
+	@data = $data;
+    } else {
+	$data = join('',@data);
+    }
     my $len = length($data);
-    if (!$clen_extend) {
+    if ($te eq 'chunked') {
+	$hdr .= "Transfer-Encoding: chunked\r\n"
+    } elsif (!$clen_extend) {
 	$hdr = "Content-length: ".length($data)."\r\n".$hdr;
     } elsif ($clen_extend<0) {
 	$hdr = "Connection: close\r\n$hdr";
     } else {
 	$hdr = "Connection: close\r\nContent-length: ".(length($data)+$clen_extend)."\r\n".$hdr;
     }
-    return "HTTP/$version 200 ok\r\n$hdr\r\n$data";
+    return (
+	"HTTP/$version 200 ok\r\n$hdr\r\n$data[0]",
+	(@data>1) ? (@data[1..$#data]):(),
+    );
 }
 
 1;

@@ -1,11 +1,12 @@
 use strict;
 use warnings;
 package App::DubiousHTTP::Tests::Common;
+use Compress::Raw::Zlib;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
 our @EXPORT = qw(
     MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID 
-    SETUP content html_escape url_encode garble_url ungarble_url bro_compress
+    SETUP content html_escape url_encode garble_url ungarble_url bro_compress zlib_compress
     $NOGARBLE $CLIENTIP $TRACKHDR $FAST_FEEDBACK
 );
 use Scalar::Util 'blessed';
@@ -345,6 +346,18 @@ sub ungarble_url {
     # make sure we only have valid stuff here
     $u = 'some-binary-junk' if $u =~m{[\x00-\x1f\x7f-\xff]};
     return $keep . $u . ($rest || '');
+}
+
+sub zlib_compress {
+    my ($data,$w) = @_;
+    my $zlib = Compress::Raw::Zlib::Deflate->new(
+	-WindowBits => $w eq 'gzip' ? WANT_GZIP : $w eq 'zlib' ? +MAX_WBITS() : -MAX_WBITS(),
+	-AppendOutput => 1,
+    );
+    my $newdata = '';
+    $zlib->deflate( $data, $newdata);
+    $zlib->flush($newdata,Z_FINISH);
+    return $newdata;
 }
 
 sub _xorall {

@@ -143,7 +143,8 @@ sub _install_http {
     my ($clen,$hdr,$page,$payload,$close);
 
     my $write;
-    my $rbuf = my $wbuf = '';
+    my $rbuf = '';
+    my @wbuf;
     my $read = sub {
 	my $cl = shift;
 	my $n = sysread($cl,$rbuf,8192,length($rbuf));
@@ -180,7 +181,7 @@ sub _install_http {
 	    if ( ! eval {
 		$CLIENTIP = $cl->peerhost;
 		$CLIENTIP =~s{^::ffff:}{};
-		$wbuf .= $response->($page,$addr,$hdr,$payload,$ssl);
+		push @wbuf,$response->($page,$addr,$hdr,$payload,$ssl);
 		$CLIENTIP = undef;
 		1;
 	    } ) {
@@ -191,10 +192,11 @@ sub _install_http {
 
 	    $clen = $hdr = undef;
 	    if (!$close) {
-		if ($wbuf =~m{(\r?\n)\1}g) {
-		    $close = _mustclose( substr($wbuf,0,pos($wbuf)) );
+		my $wb = join('',@wbuf);
+		if ( $wb =~m{(\r?\n)\1}g) {
+		    $close = _mustclose( substr($wb,0,pos($wb)) );
 		} else {
-		    $DEBUG && _debug("set close=1 because of no header end in wbuf=$wbuf");
+		    $DEBUG && _debug("set close=1 because of no header end in wbuf=$wb");
 		    $close = 1;
 		}
 	    }
@@ -221,7 +223,7 @@ sub _install_http {
 		HTTP/1\.[01] \z
 	    }x or do {
 		warn localtime()." | $peer | badhdr | $line\n";
-		$wbuf .= "HTTP/1.0 204 ok\r\n\r\n";
+		push @wbuf,"HTTP/1.0 204 ok\r\n\r\n";
 		$close = 1;
 		$write->($cl);
 		return;
@@ -242,7 +244,7 @@ sub _install_http {
 		    $data =~s{\r}{\\r}g;
 		    $data =~s{\t}{\\t}g;
 		    printf STDERR "S|%s|%s|%05d|%03d|%s\n",$peer,$ref,$i,$len,$data;
-		    $wbuf .= "HTTP/1.1 200 ok\r\nContent-length: 0\r\n\r\n";
+		    push @wbuf,"HTTP/1.1 200 ok\r\nContent-length: 0\r\n\r\n";
 		    $write->($cl);
 		    return;
 		} else {
@@ -303,7 +305,7 @@ sub _install_http {
 	my $cl = shift;
 
 	handle_data:
-	if ( $wbuf eq '' ) {
+	if ( ! @wbuf ) {
 	    # nothing to write
 	    if ($rbuf eq '' && $close) {
 		# done
@@ -314,7 +316,7 @@ sub _install_http {
 	    }
 	    return;
 	} 
-	my $n = syswrite($cl,$wbuf);
+	my $n = syswrite($cl,$wbuf[0]);
 	$DEBUG && _debug("write on ".fileno($cl)." -> ".(defined $n ? $n : $!));
 	if ( ! $n ) {
 	    if ( defined($n) || ! $!{EAGAIN} ) {
@@ -328,7 +330,16 @@ sub _install_http {
 	}
 
 	$clients{fileno($cl)}{time} = time();
-	substr($wbuf,0,$n,'');
+	substr($wbuf[0],0,$n,'');
+	if ($wbuf[0] eq '') {
+	    shift @wbuf;
+	    if (@wbuf) {
+		# delay sending of next packet
+		$SELECT->mask($cl,1,0);  # disable write
+		$SELECT->timer($cl,1, sub { $write->($cl); });
+		return;
+	    }
+	}
 	goto handle_data;
     };
 
@@ -359,14 +370,16 @@ sub _mustclose {
 
 package App::DubiousHTTP::TestServer::Select;
 use Scalar::Util 'weaken';
+use Time::HiRes 'gettimeofday';
 
 my $maxfn = 0;
 my @handler;
 my @didit;
 my @timeout;
+my @timer;
 my @mask = ('','');
 my @tmpmask;
-my $now = time();
+my $now = gettimeofday();
 *_debug = \&App::DubiousHTTP::TestServer::_debug;
 
 sub new { bless {},shift }
@@ -376,7 +389,7 @@ sub delete {
     $DEBUG && _debug("remove fd $fn");
     vec($mask[0],$fn,1) = vec($mask[1],$fn,1) = 0;
     vec($tmpmask[0],$fn,1) = vec($tmpmask[1],$fn,1) = 0 if @tmpmask;
-    $handler[$fn] = $didit[$fn] = $timeout[$fn] = undef;
+    $handler[$fn] = $didit[$fn] = $timeout[$fn] = $timer[$fn] = undef;
     if ($maxfn == $fn) {
 	$maxfn-- while ($maxfn>=0 && !$handler[$maxfn]);
     }
@@ -393,6 +406,14 @@ sub handler {
 	$handler[$fn][$rw] = $sub;
 	$DEBUG && _debug("add handler($fn,$rw)");
     }
+}
+
+sub timer {
+    my ($self,$cl,$to,$cb) = @_;
+    defined( my $fn = fileno($cl) ) or die "invalid fd";
+    ($cb, my @arg) = ref($cb) eq 'CODE' ? ($cb):@$cb;
+    push @{ $timer[$fn] }, [ $now+$to,$cb,@arg ];
+    @{ $timer[$fn] } = sort { $a->[0] <=> $b->[0] } @{ $timer[$fn] };
 }
 
 sub timeout {
@@ -419,7 +440,29 @@ sub mask {
 sub loop {
     my $to;
     loop:
+
     $to = undef;
+    for( my $fn=0;$fn<=$maxfn;$fn++ ) {
+	$timer[$fn] or next;
+	while (1) {
+	    my $t = $timer[$fn][0];
+	    if (!$t) {
+		$timer[$fn] = undef;
+		last;
+	    }
+	    my ($fire,$cb,@arg) = @$t;
+	    if ($fire>$now) {
+		# timer in future, update $to
+		$to = $fire-$now if !$to || $fire-$now < $to;
+		last;
+	    }
+	    # fire timer now
+	    shift(@{$timer[$fn]});
+	    $DEBUG && _debug("fire timer($fn)");
+	    $cb->(@arg);
+	}
+    }
+
     for( my $fn=0;$fn<=$maxfn;$fn++ ) {
 	defined $timeout[$fn] or next;
 	vec($mask[0],$fn,1) or vec($mask[1],$fn,1) or next;
@@ -433,12 +476,13 @@ sub loop {
 	}
     }
 
+
     @tmpmask = @mask;
     $DEBUG && _debug("enter select timeout=".(defined($to) ? $to:'none'));
     my $rv = select($tmpmask[0],$tmpmask[1],undef,$to);
     $DEBUG && _debug("leave select result=$rv");
 
-    $now = time();
+    $now = gettimeofday();
     die "loop failed: $!" if $rv < 0;
     goto loop if !$rv;
 

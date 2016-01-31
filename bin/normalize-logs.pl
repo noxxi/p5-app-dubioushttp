@@ -339,6 +339,10 @@ sub output {
     }
 
     if (defined $data->{boundary}) {
+	if ($data->{header} =~m/(.*submit_details.*%20.*)/) {
+	    warn "junk DETAILS $1\n";
+	    return;
+	}
 	# show only product details and omit lines since these were already sent
 	if (($data->{product}||'') !~m{\S}) {
 	    warn "NO DETAILS $data->{id} ".localtime($data->{time})."\n";

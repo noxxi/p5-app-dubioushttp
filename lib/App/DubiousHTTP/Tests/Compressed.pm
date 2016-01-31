@@ -50,6 +50,8 @@ DESC
     [ INVALID, 'ce:deflate;zlib2s' => 'content-encoding deflate, first segment compressed with zlib, next uncompressed' ],
     [ INVALID, 'ce:deflate;pkt:zlib+deflate' => 'content-encoding deflate, first segment compressed with zlib but ADLER32 removed, next with deflate in new TCP packet' ],
     [ INVALID, 'ce:deflate;chk:zlib+deflate' => 'content-encoding deflate, first segment compressed with zlib but ADLER32 removed, next with deflate in new chunk with chunked encoding' ],
+    [ INVALID, 'ce:deflate;pkt:zlib+deflate+deflate' => 'content-encoding deflate, first segment compressed with zlib but ADLER32 removed, next two with deflate in new TCP packets' ],
+    [ INVALID, 'ce:deflate;chk:zlib+deflate+deflate' => 'content-encoding deflate, first segment compressed with zlib but ADLER32 removed, next two with deflate in new chunk with chunked encoding' ],
 
     [ 'VALID: lzma (supported by at least Opera)' ],
     [ UNCOMMON_VALID, 'ce:lzma;lzma1' => 'content-encoding lzma, lzma1 (lzma_alone) encoded'],
@@ -206,6 +208,8 @@ DESC
     [ INVALID,'ce:gzip;gzip;replace:3,1|02;replace:10,0=0000', 'set flag FHCRC and add CRC with 0'],
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|04;replace:10,0=0000', 'set flag FEXTRA and extra part with XLEN 0'],
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|04;replace:10,0=05004170010000', 'set flag FEXTRA and extra part with XLEN 5'],
+    [ INVALID,'ce:gzip;gzip;replace:3,1|04;replace:10,0=0500', 'set flag FEXTRA and XLEN 5 but no extra part'],
+    [ INVALID,'ce:gzip;gzip-payload-as-extra', 'gzip, but hide the real (deflate) payload inside the EXTRA part'],
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|08;replace:10,0=2000', 'set flag FNAME and add short file name'],
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|10;replace:10,0=2000', 'set flag FCOMMENT and add short comment'],
     [ INVALID,'ce:gzip;gzip;replace:3,1|20', 'set flag reserved bit 5'],
@@ -276,14 +280,23 @@ sub make_response {
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';
 	    $hdr .= "$v\r\n";
-	} elsif ( m{^(pkt|chk):zlib\+deflate\z} ) {
-	    my $enc = $1;
-	    my @chunks = substr($data,0,int(length($data)/2),'');
-	    push @chunks,$data;
-	    @data = (
-		"\x78\x9c".zlib_compress($chunks[0],'deflate'), # ZLIB header + deflate data
-		zlib_compress($chunks[1],'deflate')             # missing ADLER32, instead deflate data
-	    );
+	} elsif ( m{^(pkt|chk):zlib\+deflate(\+deflate)?\z} ) {
+	    # [zlib-header][deflate][more-deflate]....
+	    # zlib will return with Z_DATA_ERROR when trying to process
+	    # more-deflate because it actually expected the correct ADLER32
+	    # checksum there. Browsers will then assume that this should be
+	    # raw-deflate instead and retry with an edded zlib header.
+	    # With some browsers this process can be repeated.
+
+	    my ($enc,$nchunks) = ($1, $2? 3:2);
+	    my $size = int(length($data)/$nchunks);
+	    @data = ();
+	    for(my $i=0;$i<$nchunks;$i++) {
+		push @data, substr($data,0,$size,'');
+	    }
+	    $data[-1] .= $data; # in case something left
+	    $_ = zlib_compress($_,'deflate') for(@data);
+	    $data[0] = "\x78\x9c".$data[0];
 	    if ($enc eq 'chk') {
 		$te = 'chunked';
 		$data = join("", map {
@@ -371,6 +384,37 @@ sub make_response {
 	    } else {
 		die "bad op=$op in '$_'"
 	    }
+
+	} elsif ( $_ eq 'gzip-payload-as-extra') {
+
+	    # header with FEXTRA set
+	    my $gzip = pack("CCCCVCC",0x1f,0x8b,0x8,0b100,0,2,0);
+
+	    # add XLEN + payload with deflate data
+	    my $zlib = Compress::Raw::Zlib::Deflate->new(
+		-WindowBits => -MAX_WBITS(),
+		-AppendOutput => 1,
+	    );
+	    my $newdata = '';
+	    $zlib->deflate($data,$newdata);
+	    $zlib->flush($newdata,Z_FINISH);
+	    $gzip .= pack("v/a*",$newdata);
+
+	    # then add some innocent compressed data
+	    $data = 'This is not what you are looking for.';
+	    $zlib = Compress::Raw::Zlib::Deflate->new(
+		-WindowBits => -MAX_WBITS(),
+		-AppendOutput => 1,
+	    );
+	    $newdata = '';
+	    $zlib->deflate($data,$newdata);
+	    $zlib->flush($newdata,Z_FINISH);
+	    $gzip .= $newdata;
+
+	    # and add the trailer with CRC and length based on the innocent data
+	    $gzip .= pack("VV",Compress::Raw::Zlib::crc32($data),length($data));
+	    $data = $gzip;
+
 	} elsif (m{^clen\+(\d+)$}) {
 	    $clen_extend = $1
 	} elsif ($_ eq 'noclen') {

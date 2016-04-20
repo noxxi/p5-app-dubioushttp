@@ -209,23 +209,23 @@ sub auto_xhr {
     $html .= "isbad ='$isbad';\n";
     if ($isbad) {
 	$html .= "expect64_harmless = '".encode_base64( (content('novirus.txt'))[1],'')."';\n";
-	$html .= "checks.push({ page:'". garble_url("/clen/novirus.txt/close,clen,content").
+	$html .= "checks.push({ num:0, page:'". garble_url("/clen/novirus.txt/close,clen,content").
 	    "', desc:'sanity check without test virus', valid:2, log_header:1, harmless:1, file: 'novirus.txt' });\n";
-	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
+	$html .= "checks.push({ num:0, page:'". garble_url("/clen/$page/close,clen,content").
 	    "', desc:'sanity check with test virus', valid:2, expect_bad:1, log_header:1, file: '$page' });\n";
     } else {
-	$html .= "checks.push({ page:'". garble_url("/clen/$page/close,clen,content").
+	$html .= "checks.push({ num:0, page:'". garble_url("/clen/$page/close,clen,content").
 	    "', desc:'sanity check', valid:2, log_header:1, file: '$page' });\n";
     }
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
 	    if ($isbad) {
-		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, harmless_page: '%s', file: '%s'  });\n",
-		    url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, url_encode($_->url('novirus.txt')),'novirus.txt')
+		$html .= sprintf("checks.push({ num:%s, page:'%s', desc:'%s', valid:%d, harmless_page: '%s', file: '%s'  });\n",
+		    $_->NUM_ID, url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, url_encode($_->url('novirus.txt')),'novirus.txt')
 	    } else {
-		$html .= sprintf("checks.push({ page:'%s', desc:'%s', valid:%d, file:'%s' });\n",
-		    url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID,$page)
+		$html .= sprintf("checks.push({ num:%s, page:'%s', desc:'%s', valid:%d, file:'%s' });\n",
+		    $_->NUM_ID, url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID,$page)
 	    }
 	}
 
@@ -285,11 +285,12 @@ sub _auto_imgjshtml {
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
+	    my $num = $_->NUM_ID;
 	    my $xid = quotemeta(html_escape($_->LONG_ID));
 	    my $url = url_encode($_->url($page));
 	    my $html = $mkhtml->("$url?rand=$rand",$xid);
 	    $jsglob .= "checks.push({ "
-		. "page: '$url', xid: '$xid', "
+		. "num: $num, page: '$url', xid: '$xid', "
 		. 'desc: "'.quotemeta(html_escape($_->DESCRIPTION)) .'",'
 		. 'valid: '.$_->VALID .','
 		. 'html: '.($html =~m{^function} ? $html : '"'.quotemeta($html).'"')
@@ -345,8 +346,8 @@ You need to have JavaScript enabled to run this tests.
 <div id=evadable> </div>
 <div id=overblock> </div>
 <div id=noevade> </div>
-<div id=warnings><h1>Serious Problems</h1><ol id=ol_warnings></ol></div>
-<div id=notice><h1>Behavior in Uncommon Cases</h1><ol id=ol_notice></ol></div>
+<div id=warnings><h1>Serious Problems</h1></div>
+<div id=notice><h1>Behavior in Uncommon Cases</h1></div>
 <div id=debug><h1>Debug</h1></div>
 <div id=work style='display:none;'></div>
 <script>
@@ -418,9 +419,7 @@ function base64_decode(input) {
 
 var div_debug = document.getElementById('debug');
 var div_notice = document.getElementById('notice');
-var div_ol_notice = document.getElementById('ol_notice');
 var div_warnings = document.getElementById('warnings');
-var div_ol_warnings = document.getElementById('ol_warnings');
 var div_nobad = document.getElementById('nobad');
 var div_evasions = document.getElementById('evasions');
 var div_process = document.getElementById('process');
@@ -448,23 +447,26 @@ var browser_invalid = 0;
 var rand = Math.random();
 
 function add_warning(m,test) {
-    div_ol_warnings.innerHTML = div_ol_warnings.innerHTML + "<li>" + m + ": <span class=desc>" + test['desc'] + "</span>" +
+    var id = test['num'];
+    div_warnings.innerHTML = div_warnings.innerHTML + "[" + id + "] " + m + ": <span class=desc>" + test['desc'] + "</span>" +
 	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
-	"</li>";
+	"<br>";
     div_warnings.style.display = 'block';
 }
 
 function add_notice(m,test) {
-    div_ol_notice.innerHTML = div_ol_notice.innerHTML + "<li>" + m + ": <span class=desc>" + test['desc'] + "</span>" +
+    var id = test['num'];
+    div_notice.innerHTML = div_notice.innerHTML + "[" + id + "] " + m + ": <span class=desc>" + test['desc'] + "</span>" +
 	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>" +
-	"</li>";
+	"<br>";
     div_notice.style.display = 'block';
 }
 
 function add_debug(m,test) {
-    div_debug.innerHTML = div_debug.innerHTML + m + (test ?
+    var id = test['num'];
+    div_debug.innerHTML = div_debug.innerHTML + "[" + id + "] " + m + (test ?
 	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>"
 	: "" ) + "<br>";
@@ -990,12 +992,12 @@ HTML
 
 sub manifest {
     my ($self,$cat,$page,$spec) = @_;
-    my $data = "trivial | /clen/$page/close,clen,content | 3 | trivial response for retrieving body\n";
+    my $data = "00000 | trivial | /clen/$page/close,clen,content | 3 | trivial response for retrieving body\n";
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
-	    $data .= sprintf("%s | %s | %s | %s\n",
-		$_->LONG_ID, $_->url($page), $_->VALID, $_->DESCRIPTION);
+	    $data .= sprintf("%05d | %s | %s | %s | %s\n",
+		$_->NUM_ID, $_->LONG_ID, $_->url($page), $_->VALID, $_->DESCRIPTION);
 	}
     }
     return "HTTP/1.0 200 ok\r\n".

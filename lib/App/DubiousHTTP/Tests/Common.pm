@@ -260,6 +260,7 @@ sub SETUP {
 
     *{$pkg.'::Test::ID'} = sub { shift->[0] };
     *{$pkg.'::Test::LONG_ID'} = sub { "$id-" . shift->[0] };
+    *{$pkg.'::Test::NUM_ID'} = sub { _path2num("$id/".shift->[0]) };
     *{$pkg.'::Test::DESCRIPTION'} = sub { shift->[1] };
     *{$pkg.'::Test::VALID'} = sub { shift->[2] };
     *{$pkg.'::Test::url'} = sub { 
@@ -348,6 +349,7 @@ sub ungarble_url {
     return $keep . $u . ($rest || '');
 }
 
+
 sub zlib_compress {
     my ($data,$w) = @_;
     my $zlib = Compress::Raw::Zlib::Deflate->new(
@@ -358,6 +360,47 @@ sub zlib_compress {
     $zlib->deflate( $data, $newdata);
     $zlib->flush($newdata,Z_FINISH);
     return $newdata;
+}
+
+{
+    my ($path2num,$num2path);
+    sub load_nummap {
+	my $maxold = @_>1 ? pop(@_) : 9999;
+	$num2path = eval(
+	    "require App::DubiousHTTP::Tests::TestID;".
+	    "App::DubiousHTTP::Tests::TestID->num2path"
+	) || {};
+	$path2num = { reverse %$num2path };
+	my @new;
+	for my $mod ( App::DubiousHTTP::Tests->categories ) {
+	    my $catid = $mod->ID;
+	    for ($mod->TESTS) {
+		my $path = "$catid/".$_->ID;
+		if (my $n = $path2num->{$path}) {
+		    $maxold = $n if !defined $maxold || $maxold<$n;
+		} else {
+		    push @new,$path;
+		}
+	    }
+	}
+	for(@new) {
+	    $maxold++;
+	    $num2path->{$maxold} = $_;
+	    $path2num->{$_} = $maxold;
+	}
+	return $num2path;
+    }
+    sub _path2num {
+	my $path = shift;
+	$path2num || load_nummap;
+	return $path2num->{$path};
+    }
+    sub num2path { _num2path($_[1]) }
+    sub _num2path {
+	my $num = shift;
+	$num2path || load_nummap;
+	return $num2path->{$num};
+    }
 }
 
 sub _xorall {

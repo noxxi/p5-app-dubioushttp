@@ -1,3 +1,21 @@
+2016/04/20 0.031
+- Each tests now has a fixed ID which will not change over the development of
+  the program, i.e. if tests gets added, deleted.... This ID can also be used
+  directly, i.e. http://host/161/eicar.txt
+- More tests:
+  - hide data in gzip FEXTRA, made possible by using
+    https://bugzilla.mozilla.org/show_bug.cgi?id=1244535
+  - make use of too tolerant deflate/zlib handling in Chrome, Safari and FF.
+    See commit 54ec8a6b8ce for details
+  - FF uses strtoul to parsechunk size which accepts various prefixes and also
+    signed data
+  - some more status lines - chrome accepts almost anything
+  - use ICY instead of HTTP/1.0 (FF only)
+  - playing with 1xx preliminary response followed by real
+  - Chrome accepts data partially compressed with gzip, rest uncompressed
+  - Variations of HTTP version together with chunked and gzip
+  - various kinds of white spaces, junk before header...
+
 2016/01/03 0.030
 - Extend pcap mode to write single file and to filter based on reports
     - Extend pcap export mode: all streams into one file, filter...

@@ -208,16 +208,40 @@ sub serve {
 	}
 
 	local $BASE_URL = "http://$listen";
-	my ($auto,$src,$manifest,$cat,$page,$spec,$qstring) = $path =~m{\A / 
-	    (?:auto(js|img|html|xhr|)/|((?:raw)?src)/|(manifest)/)?
-	    ([^/]+)
-	    (?: / ([^/\?]*))?
-	    (?: / ([^\?]*))?
-	    (?: \? (.*))?
-	}x;
-	for ($cat,$page,$spec,$qstring) {
-	    $_ = '' if ! defined $_;
+	my $tmp = $path;
+	my ($auto,$src,$manifest,$testnum,$cat,$page,$spec);
+	my $qstring = $tmp =~s{\?(.*)}{} ? $1 : '';
+	if ($tmp =~s{^ /+ (?:
+	    (?:auto(js|img|html|xhr|)) |
+	    ((?:raw)?src)              |
+	    (manifest)                 |
+	    (\d+)
+	)}{}x) {
+	    ($auto,$src,$manifest,$testnum) = ($1,$2,$3,$4);
 	}
+
+	if (defined $testnum) {
+	    ($cat,$spec) = split('/',App::DubiousHTTP::Tests::Common->num2path($testnum));
+	    $page = $tmp =~s{^/+([^/]+)}{} ? $1:'';
+	} else {
+	    $cat  = $tmp =~s{^/+([^/]+)}{} ? $1:'';
+	    $page = $tmp =~s{^/+([^/]+)}{} ? $1:'';
+	    $tmp =~s{^/+}{};
+	    $spec = $tmp;
+	}
+
+	0 and do {
+	    use Data::Dumper;
+	    warn Dumper({
+		auto => $auto,
+		src  => $src,
+		manifest => $manifest,
+		testnum => $testnum,
+		cat => $cat,
+		page => $page,
+		spec => $spec,
+	    });
+	};
 
 	if ($manifest) {
 	    return App::DubiousHTTP::Tests->manifest(

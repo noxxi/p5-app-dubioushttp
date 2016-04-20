@@ -14,4 +14,5 @@ if ($map->{10000}) {
 	my $path = $map->{$i} or last;
 	diag("missing - $path ($i)");
     }
+    diag("please run tools/update-testid.pl to update TestID.pm with the new tests");
 }

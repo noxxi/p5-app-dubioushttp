@@ -465,8 +465,10 @@ function add_notice(m,test) {
 }
 
 function add_debug(m,test) {
-    var id = test['num'];
-    div_debug.innerHTML = div_debug.innerHTML + "[" + id + "] " + m + (test ?
+    if (test) {
+	m = "[" + test['num'] + "] " + m;
+    }
+    div_debug.innerHTML = div_debug.innerHTML + m + (test ?
 	"&nbsp;<a class=trylink target=_blank download='" + test['file'] + "' href=" + test['page'] + ">try</a>" +
 	"&nbsp;<a class=srclink target=_blank href=/src" + test['page'] + ">src</a>"
 	: "" ) + "<br>";

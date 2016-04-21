@@ -1,3 +1,5 @@
+2016/04/20 0.032
+- fixed debug function in Javascript which caused the final submission to fail
 2016/04/20 0.031
 - Each tests now has a fixed ID which will not change over the development of
   the program, i.e. if tests gets added, deleted.... This ID can also be used

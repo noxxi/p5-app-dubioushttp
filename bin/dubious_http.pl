@@ -97,6 +97,7 @@ sub make_doc {
 
 ############################ create pcap files
 sub make_pcaps {
+    my $testfile = 'eicar.txt';
     eval { require Net::PcapWriter }
 	or die "cannot load Net::PcapWriter\n";
 
@@ -115,7 +116,7 @@ sub make_pcaps {
 	open( my $fh,'<',$_ ) or die "open $_: $!";
 	while (<$fh>) {
 	    my ($code,$string,$page) = m{^ ([INW]) \| (\S+) \| (/\S+) } or next;
-	    $page =~s{^(/\w+)/[^/]+/(.*)}{$1/eicar.txt/$2} or next;
+	    $page =~s{^(/\w+)/[^/]+/(.*)}{$1/$testfile/$2} or next;
 	    my $v = $string =~m{match|success} ? 1:0;
 	    if (!exists $include{$page}) {
 		$include{$page} = $v;
@@ -153,7 +154,7 @@ sub make_pcaps {
 	    $port = 10*int($port/10+1);
 	    $port += $valid>0 ? $valid : $valid<0 ? 4-$valid : 9;
 
-	    my $xurl = $tst->url('eicar.txt');
+	    my $xurl = $tst->url($testfile);
 	    my $url = url_encode($xurl);
 	    if (!%include) {
 	    } elsif (!exists $include{$url}) {
@@ -164,7 +165,7 @@ sub make_pcaps {
 	    }
 
 	    if (!$pc) {
-		( my $id = $cat->ID ) =~s{[^\w\-.,;+=]+}{_}g;
+		( my $id = $cat->ID.'-'.$tst->ID ) =~s{[^\w\-.,;+=]+}{_}g;
 		my $file = "$pcap_prefix$id.pcap";
 		$pc = Net::PcapWriter->new($file)
 		    or die "failed to create $file: $!";
@@ -172,7 +173,7 @@ sub make_pcaps {
 
 	    my $conn = $pc->tcp_conn('1.1.1.1',$port,'8.8.8.8',80);
 	    $conn->write(0, "GET $url HTTP/1.1\r\nHost: evader.example.com\r\n\r\n" );
-	    for( $tst->make_response('eicar.txt') ) {
+	    for( $tst->make_response($testfile) ) {
 		$conn->write(1, $_ );
 	    }
 

@@ -5,7 +5,7 @@ use Compress::Raw::Zlib;
 use MIME::Base64 'decode_base64';
 use Exporter 'import';
 our @EXPORT = qw(
-    MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID 
+    MUSTBE_VALID SHOULDBE_VALID VALID INVALID UNCOMMON_VALID UNCOMMON_INVALID COMMON_INVALID
     SETUP content html_escape url_encode garble_url ungarble_url bro_compress zlib_compress
     $NOGARBLE $CLIENTIP $TRACKHDR $FAST_FEEDBACK
 );
@@ -21,6 +21,7 @@ use constant {
     INVALID => 0,
     UNCOMMON_VALID => -1,
     UNCOMMON_INVALID => -2,
+    COMMON_INVALID => -3,
 };
 
 my $basedir = 'static/';
@@ -39,21 +40,39 @@ sub basedir { $basedir = pop }
 my %builtin = (
     'novirus.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
-	"Content-disposition: attachment; filename=\"novirus.txt\"\r\n",
+	"Content-disposition: attachment; filename=\"download.txt\"\r\n",
 	"Don't be afraid to look at this message. It is completely harmless. Really!",
     ],
     'eicar.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
-	"Content-disposition: attachment; filename=\"eicar.txt\"\r\n",
+	"Content-disposition: attachment; filename=\"download.txt\"\r\n",
 	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
 	'EICAR test virus',
     ],
-    # zipped eicar, zip prefixed with dummy gzip
-    'eicar-gz-zip.zip' => [ 
+    # EICAR test virus with junk behind (proper antivirus should not match
+    'eicar-junk.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
-	"Content-disposition: attachment; filename=\"eicar.zip\"\r\n",
-	pack("H*",'1f8b08006d718255000373492c56c82c2e5148cdcc5308492d2e01008b9f3a4b10000000504b03040a0000000000a84ad2463ccf5168440000004400000009001c0065696361722e636f6d55540900036b7182556b71825575780b000104e903000004e903000058354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a504b01021e030a0000000000a84ad2463ccf51684400000044000000090018000000000001000000b4810000000065696361722e636f6d55540500036b71825575780b000104e903000004e9030000504b050600000000010001004f000000870000000000'),
-	'EICAR test virus in zip file, prefixed with gzip junk',
+	"Content-disposition: attachment; filename=\"download.txt\"\r\n",
+	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*WHATEVER',
+    ],
+    # EICAR test virus prefixed with junk (proper antivirus should not match)
+    'junk-eicar.txt' => [ 
+	"Content-type: application/octet-stream\r\n".
+	"Content-disposition: attachment; filename=\"download.txt\"\r\n",
+	'WHATEVERX5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
+    ],
+    # zipped novirus
+    'novirus.zip' => [ 
+	"Content-type: application/octet-stream\r\n".
+	"Content-disposition: attachment; filename=\"download.zip\"\r\n",
+	decode_base64('UEsDBBQAAAAIAE1900g2ai/1SAAAAEwAAAAJABwAZWljYXIuY29tVVQJAANCoWZXQqFmV3V4CwABBOkDAAAE6QMAAA3JsRGAMAgF0N4pvpVdprCxzQaoaHKCeIEm25vy3VvtXQI7g65G9UQYxOwBBaJUh7I73ZywBQYP0084WDoKNZWxCZlJpM/TD1BLAQIeAxQAAAAIAE1900g2ai/1SAAAAEwAAAAJABgAAAAAAAEAAAC0gQAAAABlaWNhci5jb21VVAUAA0KhZld1eAsAAQTpAwAABOkDAABQSwUGAAAAAAEAAQBPAAAAiwAAAAAA'),
+    ],
+    # zipped eicar.com
+    'eicar.zip' => [ 
+	"Content-type: application/octet-stream\r\n".
+	"Content-disposition: attachment; filename=\"download.zip\"\r\n",
+	decode_base64('UEsDBAoAAAAAADJHi0c8z1FoRAAAAEQAAAAJABwAZWljYXIuY29tVVQJAAPvgWpWjqBmV3V4CwABBOkDAAAE6QMAAFg1TyFQJUBBUFs0XFBaWDU0KFBeKTdDQyk3fSRFSUNBUi1TVEFOREFSRC1BTlRJVklSVVMtVEVTVC1GSUxFISRIK0gqUEsBAh4DCgAAAAAAMkeLRzzPUWhEAAAARAAAAAkAGAAAAAAAAQAAAKCBAAAAAGVpY2FyLmNvbVVUBQAD74FqVnV4CwABBOkDAAAE6QMAAFBLBQYAAAAAAQABAE8AAACHAAAAAAA='),
+	'EICAR test virus in zip file',
     ],
     'warn.png' => [ "Content-type: image/png\r\n", decode_base64( <<'IMAGE' ) ],
 iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAIAAABLixI0AAAAI0lEQVQ4y2N8fkObgUqAiYF6YNSs
@@ -290,7 +309,7 @@ BODY
     $body .= '<table style="width: 100%; border-style: none; border-spacing: 0px;">';
     for my $test (@tests) {
 	if (!blessed($test)) {
-	    $body .= "<tr><td colspan=5><h2>$test->[0]</h2></td></tr>";
+	    $body .= "<tr><td colspan=6><h2>$test->[0]</h2></td></tr>";
 	    next;
 	} 
 	my $valid = $test->VALID;
@@ -302,7 +321,7 @@ BODY
 	$body .= "<td><div id='".$test->LONG_ID."' style='height: 2em; border-style: solid; border-width: 1px; width: 6em; text-align: center; background: $bg'><span style='vertical-align: middle;'>SCRIPT</span></div></td>";
 	$body .= "<td><iframe seamless=seamless scrolling=no style='border-style: solid; border-width: 1px; width: 6em; height: 2em; overflow: hidden;' src=". $test->url("$base.html"). "></iframe></td>";
 	$body .= "<td>&nbsp;<a class=button download='eicar.com' href=". $test->url('eicar.txt').">load EICAR</a>&nbsp;</td>";
-	# $body .= "<td>&nbsp;<a class=button download='eicar.zip' href=". $test->url('eicar-gz-zip.zip').">load gzjunk+eicar.zip</a>&nbsp;</td>";
+	$body .= "<td>&nbsp;<a class=button download='eicar.zip' href=". $test->url('eicar.zip').">load eicar.zip</a>&nbsp;</td>";
 	$body .= "</tr>";
 	$body .= "<script src=".$test->url("$base.js")."></script>";
 	$body .= "<tr><td colspan=5><hr></td></tr>";

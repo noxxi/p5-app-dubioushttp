@@ -738,6 +738,22 @@ sub num2path {{
     733	=> "range\/range\,full",
     734	=> "range\/range",
     735	=> "range\/range\,incomplete",
+    736	=> "chunked\/xte\,chunked\,xte\,do_clen",
+    737	=> "chunked\/xte\,chunked\,xte\,clen\,do_clen",
+    738	=> "broken\/data\:foo\:b\\001ar\\015\\012\;chunked",
+    739	=> "broken\/data\:foo\:b\\001ar\\015\\012\;chunked\;do_clen",
+    740	=> "broken\/data\:foo\:b\\000ar\\015\\012\;chunked",
+    741	=> "broken\/data\:foo\:b\\000ar\\015\\012\;chunked\;do_clen",
+    742	=> "broken\/data\:foo\:b\\200ar\\015\\012\;chunked",
+    743	=> "broken\/data\:foo\:b\\200ar\\015\\012\;chunked\;do_clen",
+    744	=> "broken\/conthdr\;chunked",
+    745	=> "broken\/conthdr\;chunked\;do_clen",
+    746	=> "broken\/end\-lflf\;chunked",
+    747	=> "broken\/end\-lflf\;gzip",
+    748	=> "broken\/te\:chu\\015\\012\\040nked\;do_chunked",
+    749	=> "broken\/te\:chu\\015\\012\\040nked\;do_clen",
+    750	=> "broken\/te\:chu\\015\\012nked\;do_chunked",
+    751	=> "broken\/te\:chu\\015\\012nked\;do_clen",
 
 }};
 

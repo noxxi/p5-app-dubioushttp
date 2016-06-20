@@ -44,18 +44,26 @@ DESC
     [ INVALID, 'somehdr;tab;chunked' => '<tab>Transfer-Encoding: chunked as continuation of some header line, served chunked' ],
     [ UNCOMMON_VALID, 'somehdr;space;chunked;do_clen' => '<space>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
     [ UNCOMMON_VALID, 'somehdr;tab;chunked;do_clen' => '<tab>Transfer-Encoding: chunked as continuation of some header line, not served chunked' ],
-    [ INVALID, '8bitkey;chunked' => 'line using 8bit field name, followed by TE chunked, served chunked'],
+    [ COMMON_INVALID, '8bitkey;chunked' => 'line using 8bit field name, followed by TE chunked, served chunked'],
     [ INVALID, '8bitkey;chunked;do_clen' => 'line using 8bit field name, followed by TE chunked, not served chunked'],
+    [ COMMON_INVALID, 'data:foo:b\001ar\015\012;chunked' => 'line using binary value, followed by TE chunked, served chunked'],
+    [ INVALID, 'data:foo:b\001ar\015\012;chunked;do_clen' => 'line using binary value, followed by TE chunked, not served chunked'],
+    [ COMMON_INVALID, 'data:foo:b\000ar\015\012;chunked' => 'line using binary value \000, followed by TE chunked, served chunked'],
+    [ INVALID, 'data:foo:b\000ar\015\012;chunked;do_clen' => 'line using binary value \000, followed by TE chunked, not served chunked'],
+    [ COMMON_INVALID, 'data:foo:b\200ar\015\012;chunked' => 'line using 8bit value, followed by TE chunked, served chunked'],
+    [ INVALID, 'data:foo:b\200ar\015\012;chunked;do_clen' => 'line using 8bit value, followed by TE chunked, not served chunked'],
     [ INVALID, 'colon;chunked' => 'line with empty field name (single colon on line), followed by TE chunked, served chunked'],
     [ INVALID, 'colon;chunked;do_clen' => 'line with empty field name (single colon on line), followed by TE chunked, not served chunked'],
     [ INVALID, '177;chunked' => 'line \177\r\n, followed by TE chunked, served chunked' ],
     [ INVALID, '177;chunked;do_clen' => 'line \177\r\n, followed by TE chunked, not served chunked' ],
     [ INVALID, 'data:\000;chunked' => 'line \000\r\n, followed by TE chunked, served chunked' ],
     [ INVALID, 'data:\000;chunked;do_clen' => 'line \000\r\n, followed by TE chunked, not served chunked' ],
-    [ INVALID, 'junkline;chunked' => 'ASCII junk line w/o colon, followed by TE chunked, served chunked'],
+    [ COMMON_INVALID, 'junkline;chunked' => 'ASCII junk line w/o colon, followed by TE chunked, served chunked'],
     [ INVALID, 'junkline;chunked;do_clen' => 'ASCII junk line w/o colon, followed by TE chunked, not served chunked'],
-    [ INVALID, 'spacehdr;chunked' => 'header containing space, followed by TE chunked, served chunked'],
+    [ COMMON_INVALID, 'spacehdr;chunked' => 'header containing space, followed by TE chunked, served chunked'],
     [ INVALID, 'spacehdr;chunked;do_clen' => 'header containing space, followed by TE chunked, not served chunked'],
+    [ COMMON_INVALID, 'conthdr;chunked' => 'header with continuation line, followed by TE chunked, served chunked'],
+    [ INVALID, 'conthdr;chunked;do_clen' => 'header with continuation line, followed by TE chunked, not served chunked'],
     [ INVALID, 'cr;chunked' => 'line just containing <CR>: \r\r\n, followed by TE chunked'],
     [ INVALID, 'lf;chunked' => 'line just containing <LF>: \n\r\n, followed by TE chunked'],
     [ INVALID, 'crcr;chunked' => 'line just containing <CR><CR>: \r\r\r\n, followed by TE chunked'],
@@ -72,6 +80,10 @@ DESC
     [ INVALID, 'crlf-crlfonly;chunked;do_clen' => 'TE chunked prefixed with <CR><LF><space><CR><LF>, not served chunked' ],
 
     [ INVALID, 'te:chu\000nked;do_chunked' => '"Transfer-Encoding:chu\000nked", served chunked' ],
+    [ INVALID, 'te:chu\015\012\040nked;do_chunked' => '"Transfer-Encoding:chu\r\n nked", served chunked' ],
+    [ INVALID, 'te:chu\015\012\040nked;do_clen' => '"Transfer-Encoding:chu\r\n nked", not served chunked' ],
+    [ INVALID, 'te:chu\015\012nked;do_chunked' => '"Transfer-Encoding:chu\r\nnked", served chunked' ],
+    [ INVALID, 'te:chu\015\012nked;do_clen' => '"Transfer-Encoding:chu\r\nnked", not served chunked' ],
     [ INVALID, 'data:Transfer\000-encoding:chunked\015\012;do_chunked' => '"Transfer\000-Encoding:chunked", served chunked' ],
     [ INVALID, 'data:Transfer\000-encoding:chun\000ked\015\012;do_chunked' => '"Transfer\000-Encoding:chun\000ked", served chunked' ],
     [ INVALID, 'te\000:chunked;do_chunked' => '"Transfer-Encoding\000:chunked", served chunked' ],
@@ -255,10 +267,12 @@ DESC
     [ INVALID, 'chunked;cr\000lf-no-crlf' => '\r\000\n instead of \r\n and chunked' ],
     [ INVALID, 'chunked;lfcrcrlf-no-crlf;end-crlfcrlf' => '\n\r\r\n instead of \r\n as line delimiter, but end \r\n\r\n and chunked' ],
     [ INVALID, 'end-crcr' => 'header end \r\r' ],
-    [ INVALID, 'end-lflf' => 'header end \n\n' ],
     [ INVALID, 'end-crlf\000crlf' => 'header end \r\n\000\r\n' ],
     [ INVALID, 'end-cr\000crlf' => 'header end \r\000\r\n' ],
 
+    [ COMMON_INVALID, 'end-lflf' => 'header end \n\n' ],
+    [ UNCOMMON_INVALID, 'end-lflf;chunked' => 'header end \n\n, chunked' ],
+    [ UNCOMMON_INVALID, 'end-lflf;gzip' => 'header end \n\n, gzip' ],
     [ UNCOMMON_INVALID, 'end-lfcrlf' => 'header end \n\r\n' ],
     [ UNCOMMON_INVALID, 'end-lfcrlf;chunked' => 'header end \n\r\n, chunked' ],
     [ UNCOMMON_INVALID, 'end-lfcrlf;gzip' => 'header end \n\r\n, gzip' ],
@@ -405,6 +419,8 @@ sub make_response {
 	    $hdr .= "Löchriger-Häddar: foobar\r\n"
 	} elsif ( $_ eq 'spacehdr' ) {
 	    $hdr .= "Foo Bar: foobar\r\n"
+	} elsif ( $_ eq 'conthdr' ) {
+	    $hdr .= "FooBar: foobar\r\n     barfoot\r\n"
 	} elsif ( $_ eq 'colon' ) {
 	    $hdr .= ": foo\r\n"
 	} elsif ( $_ eq 'space' ) {

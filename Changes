@@ -1,5 +1,21 @@
+2016/06/20 0.033
+- If the firewall supports it use eicar.zip for tests because this might
+  trigger different behavior (binary, ZIP instead of text). If this gets
+  successfully blocked retry with eicar.txt though.
+- download names are now generic instead of eicar.txt and novirus.txt so
+  that one could not just block based on this name
+- detect if firewall/AV matches eicar+junk or junk+eicar which is not
+  allowed according to EICAR usage requirements
+- mark some tests as COMMON_INVALID to show that these are invalid but still
+  commonly used in practive. Issue a warning if harmless content of this
+  type gets blocked.
+- some small tests added as variations of existing. These should probably not
+  cause any problems but are used to detect blocking of invalid responses
+  which are nevertheless commonly seen in practice.
+
 2016/04/20 0.032
 - fixed debug function in Javascript which caused the final submission to fail
+
 2016/04/20 0.031
 - Each tests now has a fixed ID which will not change over the development of
   the program, i.e. if tests gets added, deleted.... This ID can also be used

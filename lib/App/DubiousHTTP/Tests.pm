@@ -74,7 +74,7 @@ not all cases this shows the same behavior as other HTTP requests by the browser
 possible with normal download one should use the provided link to actually test
 the evasion.
 </p>
-<p id=test_virus class=runtest><a href="/auto/all/eicar.txt">Run Test with <strong>EICAR test virus</strong> payload</a></p>
+<p id=test_virus class=runtest><a href="/auto/all/eicar">Run Test with <strong>EICAR test virus</strong> payload</a></p>
 
 <a name=xhr_novirus>
 <h2>Bulk test with innocent payload (XHR)</h2>
@@ -179,8 +179,9 @@ sub auto {
 }
 
 sub auto_xhr {
-    my ($self,$cat,$page,$spec,$qstring,$rqhdr) = @_;
-    $page ||= 'eicar.txt';
+    my ($self,$cat,$test,$spec,$qstring,$rqhdr) = @_;
+    my $page = $test || 'eicar';
+    $page = 'eicar.txt' if $test eq 'eicar';
     my $html = _auto_static_html();
     my ($hdr,$body,$isbad) = content($page);
     $html .= "<script>\n";
@@ -203,32 +204,55 @@ sub auto_xhr {
 	$html .= "div_title.innerHTML = '<h1>Browser behavior test with XMLHTTPRequest</h1>';";
     }
 
-    $html .= "expect64 = '".encode_base64($body,'')."';\n";
+    $html .= "expect64 = expect64_harmless = '".encode_base64($body,'')."';\n";
+    if ($test eq 'eicar') {
+	my $bodyzip = (content('eicar.zip'))[1];
+	$html .= "expect64_zip = '".encode_base64($bodyzip,'')."';\n";
+    }
     $html .= 'results = "V | '.App::DubiousHTTP->VERSION.'\n";' . "\n";
     $isbad ||= '';
     $html .= "isbad ='$isbad';\n";
     if ($isbad) {
 	$html .= "expect64_harmless = '".encode_base64( (content('novirus.txt'))[1],'')."';\n";
-	$html .= "checks.push({ num:0, page:'". garble_url("/clen/novirus.txt/close,clen,content").
-	    "', desc:'sanity check without test virus', valid:2, log_header:1, harmless:1, file: 'novirus.txt' });\n";
-	$html .= "checks.push({ num:0, page:'". garble_url("/clen/$page/close,clen,content").
-	    "', desc:'sanity check with test virus', valid:2, expect_bad:1, log_header:1, file: '$page' });\n";
+	$html .= "checks.push({ num:0, harmless:'". garble_url("/clen/novirus.txt/close,clen,content").
+	    "', desc:'sanity check without test virus', valid:2, log_header:1, file: 'novirus.txt' });\n";
+	$html .= "checks.push({ num:0, bad:'". garble_url("/clen/$page/close,clen,content").
+	    "', desc:'sanity check with test virus', valid:2, log_header:1, expect_bad: 1, file: '$page' });\n";
+	if ($page eq 'eicar.txt') {
+	    my $junkbody = encode_base64((content('junk-eicar.txt'))[1],'');
+	    $html .= "checks.push({ num:0, harmless:'". garble_url("/clen/junk-eicar.txt/close,clen,content").
+		"', desc:'junk before test virus', valid:99, log_header:1, file: 'junk-eicar.txt', expect: '$junkbody' });\n";
+	    $junkbody = encode_base64((content('eicar-junk.txt'))[1],'');
+	    $html .= "checks.push({ num:0, harmless:'". garble_url("/clen/eicar-junk.txt/close,clen,content").
+		"', desc:'junk after test virus', valid:99, log_header:1, file: 'eicar-junk.txt', expect: '$junkbody' });\n";
+	}
+	if ($test eq 'eicar') {
+	    $html .= "checks.push({ num:0, badzip:'". garble_url("/clen/eicar.zip/close,clen,content").
+		"', desc:'test virus in ZIP file', valid:2, log_header:1, filezip: 'eicar.zip' });\n";
+	}
     } else {
-	$html .= "checks.push({ num:0, page:'". garble_url("/clen/$page/close,clen,content").
+	$html .= "checks.push({ num:0, harmless:'". garble_url("/clen/$page/close,clen,content").
 	    "', desc:'sanity check', valid:2, log_header:1, file: '$page' });\n";
     }
+    my $limit;
     for(@cat) {
 	next if $cat ne 'all' && $_->ID ne $cat;
 	for($_->TESTS) {
-	    if ($isbad) {
-		$html .= sprintf("checks.push({ num:%s, page:'%s', desc:'%s', valid:%d, harmless_page: '%s', file: '%s'  });\n",
-		    $_->NUM_ID, url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, url_encode($_->url('novirus.txt')),'novirus.txt')
-	    } else {
+	    last if defined $limit && --$limit <= 0;
+	    if (!$isbad) {
 		$html .= sprintf("checks.push({ num:%s, page:'%s', desc:'%s', valid:%d, file:'%s' });\n",
 		    $_->NUM_ID, url_encode($_->url($page)), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID,$page)
+	    } elsif ($test eq 'eicar') {
+		$html .= sprintf("checks.push({ num:%s, bad:'%s', badzip: '%s', harmless: '%s', desc:'%s', valid:%d, file: '%s', filezip: '%s'  });\n",
+		    $_->NUM_ID, 
+		    url_encode($_->url($page)), url_encode($_->url('eicar.zip')), url_encode($_->url('novirus.txt')), 
+		    quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, 
+		    'novirus.txt', 'eicar.zip')
+	    } else {
+		$html .= sprintf("checks.push({ num:%s, bad:'%s', harmless: '%s', desc:'%s', valid:%d, file: '%s'  });\n",
+		    $_->NUM_ID, url_encode($_->url($page)), url_encode($_->url('novirus.txt')), quotemeta(html_escape($_->DESCRIPTION)), $_->VALID, 'novirus.txt')
 	    }
 	}
-
     }
     $html .= sprintf("reference='%x' + Math.floor(time()/1000).toString(16);\n", rand(2**32));
     $html .= "runtests();\n</script>\n";
@@ -434,9 +458,12 @@ var done = 0;
 var reference;
 
 var expect64;
+var expect64_zip;
 var expect64_harmless;
 var isbad;
 var accept = null;
+var usebadzip;
+var have_warn = {};
 
 var evasions = 0;
 var evasions_blocked = 0;
@@ -555,7 +582,11 @@ function check_xhr_result(req,test,status) {
 	    _log("no data for " + test['page']);
 	} else {
 	    var expect = expect64;
-	    if (test['harmless'] || test['harmless_retry']) {
+	    if (test['expect']) {
+		expect = test['expect'];
+	    } else if (test['badzip'] && test['page'] == test['badzip']) {
+		expect = expect64_zip;
+	    } else if (test['retry'] == 'harmless' || test['page'] == test['harmless']) {
 		expect = expect64_harmless;
 	    }
 	    var result64 = base64_encode(response);
@@ -575,6 +606,17 @@ function check_xhr_result(req,test,status) {
 		_log( "response: " + result64 );
 		_log( "expect:   " + expect );
 	    }
+
+	    if (isbad && usebadzip == undefined && expect == expect64_zip ) {
+		if (result64 != expect) {
+		    usebadzip = 1;
+		    add_debug('The firewall can detect test virus in ZIP file. Using this for the following tests.', test);
+		    div_title.innerHTML = '<h1>Firewall evasion test with the EICAR test virus within a ZIP file</h1>';
+		} else {
+		    usebadzip = 0;
+		    add_debug('The firewall cannot detect test virus in ZIP file. Continue with plain test virus.', test);
+		}
+	    }
 	}
     }
 
@@ -583,9 +625,9 @@ function check_xhr_result(req,test,status) {
 	results = results + "H | " + test['page'] + " | " + base64_encode(header) + "\n";
     }
 
-    add_debug( test['desc'] + ' - ' + status + ( test['harmless_retry'] ? ' - retry with harmless content':''), test);
+    add_debug( test['desc'] + ' - ' + status + ( (test['retry'] == 'harmless') ? ' - retry with harmless content':''), test);
 
-    if (test['harmless'] || test['harmless_retry']) {
+    if (test['page'] == test['harmless'] || test['retry'] == 'harmless') {
 	// perfectly good response should pass, bad might fail or not
 	if (status != 'match') {
 	    browser_invalid++;
@@ -594,29 +636,51 @@ function check_xhr_result(req,test,status) {
 		add_warning("Failed to load harmless and perfectly valid response",test);
 		results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless but must succeed\n";
 		results = results + "T | " + test['page'] + " | " + result64 + "\n";
-		var div_urlblock = document.getElementById('urlblock');
-		div_urlblock.innerHTML = "<div>" 
-		    + "The firewall blocked a harmless and perfectly valid response from the server, which did not contain any kind of evasion attempts.<br>"
-		    + "It might be that the firewall blocked the access based on URL filtering and not based on the response at all. "
-		    + "This means any results you get during this tests should be considered with great caution because they might not actually reflect "
-		    + "the abilities of the firewall to detect malware."
-		    + "</div>";
-		div_urlblock.style.display = 'block';
+		if (!have_warn['blocked_harmless']) {
+		    have_warn['blocked_harmless'] = 1;
+		    var div_urlblock = document.getElementById('urlblock');
+		    div_urlblock.innerHTML += "<div>" 
+			+ "The firewall blocked a harmless and perfectly valid response from the server, which did not contain any kind of evasion attempts.<br>"
+			+ "It might be that the firewall blocked the access based on URL filtering and not based on the response at all. "
+			+ "This means any results you get during this tests should be considered with great caution because they might not actually reflect "
+			+ "the abilities of the firewall to detect malware."
+			+ "</div>";
+		    div_urlblock.style.display = 'block';
+		}
 	    } else if (test['valid']>0) {
-		if (test['valid']==3) {
+		if (test['valid'] == 3) {
 		    // firewall might have modified request 
 		    maybe_overblocked++;
 		    add_warning("Failed to load harmless and valid response, maybe the firewall blocked too much",test);
 		    results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless but should succeed\n";
+		} else if (test['valid'] == 99) {
+		    maybe_overblocked++;
+		    add_notice("Antivirus cheats by accepting substring for test virus signature",test);
+		    results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless but must succeed\n";
+		    results = results + "T | " + test['page'] + " | " + result64 + "\n";
+		    if (0 && !have_warn['av_substr']) {
+			have_warn['av_substr'] = 1;
+			var div_urlblock = document.getElementById('urlblock');
+			div_urlblock.innerHTML += "<div>" 
+			    + "The firewall blocked the content because a substring of the content contained the test virus signature. "
+			    + "This is contrary to the rules in which the EICAR test virus should be used, which allow at most some white space after the signature. "
+			    + "This means any results you get during this tests should be considered with caution because they might not actually reflect "
+			    + "the abilities of the firewall to detect malware."
+			    + "</div>";
+			div_urlblock.style.display = 'block';
+		    }
 		} else {
 		    add_notice("Failed to load harmless and valid response, might be browser bug",test);
 		    results = results + "X | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
 		}
 		results = results + "T | " + test['page'] + " | " + result64 + "\n";
+	    } else if (test['valid'] == -3) {
+		results = results + "B | " + status + " | " + test['page'] + " | " + test['desc'] + " | common invalid failed harmless\n";
+		add_warning("Blocked response which is invalid but still commonly seen in real life",test);
 	    } else {
 		results = results + "B | " + status + " | " + test['page'] + " | " + test['desc'] + " | failed harmless\n";
 	    }
-	} else if (test['harmless_retry']) {
+	} else if (test['retry'] == 'harmless') {
 	    // in this case an evasion attempt was blocked by the firewall
 	    evasions_blocked++;
 	    results = results + "Z | " + test['retry4status'] + " | " + test['retry4page'] + " | " + test['desc'] + " | evasion blocked\n";
@@ -803,14 +867,38 @@ function runtests() {
 	    );
 
 	} else {
+	    var page;
+	    _log({ num: current_test['num'], retry: current_test['retry'], page: current_test['page']});
+	    if (current_test['retry']) {
+		page = current_test['page'] = current_test[ current_test['retry'] ];
+	    } else if (usebadzip && (page = current_test['badzip'])) {
+		current_test['page'] = page;
+	    } else if (usebadzip == undefined && (page = current_test['badzip'])) {
+		current_test['page'] = page;
+	    } else if (page = current_test['bad']) {
+		current_test['page'] = page;
+	    } else if (page = current_test['harmless']) {
+		current_test['page'] = page;
+	    }
 	    xhr('GET',current_test['page'] + '?rand=' + rand,null,function(req,status) {
 		status = check_xhr_result(req,current_test,status);
-		if (isbad && current_test['harmless_page'] && status != 'match') {
-		    // malware not found, either because the firewall filtered it
-		    // or because the browser did not understand the response.
-		    // check for the last by trying with novirus.txt
-		    checks.unshift({ page: current_test['harmless_page'], desc: current_test['desc'], valid: current_test['valid'], harmless_retry:1,
-			retry4status:status, retry4page: current_test['page']});
+		if (isbad && status != 'match') {
+		    if (usebadzip && current_test['page'] == current_test['badzip'] && current_test['bad']) {
+			// retry with normal bad
+			current_test['retry'] = 'bad';
+			current_test['retry4status'] = status;
+			current_test['retry4page'] = current_test['page'];
+			checks.unshift(current_test);
+		    } else if (current_test['retry'] != 'harmless' && ! current_test['expect'] && current_test['harmless']) {
+			// malware not found, either because the firewall filtered it
+			// or because the browser did not understand the response.
+			// check for the last by trying with novirus.txt
+			current_test['retry'] = 'harmless';
+			current_test['retry4status'] = status;
+			current_test['retry4page'] = current_test['page'];
+			current_test['file'] = 'novirus.txt';
+			checks.unshift(current_test);
+		    }
 		}
 		if (fast_feedback && results.length > fast_feedback) {
 		    submit_part();

@@ -62,6 +62,10 @@ DESC
     [ INVALID, 'close,(clen)\240,content,junk' => '"Content-length: len\240", body content+junk' ],
     [ INVALID, 'close,(clen).0,content,junk' => '"Content-length: len.0", body content+junk' ],
     [ INVALID, 'close,(clen).9,content,junk' => '"Content-length: len.9", body content+junk' ],
+    [ INVALID, 'close,clenx0,content' => 'Content-length value with \0 inside, body content' ],
+    [ INVALID, 'close,clenx0,content,junk' => 'Content-length value with \0 inside, body content+junk' ],
+    [ INVALID, 'close,hexlen,content' => '"Content-length: 0xhexlen", body content' ],
+    [ INVALID, 'close,hexlen,content,junk' => '"Content-length: 0xhexlen", body content+junk' ],
 );
 
 
@@ -75,6 +79,12 @@ sub make_response {
     for (split(',',$spec)) {
 	if ( ! $_ || $_ eq 'close' ) {
 	    $hdr .= "Connection: close\r\n";
+	} elsif ( $_ eq 'clenx0' ) {
+	    my $len = length($data);
+	    $len =~s{(\d)\z}{\0$1};
+	    $hdr .= "Content-length: $len\r\n";
+	} elsif ( $_ eq 'hexlen' ) {
+	    $hdr .= sprintf("Content-length: 0x%x\r\n",length($data));
 	} elsif ( s{^clen(\(?)(\d*)(\)?)}{} ) {
 	    $hdr .= "Content-length: ";
 	    $hdr .= $1;

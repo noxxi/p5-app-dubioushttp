@@ -754,6 +754,10 @@ sub num2path {{
     749	=> "broken\/te\:chu\\015\\012\\040nked\;do_clen",
     750	=> "broken\/te\:chu\\015\\012nked\;do_chunked",
     751	=> "broken\/te\:chu\\015\\012nked\;do_clen",
+    752	=> "clen\/close\,clenx0\,content",
+    753	=> "clen\/close\,clenx0\,content\,junk",
+    754	=> "clen\/close\,hexlen\,content",
+    755	=> "clen\/close\,hexlen\,content\,junk",
 
 }};
 

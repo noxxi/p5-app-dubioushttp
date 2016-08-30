@@ -19,6 +19,8 @@ DESC
     [ MUSTBE_VALID, 'close,content' => 'no content-length with connection close'],
     [ UNCOMMON_INVALID, 'close,clen,content,junk' => 'single content-length, content followed by junk, then connection close'],
     [ UNCOMMON_INVALID, 'close,clen,clen,content,junk' => 'correct content-length twice, content followed by junk, then connection close'],
+    [ UNCOMMON_VALID, 'close,000clen,content' => 'lots of 0 before clen' ],
+    [ UNCOMMON_VALID, 'close,000clen,content,junk' => 'lots of 0 before clen, body content+junk' ],
 
     [ 'INVALID: content-length does not match content' ],
     [ INVALID, 'close,clen200,content' => 'content-length double real content, close after real content' ],
@@ -36,6 +38,16 @@ DESC
     [ INVALID, 'close,xte,clen,clen200,content,junk' => 'content-length full and double, invalid Transfer-Encoding' ],
     [ INVALID, 'close,xte,clen-folding100,clen200,content,junk' => 'content-length full (folded) and double, invalid Transfer-Encoding' ],
 
+    [ 'INVALID: multiple content-length, but one empty or invalid' ],
+    [ INVALID, 'close,clen,clen-empty,content' => 'content-length full and empty' ],
+    [ INVALID, 'close,clen,clen-empty,content,junk' => 'content-length full and empty, content followed by junk and close' ],
+    [ INVALID, 'close,clen-empty,clen,content' => 'content-length empty and full' ],
+    [ INVALID, 'close,clen-empty,clen,content,junk' => 'content-length empty and full, content followed by junk and close' ],
+    [ INVALID, 'close,clen,clen-invalid,content' => 'content-length full and invalid' ],
+    [ INVALID, 'close,clen,clen-invalid,content,junk' => 'content-length full and invalid, content followed by junk and close' ],
+    [ INVALID, 'close,clen-invalid,clen,content' => 'content-length invalid and full' ],
+    [ INVALID, 'close,clen-invalid,clen,content,junk' => 'content-length invalid and full, content followed by junk and close' ],
+
     [ 'INVALID: content-length header containing two numbers' ],
     [ INVALID, 'close,clen50-folding100,content' => 'content-length half but full after line folding, close after real content' ],
     [ INVALID, 'close,clen50-100,content' => 'content-length half and full on same line, close after real content' ],
@@ -48,6 +60,7 @@ DESC
     [ INVALID, 'close,clen200-folding100,content,junk' => 'content-length double but full after line folding, close after real content+junk' ],
     [ INVALID, 'close,clen(200)-100,content,junk' => 'content-length double and full on same line, but double as MIME comment, close after real content+junk' ],
 
+    [ 'INVALID: invalid characters around content-length value' ],
     [ INVALID, 'close,\073(clen),content,junk' => '"Content-length: ;len", body content+junk' ],
     [ INVALID, 'close,(clen)\073,content,junk' => '"Content-length: len;", body content+junk' ],
     [ INVALID, 'close,\054(clen),content,junk' => '"Content-length: ,len", body content+junk' ],
@@ -64,8 +77,16 @@ DESC
     [ INVALID, 'close,(clen).9,content,junk' => '"Content-length: len.9", body content+junk' ],
     [ INVALID, 'close,clenx0,content' => 'Content-length value with \0 inside, body content' ],
     [ INVALID, 'close,clenx0,content,junk' => 'Content-length value with \0 inside, body content+junk' ],
+
+    [ 'INVALID: bad content-length value (hex, overflow, huge...)' ],
     [ INVALID, 'close,hexlen,content' => '"Content-length: 0xhexlen", body content' ],
     [ INVALID, 'close,hexlen,content,junk' => '"Content-length: 0xhexlen", body content+junk' ],
+    [ INVALID, 'close,overflow32,content' => 'overflowing uint32, body content' ],
+    [ INVALID, 'close,overflow32,content,junk' => 'overflowing uint32, body content+junk' ],
+    #[ INVALID, 'close,overflow64,content' => 'overflowing uint64, body content' ],
+    #[ INVALID, 'close,overflow64,content,junk' => 'overflowing uint64, body content+junk' ],
+    [ INVALID, 'close,huge,content' => 'huge >64bit fake clen' ],
+    [ INVALID, 'close,big,content' => 'big 1GB fake clen' ],
 );
 
 
@@ -79,10 +100,22 @@ sub make_response {
     for (split(',',$spec)) {
 	if ( ! $_ || $_ eq 'close' ) {
 	    $hdr .= "Connection: close\r\n";
+	} elsif ( $_ eq '000clen' ) {
+	    $hdr .= "Content-length: ".( "0" x 1000 ).length($data)."\r\n";
+	} elsif ( $_ eq 'overflow32' ) {
+	    $hdr .= sprintf("Content-length: %.0lf\r\n",2.0**32+length($data));
+	} elsif ( $_ eq 'huge' ) {
+	    $hdr .= "Content-length: 9999999999999999999999\r\n";
+	} elsif ( $_ eq 'big' ) {
+	    $hdr .= "Content-length: 1073741824\r\n";
 	} elsif ( $_ eq 'clenx0' ) {
 	    my $len = length($data);
 	    $len =~s{(\d)\z}{\0$1};
 	    $hdr .= "Content-length: $len\r\n";
+	} elsif ( $_ eq 'clen-empty' ) {
+	    $hdr .= "Content-length: \r\n";
+	} elsif ( $_ eq 'clen-invalid' ) {
+	    $hdr .= "Content-length: xxx\r\n";
 	} elsif ( $_ eq 'hexlen' ) {
 	    $hdr .= sprintf("Content-length: 0x%x\r\n",length($data));
 	} elsif ( s{^clen(\(?)(\d*)(\)?)}{} ) {

@@ -758,6 +758,20 @@ sub num2path {{
     753	=> "clen\/close\,clenx0\,content\,junk",
     754	=> "clen\/close\,hexlen\,content",
     755	=> "clen\/close\,hexlen\,content\,junk",
+    756	=> "clen\/close\,000clen\,content",
+    757	=> "clen\/close\,000clen\,content\,junk",
+    758	=> "clen\/close\,clen\,clen\-empty\,content",
+    759	=> "clen\/close\,clen\,clen\-empty\,content\,junk",
+    760	=> "clen\/close\,clen\-empty\,clen\,content",
+    761	=> "clen\/close\,clen\-empty\,clen\,content\,junk",
+    762	=> "clen\/close\,clen\,clen\-invalid\,content",
+    763	=> "clen\/close\,clen\,clen\-invalid\,content\,junk",
+    764	=> "clen\/close\,clen\-invalid\,clen\,content",
+    765	=> "clen\/close\,clen\-invalid\,clen\,content\,junk",
+    766	=> "clen\/close\,overflow32\,content",
+    767	=> "clen\/close\,overflow32\,content\,junk",
+    768	=> "clen\/close\,huge\,content",
+    769	=> "clen\/close\,big\,content",
 
 }};
 

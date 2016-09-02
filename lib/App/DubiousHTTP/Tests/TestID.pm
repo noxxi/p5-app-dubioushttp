@@ -772,6 +772,7 @@ sub num2path {{
     767	=> "clen\/close\,overflow32\,content\,junk",
     768	=> "clen\/close\,huge\,content",
     769	=> "clen\/close\,big\,content",
+    770	=> "chunked\/huge\-white\-space\-chunked",
 
 }};
 

@@ -134,6 +134,7 @@ DESC
     [ UNCOMMON_VALID,'chunkednl-' => "chunked header followed by empty with continuation line, served chunked"],
     [ UNCOMMON_VALID,'nl-nl-chunked' => "chunked header with double continuation line, served chunked"],
     [ UNCOMMON_VALID,'nl-nl-chunked-nl-' => "chunked header with double continuation line and continuation afterwareds, served chunked"],
+    [ UNCOMMON_VALID,'huge-white-space-chunked' => "'Transfer-Encoding:<lots of space>chunked'"],
 
     [ 'INVALID: invalid variations on "chunked" value' ],
     [ INVALID, 'chu' => '"chu" not "chunked"'],
@@ -227,6 +228,8 @@ sub make_response {
 	    s{lf}{\n}g;
 	    s{cr}{\r}g;
 	    $hdr .= "Transfer-Encoding: $_\r\nConnection: close\r\n";
+	} elsif ( $_ eq 'huge-white-space-chunked') {
+	    $hdr .= "Transfer-Encoding: ". ( ' ' x 10000 )."chunked\r\nConnection: close\r\n";
 	} elsif ( m{^(space|tab|cr|colon)-colon-chunked$} ) {
 	    my $c = $1;
 	    $c =~s{space}{ }g;

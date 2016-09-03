@@ -180,6 +180,10 @@ DESC
     [ INVALID, 'xte,chunked,clen,do_clen,gzip' => "double Transfer-Encoding: first junk, last chunked. Also Content-length header. Not served chunked. Compressed with gzip." ],
     [ INVALID, 'chunked,clen,do_clen' => 'chunking and content-length, not served chunked'],
     [ INVALID, 'chunked,clen,do_clen,gzip' => 'chunking and content-length, not served chunked. Compressed with gzip.'],
+    [ INVALID, 'emptyte,chunked,do_chunked,gzip' => "double Transfer-Encoding: first empty, last chunked. Served chunked and gzipped." ],
+    [ INVALID, 'emptyte,chunked,do_clen,gzip' => "double Transfer-Encoding: first empty, last chunked. Served with content-length and gzipped." ],
+    [ INVALID, 'chunked,emptyte,do_chunked,gzip' => "double Transfer-Encoding: first chunked, last empty. Served chunked and gzipped." ],
+    [ INVALID, 'chunked,emptyte,do_clen,gzip' => "double Transfer-Encoding: first chunked, last empty. Served with content-length and gzipped." ],
 
     [ 'INVALID: hiding the Transfer-Encoding header' ],
     [ INVALID, 'space-colon-chunked,do_chunked' => '"Transfer-Encoding<space>:", served chunked' ],
@@ -265,6 +269,8 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: chunked;\r\nConnection: close\r\n"
 	} elsif ( $_ eq 'rfc2047' ) {
 	    $hdr .= "Transfer-Encoding: =?UTF-8?B?Y2h1bmtlZAo=?=\r\nConnection: close\r\n";
+	} elsif ( $_ eq 'emptyte' ) {
+	    $hdr .= "Transfer-Encoding: \r\nConnection: close\r\n";
 	} elsif ( $_ eq 'xte' ) {
 	    $hdr .= "Transfer-Encoding: lalala\r\nConnection: close\r\n";
 	} elsif ( m{^(chunk-ext-|nofinal$|eof-inchunk$)} ) {

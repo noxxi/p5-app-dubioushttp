@@ -30,6 +30,8 @@ DESC
     [ UNCOMMON_VALID, 'ce:x-gzip;gzip' => 'content-encoding "x-gzip", served gzipped'], # not IE11
     [ SHOULDBE_VALID, 'ce:deflate;deflate' => 'content-encoding deflate, served with deflate'],
     [ VALID, 'ce:deFLaTe;deflate' => 'content-encoding deflate mixed case, served with deflate'],
+    [ UNCOMMON_VALID, 'ce:hugespace-gzip;gzip' => '"Content-encoding: <lots-of-spaces> gzip", served with gzip'],
+    [ UNCOMMON_VALID, 'ce:hugespace-deflate;deflate' => '"Content-encoding: <lots-of-spaces> deflate", served with deflate'],
 
     # various kinds of flush between compression parts
     [ 'UNCOMMON_VALID: various kinds of flush between compression parts' ],
@@ -276,6 +278,7 @@ sub make_response {
 	    $changed++ if $v =~s{lf}{\n}g;
 	    $changed++ if $v =~s{nl}{\r\n}g;
 	    $changed++ if $v =~s{_}{ }g;
+	    $changed++ if $v =~s{hugespace-}{ ' ' x 10000 }eg;
 	    $v =~s{(?<!x)-}{}g;
 	    $hdr .= "Connection: close\r\n" if $changed;
 	    $hdr .= $field eq 'ce' ? 'Content-Encoding:':'Transfer-Encoding:';

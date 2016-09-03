@@ -773,6 +773,12 @@ sub num2path {{
     768	=> "clen\/close\,huge\,content",
     769	=> "clen\/close\,big\,content",
     770	=> "chunked\/huge\-white\-space\-chunked",
+    771	=> "chunked\/emptyte\,chunked\,do_chunked\,gzip",
+    772	=> "chunked\/emptyte\,chunked\,do_clen\,gzip",
+    773	=> "chunked\/chunked\,emptyte\,do_chunked\,gzip",
+    774	=> "chunked\/chunked\,emptyte\,do_clen\,gzip",
+    775	=> "compressed\/ce\:hugespace\-gzip\;gzip",
+    776	=> "compressed\/ce\:hugespace\-deflate\;deflate",
 
 }};
 

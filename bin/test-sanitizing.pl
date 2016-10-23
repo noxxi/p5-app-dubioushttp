@@ -100,13 +100,14 @@ while (my $todo = shift(@todo)) {
 	my $resp = $ua->request($todo->{url});
 	for( split(m{\r?\n},$resp) ) {
 	    m{\S} or next;
-	    my ($id,$path,$expect,$desc) = split(m{ \| },$_,4);
+	    my ($num,$id,$path,$expect,$desc) = split(m{ \| },$_,5);
 	    $desc or next;
 	    if ($expect == 3) {
 		$payload = $ua->request($base.$path)
 		    or die "failed to retrieve $base$path";
 	    } else {
 		push @t, {
+		    num => $num,
 		    id => $id,
 		    url => $base.$path,
 		    expect => $expect,
@@ -157,18 +158,19 @@ while (my $todo = shift(@todo)) {
 	}
     }
 
+    my $num = $todo->{num} || '-';
     my $id = $todo->{id} || $todo->{url};
     for(sort keys %lnote) {
 	push @{ $note{$_} },$id;
-	print "NOTE|$id $_\n";
+	print "NOTE|$num|$id $_\n";
     }
     for(sort keys %lwarn) {
 	push @{ $warn{$_} },$id;
-	print "WARN|$id $_\n";
+	print "WARN|$num|$id $_\n";
     }
     for(sort keys %lbad) {
 	push @{ $bad{$_} },$id;
-	print "BAD|$id $_\n";
+	print "BAD|$num|$id $_\n";
     }
 }
 

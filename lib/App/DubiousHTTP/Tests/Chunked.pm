@@ -81,6 +81,7 @@ DESC
     # safari does not like it, so mark it as uncommon
     [ UNCOMMON_VALID, 'chunked,clen200' => 'chunking and content-length header with double length, served chunked'],
     [ UNCOMMON_VALID, 'chunked,clen50'  => 'chunking and content-length header with half length, served chunked'],
+    [ UNCOMMON_VALID, 'chunked,clen-big'  => 'chunking and content-length header with huge length, served chunked'],
     [ INVALID, 'addjunk,chunked,clen50'  => 'content+junk, chunked, content-length header includes content only' ],
 
     [ 'INVALID: chunking is only allowed with HTTP/1.1' ],
@@ -255,6 +256,8 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: chu\r\nConnection: close\r\n"
 	} elsif ( $_ eq 'ce-chunked' ) {
 	    $hdr .= "Content-Encoding: chunked\r\nConnection: close\r\n"
+	} elsif ( $_ eq 'clen-big') {
+	    $clen = 1_000_000_000;
 	} elsif ( $_ =~ m{^clen(\d+)?$} ) {
 	    $clen = $1 || 100;
 	} elsif ( $_ eq 'http10' ) {
@@ -314,7 +317,9 @@ sub make_response {
 	    (my $d = $1 ) =~ s{\\([0-7]{3})}{ chr(oct($1)) }eg;
 	    $finalchunk = $d;
 	} elsif ( $_ eq 'addjunk' ) {
-	    $data .= "x" x length($data);
+	    # fake PKZIP magic for confusion
+	    my $junk = "PK\003\004" x int(length($data)/4+1);
+	    $data .= substr($junk,0,length($data));
 	} elsif ( $_ eq 'gzip' ) {
 	    $data = _compress($data,'gzip');
 	    $hdr .= "Content-Encoding: gzip\r\n";

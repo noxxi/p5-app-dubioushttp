@@ -138,7 +138,9 @@ sub make_response {
 	} elsif ( $_ eq 'content' ) {
 	    $body = $data;
 	} elsif ( $_ eq 'junk' ) {
-	    $body .= 'X' x length($data);
+	    # fake PKZIP magic for confusion
+	    my $junk = "PK\003\004" x int(length($data)/4+1);
+	    $body .= substr($junk,0,length($data));
 	} elsif ( $_ eq 'xte' ) {
 	    $hdr .= "Transfer-Encoding: lalala\r\n";
 	} else {

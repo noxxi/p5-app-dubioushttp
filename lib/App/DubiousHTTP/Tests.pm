@@ -997,7 +997,7 @@ function runtests() {
 		+ "Since the test differs slightly from a manually triggered download it might be that some of the detected evasions are "
 		+ "not usable in reality, so please make sure the evasion works by clicking the [TRY] link "
 		+ "and comparing the downloaded file wth your expectation";
-	    if ($bad_name == 'EICAR') {
+	    if (bad_name == 'EICAR') {
 		msg += "In case of the EICAR test virus the file should be 68 byte and contain the string "
 		    + "<p><span id=eicar>X5O!P%@AP" + "[4\PZX54(P^)" + "7CC)7}$EICAR-STAND" + "ARD-ANTIVI" + "RUS-TEST-FILE!$H+H*</span></p>";
 	    }
@@ -1007,7 +1007,7 @@ function runtests() {
 	    div.innerHTML = msg;
 	}
 	div.innerHTML += '<br><br><form enctype="multipart/form-data" method=POST action="/submit_details/' + reference + '/evasions=' + evasions + "/evasions_blocked=" + evasions_blocked + '">'
-	    + '<textarea name=product cols=80 rows=4>... please add product description here ...</textarea>'
+	    + '<textarea name=product cols=80 rows=4 placeholder="... please add product description here ..."></textarea>'
 	    + '<br><input type=submit name=Send></form>';
 	div.style.display = 'block';
 	submit_url = '/submit_results/' + reference + '/evasions=' + evasions + "/evasions_blocked=" + evasions_blocked;

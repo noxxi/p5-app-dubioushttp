@@ -232,10 +232,6 @@ sub content {
     }
 
     my ($hdr,$data,$bad);
-    if ( my $builtin = $builtin{$page} ) {
-	$builtin = $builtin->($spec,"/$page") if ref($builtin) eq 'CODE';
-	return @$builtin;
-    } 
     if ( $basedir && -f "$basedir/$page" && open( my $fh,'<',"$basedir/$page" )) {
 	$data = do { local $/; <$fh> };
 	if ($data =~s{\A((?:\w+(?:-\w*)*:.*\r?\n){1,10})\r?\n}{}) {
@@ -257,6 +253,10 @@ sub content {
 	}
 	$cache{$page} = [ $hdr,$data,$bad ];
 	return ($hdr,$data,$bad);
+    }
+    if ( my $builtin = $builtin{$page} ) {
+	$builtin = $builtin->($spec,"/$page") if ref($builtin) eq 'CODE';
+	return @$builtin;
     }
     return;
 }

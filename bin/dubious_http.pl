@@ -164,9 +164,11 @@ sub make_pcaps {
 		next;
 	    }
 
+	    my @manifest = ($port, $xurl,$tst->DESCRIPTION);
 	    if (!$pc) {
 		( my $id = $cat->ID.'-'.$tst->ID ) =~s{[^\w\-.,;+=]+}{_}g;
 		my $file = "$pcap_prefix$id.pcap";
+		push @manifest,$file;
 		$pc = Net::PcapWriter->new($file)
 		    or die "failed to create $file: $!";
 	    }
@@ -177,7 +179,7 @@ sub make_pcaps {
 		$conn->write(1, $_ );
 	    }
 
-	    print $manifest "$port | $xurl | ".$tst->DESCRIPTION."\n" if $manifest;
+	    print $manifest join(" | ",@manifest),"\n" if $manifest;
 	    undef $pc if !$pcap;
 	}
     }

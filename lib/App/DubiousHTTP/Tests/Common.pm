@@ -241,6 +241,8 @@ sub content {
 	    # check if we have a brotli compressed version
 	    if (open($fh,'<',"$basedir/$page.brotli")
 		and my $brotli = do { local $/; <$fh> }) {
+		# remove optional header
+		$brotli =~s{\A((?:\w+(?:-\w*)*:.*\r?\n){1,10})\r?\n}{};
 		bro_compress($data,$brotli);
 	    }
 	} else {

@@ -71,7 +71,13 @@ It is possible to setup own payload as following:
 
 	... data of test virus ...
 
- 3. Specify the payload in the URL, i.e.  http://ip:port/auto/all/virus.exe.
+ 3. Optionally add a brotli compressed version of the payload. While deflate,
+    gzip and lzma compressions are done dynamically the brotli version need to
+    be provided or testing for brotli support can not be done.
+    Simply add the compressed version as filename.brotli (i.e. virus.exe.brotli
+    or similar). The optional HTTP header of this file will be ignored.
+
+ 4. Specify the payload in the URL, i.e.  http://ip:port/auto/all/virus.exe.
     In this simple form the custom virus.exe is considered malicious and the
     builtin novirus.txt will be used to check for overblocking.
 

@@ -234,7 +234,8 @@ sub auto_xhr {
 	    join(",\n", map { "  '".encode_base64($_->{body},'')."'" } @bad).
 	    "\n];\n";
     }
-    $html .= "files_bad = [ ".join(",", map { "'$_'" } @bad_pages)."];\n";
+    $html .= "files_bad = [ ".join(",", map { "'$_'" } @bad_pages)."];\n"
+	if @bad_pages;
 
     $html .= 'results = "V | '.App::DubiousHTTP->VERSION.'\n";' . "\n";
     if (@bad_pages) {

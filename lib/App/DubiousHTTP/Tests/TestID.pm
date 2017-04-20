@@ -780,6 +780,8 @@ sub num2path {{
     775	=> "compressed\/ce\:hugespace\-gzip\;gzip",
     776	=> "compressed\/ce\:hugespace\-deflate\;deflate",
     777	=> "chunked\/chunked\,clen\-big",
+    778	=> "range\/range\,multi\-full",
+    779	=> "range\/range\,200\,multi\-full",
 
 }};
 

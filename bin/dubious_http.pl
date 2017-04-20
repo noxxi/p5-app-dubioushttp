@@ -310,7 +310,7 @@ sub serve {
 
 	if ( $page eq 'ALL' && $cat ) {
 	    for ( App::DubiousHTTP::Tests->categories ) {
-		return $_->make_index_page(undef,,$spec,$rqhdr)
+		return $_->make_index_page(undef,$spec,$rqhdr)
 		    if $_->ID eq $cat;
 	    }
 	}

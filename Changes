@@ -1,3 +1,8 @@
+2017/06/09 0.034
+- support custom payloads instead of EICAR, see --help for how to use
+- fixed submission
+- added more tests, see git log for details
+
 2016/06/20 0.033
 - If the firewall supports it use eicar.zip for tests because this might
   trigger different behavior (binary, ZIP instead of text). If this gets

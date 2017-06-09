@@ -60,6 +60,7 @@ DESC
 
     [ 'VALID: brotli (supported by at least Firefox when used with https)' ],
     [ UNCOMMON_VALID, 'ce:br;brotli' => 'content-encoding br, encoded with brotli'],
+    [ UNCOMMON_VALID, 'data:Content-Encoding:\040\040\040\040\040\040\040\040\040\040\040br\r\n;brotli' => 'content-encoding:<11xspaces>br, encoded with brotli'],
 
     [ 'INVALID: gzip header combined with zlib (RFC1952) instead of deflate (RFC1951)' ],
     [ INVALID, 'ce:gzip;gzip-zlib' => 'content-encoding gzip, encoded with zlib prefixed by gzip header'],
@@ -96,6 +97,10 @@ DESC
     [ UNCOMMON_VALID, 'ce:deflate;ce:gzip;deflate;gzip' => 'content-encoding header for deflate and gzip, content compressed in this order'],
     [ UNCOMMON_VALID, 'ce:deflate,gzip;deflate;gzip' => 'single content-encoding header "deflate,gzip", content compressed in this order'],
 
+    # work around Sourcefire VRT rule #38341 rev 3
+    [ UNCOMMON_VALID, 'ce:gzip;data:X-Foo:\n;ce:deflate;gzip;deflate' => 'content-encoding header for gzip and deflate and in the middle a X-Foo:\n, content compressed in this order'],
+    [ UNCOMMON_VALID, 'ce:gzip;data:X-Foo:\r;ce:deflate;gzip;deflate' => 'content-encoding header for gzip and deflate and in the middle a X-Foo:\r, content compressed in this order'],
+
     # according to RFC2616 identity SHOULD only be used in Accept-Encoding, not Content-Encoding
     [ 'INVALID: using "content-encoding: identity"' ],
     [ UNCOMMON_INVALID, 'ce:identity', '"content-encoding:identity", served without encoding' ],
@@ -111,6 +116,11 @@ DESC
     [ UNCOMMON_INVALID, 'ce:deflate;ce:identity;deflate' => 'content-encoding header for deflate and identity, compressed with deflate'],
     [ UNCOMMON_INVALID, 'ce:deflate,identity;deflate' => 'single content-encoding header "deflate,identity", compressed with deflate'],
 
+    [ UNCOMMON_INVALID, 'ce:gzip;ce:chunked;gzip' => 'content-encoding headers for gzip and chunked, compressed with gzip'],
+    [ UNCOMMON_INVALID, 'ce:chunked;ce:gzip;gzip' => 'content-encoding headers for chunked and gzip, compressed with gzip'],
+    [ UNCOMMON_INVALID, 'ce:deflate;ce:chunked;deflate' => 'content-encoding headers for deflate and chunked, compressed with deflate'],
+    [ UNCOMMON_INVALID, 'ce:chunked;ce:deflate;deflate' => 'content-encoding headers for chunked and deflate, compressed with deflate'],
+
     # triple encodings
     [ 'VALID: triple encodings' ],
     [ UNCOMMON_VALID, 'ce:gzip;ce:deflate;ce:gzip;gzip;deflate;gzip' => 'served gzip + deflate + gzip, separate content-encoding header'],
@@ -119,6 +129,7 @@ DESC
     [ UNCOMMON_VALID, 'ce:deflate;ce:gzip;ce:deflate;deflate;gzip;deflate' => 'served deflate + gzip + gzip, separate content-encoding header'],
     [ UNCOMMON_VALID, 'ce:deflate,gzip,deflate;deflate;gzip;deflate' => 'served deflate + gzip + deflate, single content-encoding header'],
     [ UNCOMMON_VALID, 'ce:deflate,gzip;ce:deflate;deflate;gzip;deflate' => 'served deflate + gzip + deflate, two content-encoding headers'],
+    [ UNCOMMON_VALID, 'ce:deflate;ce:identity;ce:gzip;deflate;gzip' => 'served deflate + identity + gzip, three content-encoding headers'],
 
     [ 'INVALID: specified double encodings, but content not or only once encoded or in the wrong order' ],
     [  INVALID, 'ce:gzip;ce:gzip;gzip' => 'double content-encoding header gzip, but served with single gzip'],
@@ -208,6 +219,7 @@ DESC
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|01', 'set flag FTEXT'],
     [ INVALID,'ce:gzip;gzip;replace:3,1|02', 'set flag FHCRC without having CRC'],
     [ INVALID,'ce:gzip;gzip;replace:3,1|02;replace:10,0=0000', 'set flag FHCRC and add CRC with 0'],
+    [ INVALID,'ce:gzip;gzip;replace:3,1|02;replace:10,0=0001', 'set flag FHCRC and add CRC with 1'],
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|04;replace:10,0=0000', 'set flag FEXTRA and extra part with XLEN 0'],
     [ UNCOMMON_VALID,'ce:gzip;gzip;replace:3,1|04;replace:10,0=05004170010000', 'set flag FEXTRA and extra part with XLEN 5'],
     [ INVALID,'ce:gzip;gzip;replace:3,1|04;replace:10,0=0500', 'set flag FEXTRA and XLEN 5 but no extra part'],
@@ -254,6 +266,18 @@ DESC
     [ INVALID,'ce-space-colon-gzip;gzip;replace:-4,1^ff', 'invalidate length (hide gzip with "content-encoding : gzip")'],
     [ INVALID,'ce-space-colon-gzip;gzip;replace:-4,4=', 'remove length (hide gzip with "content-encoding : gzip")'],
     [ INVALID,'ce-space-colon-gzip;gzip;replace:-8,8=', 'remove checksum and length (hide gzip with "content-encoding : gzip")'],
+    # and then used with an additional chunked transfer encoding
+    [ INVALID,'chunked;ce:gzip;gzip;replace:3,1|20', 'set flag reserved bit 5, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:3,1|40', 'set flag reserved bit 6, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:3,1|80', 'set flag reserved bit 7, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-8,4^ffffffff', 'invalidate final checksum, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-4,1^ff', 'invalidate length, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-4,4=', 'remove length, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-8,8=', 'remove checksum and length, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-4,4=;clen+4', 'remove length but set content-length header to original size, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-8,8=;clen+8', 'remove checksum and length but set content-length header to original size, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-4,4=;noclen', 'remove length and close with eof without sending length, chunked'],
+    [ INVALID,'chunked;ce:gzip;gzip;replace:-8,8=;noclen', 'remove checksum and and close with eof without sending length, chunked'],
 
     # data before gzip
     [ INVALID,'ce:gzip;gzip;\012-before-body','new line at start of gzip body' ],
@@ -300,13 +324,7 @@ sub make_response {
 	    $data[-1] .= $data; # in case something left
 	    $_ = zlib_compress($_,'deflate') for(@data);
 	    $data[0] = "\x78\x9c".$data[0];
-	    if ($enc eq 'chk') {
-		$te = 'chunked';
-		$data = join("", map {
-		    sprintf("%x\r\n%s\r\n",length($_),$_)
-		} (@data,''));
-		@data = ();
-	    }
+	    $te = 'chunked' if $enc eq 'chk';
 	} elsif ( m{^(?:(gzip)|deflate|(zlib))(?:(\d+)([ps]))?(?:,(sync|partial|block|full|finish))?$} ) {
 	    my $zlib = Compress::Raw::Zlib::Deflate->new(
 		-WindowBits => $1 ? WANT_GZIP : $2 ? +MAX_WBITS() : -MAX_WBITS(),
@@ -425,27 +443,39 @@ sub make_response {
 	} elsif (m{(.+)-before-body$}) {
 	    ( my $d = $1 ) =~s{\\([0-7]{3})}{ chr(oct($1)) }esg;
 	    $body_prefix .= $d;
+	} elsif (s{^data:}{}) {
+	    s{\\([0-7]{3})}{ chr(oct($1)) }esg;
+	    s{\\r}{\r}sg;
+	    s{\\n}{\n}sg;
+	    $hdr .= $_;
+	} elsif ($_ eq 'chunked') {
+	    $te = 'chunked';
 	} else {
 	    die $_
 	}
     }
 
-    $data = $body_prefix . $data;
-    if (! @data) {
-	@data = $data;
-    } else {
-	$data = join('',@data);
+    @data = $data if ! @data;
+    $data[0] = $body_prefix . $data[0] if $body_prefix ne '';
+    if ($te eq 'chunked') {
+	@data = map {
+	    sprintf("%x\r\n%s\r\n",length($_),$_)
+	} @data;
+	$data[-1] .= "0\r\n\r\n";
     }
-    my $len = length($data);
+
+    my $len = length(join('',@data));
     if ($te eq 'chunked') {
 	$hdr .= "Transfer-Encoding: chunked\r\n"
     } elsif (!$clen_extend) {
-	$hdr = "Content-length: ".length($data)."\r\n".$hdr;
+	$hdr = "Content-length: $len\r\n$hdr";
     } elsif ($clen_extend<0) {
 	$hdr = "Connection: close\r\n$hdr";
     } else {
-	$hdr = "Connection: close\r\nContent-length: ".(length($data)+$clen_extend)."\r\n".$hdr;
+	$hdr = "Connection: close\r\nContent-length: "
+	    .($len+$clen_extend)."\r\n".$hdr;
     }
+
     return (
 	"HTTP/$version 200 ok\r\n$hdr\r\n$data[0]",
 	(@data>1) ? (@data[1..$#data]):(),

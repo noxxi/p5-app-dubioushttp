@@ -196,12 +196,10 @@ sub make_pcaps {
     my $base = 0;
     for my $cat ( App::DubiousHTTP::Tests->categories ) {
 	$cat->TESTS or next;
-	$base += 5000;
 	my $pc = $pcap;
-	my $port = $base;
 	for my $tst ( $cat->TESTS ) {
 	    my $valid = $tst->VALID;
-	    $port = 10*int($port/10+1);
+	    my $port = 10*$tst->NUM_ID;
 	    $port += $valid>0 ? $valid : $valid<0 ? 4-$valid : 9;
 
 	    my $xurl = $tst->url($testfile);
@@ -217,7 +215,7 @@ sub make_pcaps {
 	    my @manifest = ($port, $xurl,$tst->DESCRIPTION);
 	    if (!$pc) {
 		( my $id = $cat->ID.'-'.$tst->ID ) =~s{[^\w\-.,;+=]+}{_}g;
-		my $file = "$pcap_prefix$id.pcap";
+		my $file = "$pcap_prefix$id.$port.pcap";
 		push @manifest,$file;
 		$pc = Net::PcapWriter->new($file)
 		    or die "failed to create $file: $!";

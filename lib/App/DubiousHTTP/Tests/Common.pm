@@ -407,7 +407,7 @@ sub zlib_compress {
 {
     my ($path2num,$num2path);
     sub load_nummap {
-	my $maxold = @_>1 ? pop(@_) : 9999;
+	my $maxold = @_>1 ? pop(@_) : 1999;
 	$num2path = eval(
 	    "require App::DubiousHTTP::Tests::TestID;".
 	    "App::DubiousHTTP::Tests::TestID->num2path"

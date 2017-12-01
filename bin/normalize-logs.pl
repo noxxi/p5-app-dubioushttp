@@ -55,9 +55,16 @@ my $nextline = do {
 	exit(1) if @ost && @ist && $ist[9]<=$ost[9];
     }
     my $fh = \*STDIN;
-    die "open $input: $!" if $input && ! open($fh,'<',$input);
+    if ($input) {
+	@input_stat = stat($input) if $output;
+	if ($input =~m{\.gz$}) {
+	    -f $input && -r _ or die "unreadable $input";
+	    open($fh,'-|',qw(gzip -dc),$input) or die "open $input: $!";
+	} else {
+	    open($fh,'<',$input) or die "open $input: $!";
+	}
+    }
     die "open $output: $!" if $output && ! open($outfh,'>',$output);
-    @input_stat = stat($fh) if $input && $output;
     sub { scalar(<$fh>) }
 };
 

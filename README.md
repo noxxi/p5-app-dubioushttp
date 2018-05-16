@@ -1,4 +1,4 @@
-= HTTP Evader: Automate Firewall and IDS Evasion Tests, Analyse Browser Behavior
+# HTTP Evader: Automate Firewall and IDS Evasion Tests, Analyse Browser Behavior
 
 While HTTP is defined in RFC2616 (HTTP/1.1) the specification does not address
 every tiny detail. This makes browsers behave similar for the usual HTTP
@@ -10,7 +10,7 @@ interpretation of HTTP leave enough room for bypassing these security
 systems.
 
 This module contains predefined tests to generate dubious HTTP responses.
-The distribution contains also a script dubious_http.pl which can be used
+The distribution contains also a script `dubious_http.pl` which can be used
 as an HTTP server to serve these dubious HTTP responses. This can also be used
 to automatically test a firewall for possible evasion.
 Alternativly it can be used to generate pcap-Files containing the dubious HTTP
@@ -22,11 +22,13 @@ evasion tests and http://noxxi.de/research/semantic-gap.html for more details on
 using interpretation differences between different browsers and security systems 
 to bypass the latter.
 
-= Quickstart Test Server
+## Quickstart Test Server
 
 To start a test server at localhost port 8001 simply use:
 
-  perl dubious_http.pl -M server --no-garble-url 127.0.0.1:8001
+```
+perl dubious_http.pl -M server --no-garble-url 127.0.0.1:8001
+```
 
 Additional options are available, i.e. for https support and others.
-Start the script with --help to get more information.
+Start the script with `--help` to get more information.

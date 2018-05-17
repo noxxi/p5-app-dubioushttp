@@ -22,12 +22,50 @@ evasion tests and http://noxxi.de/research/semantic-gap.html for more details on
 using interpretation differences between different browsers and security systems 
 to bypass the latter.
 
+## Dependencies
+
++ [ExtUtils::MakeMaker](http://deps.cpantesters.org/?module=ExtUtils::MakeMaker;perl=latest;os=any%20OS;pureperl=0)
++ [Compress::Raw::Lzma](http://deps.cpantesters.org/?module=Compress::Raw::Lzma;perl=latest;os=Linux;pureperl=0) (may require manual steps, see [iss-4](https://github.com/noxxi/p5-app-dubioushttp/issues/4))
++ [Time::HiRes](http://deps.cpantesters.org/?module=Time::HiRes;perl=latest;os=Linux;pureperl=0)
++ [Compress::Raw::Zlib](http://deps.cpantesters.org/?module=Compress::Raw::Zlib;perl=latest;os=Linux;pureperl=0)
+
+Also see [dependencies](http://deps.cpantesters.org/?module=App%3A%3ADubiousHTTP;perl=latest) on CPAN.
+
+## Installation
+
+### Automatic installation
+
+To install the latest perl module automatically with [CPAN](https://www.cpan.org/), just run:
+
+```
+$ cpan App::DubiousHTTP
+```
+
+Also see [App::DubiousHTTP](http://search.cpan.org/search?query=App%3ADubioushttp&mode=all) on CPAN.
+
+### Manual installation
+
+To manually buid the perl module from the git:
+
+```
+$ git clone https://github.com/noxxi/p5-app-dubioushttp.git dubioushttp
+$ cd dubioushttp
+$ perl Makefile.PL
+$ make install
+$ make test
+# make install
+```
+
 ## Quickstart Test Server
 
 To start a test server at localhost port 8001 simply use:
 
 ```
-perl dubious_http.pl -M server --no-garble-url 127.0.0.1:8001
+// for global install
+$ dubious_http.pl -M server --no-garble-url 127.0.0.1:8001
+
+// locally
+$ perl dubious_http.pl -M server --no-garble-url 127.0.0.1:8001
 ```
 
 Additional options are available, i.e. for https support and others.

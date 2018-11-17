@@ -6,7 +6,9 @@ our $VERSION = '0.034';
 1;
 __END__
 
-=head1 NAME App::DubiousHTTP - test security systems with dubious HTTP
+=head1 NAME
+
+App::DubiousHTTP - test security systems with dubious HTTP
 
 =head1 DESCRIPTION
 

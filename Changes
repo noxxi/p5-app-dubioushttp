@@ -1,3 +1,7 @@
+2019/03/09 0.035
+- encode EICAR test virus so that stupid AV don't treat the distribution as
+  malicious
+
 2017/06/09 0.034
 - support custom payloads instead of EICAR, see --help for how to use
 - fixed submission

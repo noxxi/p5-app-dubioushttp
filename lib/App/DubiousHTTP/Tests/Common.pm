@@ -27,11 +27,17 @@ use constant {
 my $basedir = 'static/';
 sub basedir { $basedir = pop }
 
+# some AV will find the EICAR test virus just by checking for the string
+# anywhere and not matter which postfix/prefix. That's not how this was supposed
+# to work but anyway - make sure that they don't find it here.
+my $eicar = 'X5O!P'.'%@AP[4'.'\PZX54'.'(P^)7CC)'.'7}$EICA'.'R-STAND'.'ARD-ANT'
+    .'IVIRU'.'S-TEST-FILE!$H+H*';
+
 {
     my %bro = (
 	"Don't be afraid to look at this message. It is completely harmless. Really!"
 	    => decode_base64('G0oAAIyUq+1oRZSkJ0v1kiZ2hk1hs4NDDti/XVogkErgISv5M41kDrdKRMH7fRK8YAmyXwFNYppR3EBMbVhyBA=='),
-	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
+	$eicar
 	    => decode_base64('G0MAABQhyezgvJQnNVXciUrtsAEHrvlk0bTzGSRPqOdwPRhITMNtn+G6LB8+EYrC/LjqijSZFRhTlo5XllmqeTHxsABuVSsB'),
     );
     sub bro_compress {
@@ -50,20 +56,20 @@ my %builtin = (
     'eicar.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
 	"Content-disposition: attachment; filename=\"download.txt\"\r\n",
-	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
+	$eicar,
 	'EICAR test virus',
     ],
     # EICAR test virus with junk behind (proper antivirus should not match
     'eicar-junk.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
 	"Content-disposition: attachment; filename=\"download.txt\"\r\n",
-	'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*WHATEVER',
+	$eicar.'WHATEVER',
     ],
     # EICAR test virus prefixed with junk (proper antivirus should not match)
     'junk-eicar.txt' => [ 
 	"Content-type: application/octet-stream\r\n".
 	"Content-disposition: attachment; filename=\"download.txt\"\r\n",
-	'WHATEVERX5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
+	'WHATEVER'.$eicar,
     ],
     # zipped novirus
     'novirus.zip' => [ 

@@ -608,6 +608,7 @@ function check_xhr_result(req,test,status) {
 		var pn = response.indexOf(base64_decode(expect));
 		if (pn<0) {
 		    status = 'change(' + status + ')';
+		    _log( 'response="' + response + '" expect="' + base64_decode(expect) + '"');
 		} else {
 		    _log( 'off=' + pn + 'response="' + response + '" expect="' + base64_decode(expect) + '"');
 		    status = 'change(' + status + ',off=' + pn + ')';

@@ -5,6 +5,7 @@ use Getopt::Long qw(:config posix_default bundling);
 use App::DubiousHTTP::Tests;
 use App::DubiousHTTP::Tests::Common;
 use App::DubiousHTTP::TestServer;
+use Data::Dumper;
 
 sub usage {
     print STDERR "ERROR: @_\n" if @_;
@@ -161,21 +162,39 @@ sub make_pcaps {
 	'filter-all' => sub { $filter_any = 0; },
     ) or usage();
 
-    my %include;
+    my $include;
+    my $only_path;
     for (@ARGV) {
 	open( my $fh,'<',$_ ) or die "open $_: $!";
+	my $lines;
+	$include ||= {};
 	while (<$fh>) {
-	    my ($code,$string,$page) = m{^ ([INW]) \| (\S+) \| (/\S+) } or next;
-	    $page =~s{^(/\w+)/[^/]+/(.*)}{$1/$testfile/$2} or next;
-	    my $v = $string =~m{match|success} ? 1:0;
-	    if (!exists $include{$page}) {
-		$include{$page} = $v;
+	    my ($page,$v);
+	    if ((my $code,my $string,$page) = m{^ ([INW]) \| (\S+) \| (/\S+) }) {
+		die "mixed input" if $only_path;
+		$only_path = 0;
+		$page =~s{^(/\w+)/[^/]+/(.*)}{$1/$testfile/$2} or next;
+		$lines++;
+		$v = $string =~m{match|success} ? 1:0;
+	    } elsif (m{^(/\w+)/[^/]+/(.*)\s*$}) {
+		die "mixed input" if defined $only_path && ! $only_path;
+		$lines++;
+		$only_path = 1;
+		$page = "$1/$testfile/$2";
+		warn "duplicate $page" if exists $include->{$page};
+		$v = 1;
+	    } elsif ($only_path) {
+		die "invalid line: $_" if m{\S};
+	    }
+	    if (!exists $include->{$page}) {
+		$include->{$page} = $v;
 	    } elsif ($filter_any) {
-		$include{$page} = 1 if $v;
+		$include->{$page} = 1 if $v;
 	    } else {
-		$include{$page} = 0 if !$v;
+		$include->{$page} = 0 if !$v;
 	    }
 	}
+	print STDERR "only_path=$only_path lines=$lines include=".int(keys %$include)."\n";
     }
 
     my $pcap;
@@ -202,17 +221,26 @@ sub make_pcaps {
 	    my $port = 10*$tst->NUM_ID;
 	    $port += $valid>0 ? $valid : $valid<0 ? 4-$valid : 9;
 
-	    my $xurl = $tst->url($testfile);
-	    my $url = url_encode($xurl);
-	    if (!%include) {
-	    } elsif (!exists $include{$url}) {
+	    my $url = $tst->url($testfile);
+	    my $xurl = url_encode($url);
+	    if (!$include) {
+	    } elsif (!exists $include->{$url} && !exists $include->{$xurl}) {
+		if ($only_path) {
+		    warn "skip $url\n";
+		    next;
+		}
 		warn "$url not in existing reports - including anyway\n";
-	    } elsif (!$include{$url}) {
+	    } elsif (!$include->{$url} && !$include->{$xurl}) {
 		warn "skip $url\n";
 		next;
+	    } else {
+		warn "match $url\n";
 	    }
 
-	    my @manifest = ($port, $xurl,$tst->DESCRIPTION);
+	    delete $include->{$url};
+	    delete $include->{$xurl};
+
+	    my @manifest = ($port, $url,$tst->DESCRIPTION);
 	    if (!$pc) {
 		( my $id = $cat->ID.'-'.$tst->ID ) =~s{[^\w\-.,;+=]+}{_}g;
 		my $file = "$pcap_prefix$id.$port.pcap";
@@ -222,7 +250,7 @@ sub make_pcaps {
 	    }
 
 	    my $conn = $pc->tcp_conn('1.1.1.1',$port,'8.8.8.8',80);
-	    $conn->write(0, "GET $url HTTP/1.1\r\nHost: evader.example.com\r\n\r\n" );
+	    $conn->write(0, "GET $xurl HTTP/1.1\r\nHost: evader.example.com\r\n\r\n" );
 	    for( $tst->make_response($testfile) ) {
 		$conn->write(1, $_ );
 	    }
@@ -231,6 +259,7 @@ sub make_pcaps {
 	    undef $pc if !$pcap;
 	}
     }
+    die Dumper($include) if $include && %$include;
 }
 
 ############################ work as server

@@ -1,3 +1,6 @@
+2021/02/26 0.036
+- changed bugtracker in Makefile.PL to github, away from obsolete rt.cpan.org
+
 2019/03/09 0.035
 - encode EICAR test virus so that stupid AV don't treat the distribution as
   malicious

@@ -11,7 +11,7 @@ WriteMakefile(
             license     => 'http://dev.perl.org/licenses/',
             repository  => 'https://github.com/noxxi/p5-app-dubioushttp',
             homepage  => 'https://github.com/noxxi/p5-app-dubioushttp',
-            bugtracker  => 'https://rt.cpan.org/Dist/Display.html?Queue=App-DubiousHTTP',
+            bugtracker  => 'https://github.com/noxxi/p5-app-dubioushttp/issues',
         },
     },
     PREREQ_PM => {

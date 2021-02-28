@@ -802,6 +802,13 @@ sub num2path {{
     797	=> "compressed\/chunked\;ce\:gzip\;gzip\;replace\:\-8\,8\=\;clen\+8",
     798	=> "compressed\/chunked\;ce\:gzip\;gzip\;replace\:\-4\,4\=\;noclen",
     799	=> "compressed\/chunked\;ce\:gzip\;gzip\;replace\:\-8\,8\=\;noclen",
+    800	=> "chunked\/junk\\000\-after\-chunkdata",
+    801	=> "chunked\/junk\\012\-after\-chunkdata",
+    802	=> "chunked\/junk\\015\-after\-chunkdata",
+    803	=> "chunked\/junk\\040\-after\-chunkdata",
+    804	=> "chunked\/junk\\011\-after\-chunkdata",
+    805	=> "chunked\/size\-1",
+    806	=> "chunked\/size\+1",
 
 }};
 

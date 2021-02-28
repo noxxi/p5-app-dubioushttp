@@ -213,6 +213,13 @@ DESC
     [ INVALID, 'lf-before-chunks' => '<LF> before chunks start' ],
     [ INVALID, 'cr-before-chunks' => '<CR> before chunks start' ],
     [ INVALID, 'crlf-before-chunks' => '<CR><LF> before chunks start' ],
+    [ INVALID, 'junk\000-after-chunkdata' => 'junk \000 after each chunk payload' ],
+    [ INVALID, 'junk\012-after-chunkdata' => 'junk \n after each chunk payload' ],
+    [ INVALID, 'junk\015-after-chunkdata' => 'junk \r after each chunk payload' ],
+    [ INVALID, 'junk\040-after-chunkdata' => 'junk space after each chunk payload' ],
+    [ INVALID, 'junk\011-after-chunkdata' => 'junk tab after each chunk payload' ],
+    [ INVALID, 'size-1' => 'size given for chunk is one to small' ],
+    [ INVALID, 'size+1' => 'size given for chunk is one to large' ],
 );
 
 
@@ -276,6 +283,14 @@ sub make_response {
 	    $hdr .= "Transfer-Encoding: \r\nConnection: close\r\n";
 	} elsif ( $_ eq 'xte' ) {
 	    $hdr .= "Transfer-Encoding: lalala\r\nConnection: close\r\n";
+	} elsif ( m{^junk(\S*)-after-chunkdata$}) {
+	    my $junk = $1 // 'x';
+	    $junk =~ s{\\([0-7]{3})}{ chr(oct($1)) }eg;
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    $chunkmod{'junk-after-chunk'} = $junk;
+	} elsif ( m{^size([+-])(\d+)$}) {
+	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
+	    $chunkmod{'size-adjust'} = int("$1$2");
 	} elsif ( m{^(chunk-ext-|nofinal$|eof-inchunk$)} ) {
 	    $hdr .= "Transfer-Encoding: chunked\r\nConnection: close\r\n";
 	    $chunkmod{$_} = 1;
@@ -347,6 +362,13 @@ sub make_response {
 	    pop @chunks if ! $chunks[-1][0]; # remove final chunk
 	    my $last = pop(@chunks);
 	    $end = sprintf("%x%s%s%s",$last->[0]+10,$last->[2]||'',$nl,$last->[1]);
+	}
+	if (defined(my $junk = $chunkmod{'junk-after-chunk'})) {
+	    $_->[1] .= $junk for @chunks;
+	}
+	if (my $diff = $chunkmod{'size-adjust'}) {
+	    $_->[0] += $diff for @chunks;
+	    $chunks[-1][0] = 0; # keep at 0 last chunk
 	}
 
 	$finalchunk = "$final$nl$nl" if ! defined $finalchunk;

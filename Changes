@@ -1,3 +1,7 @@
+2023/09/18 0.038
+- added copyright information which also include the terms of using the
+  code by others
+
 2021/02/28 0.037
 - test for TE chunked with data after each chunk and not covered by length
 

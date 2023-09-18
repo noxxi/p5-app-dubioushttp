@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 package App::DubiousHTTP;
-our $VERSION = '0.037';
+our $VERSION = '0.038';
 
 1;
 __END__
@@ -81,3 +81,13 @@ http://noxxi.de/research/semantic-gap.html
 
 Steffen Ullrich, 2013..2015
 
+=head1 COPYRIGHT
+
+This code is copyright by Steffen Ullrich.
+
+It can be freely used and modified both non-commercially and commercially as
+long as it is clearly provided, who the original author of the code was and a
+link to the authors public repository of this code is provided. For this
+it is sufficient to include author and repository information into the usual
+product documentation together similar to the licenses of other third party
+components.
